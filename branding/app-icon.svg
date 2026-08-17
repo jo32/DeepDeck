@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="124" y1="80" x2="910" y2="948" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8D87FF"/>
+      <stop offset="0.5" stop-color="#635BFF"/>
+      <stop offset="1" stop-color="#3564E8"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="250" y1="170" x2="786" y2="850" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="80" y="100" width="864" height="824" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="26" stdDeviation="28" flood-color="#263A91" flood-opacity=".3"/>
+    </filter>
+  </defs>
+  <rect x="72" y="72" width="880" height="880" rx="236" fill="url(#bg)"/>
+  <path d="M182 236c112-103 248-137 404-102 142 32 246 113 312 242v-68c0-97-79-176-176-176H308c-48 0-92 19-126 50Z" fill="url(#shine)"/>
+  <g filter="url(#shadow)" stroke="#fff" stroke-linejoin="round">
+    <path d="M286 310h452c62 0 112 50 112 112v191c0 62-50 112-112 112H606l-94 82-94-82H286c-62 0-112-50-112-112V422c0-62 50-112 112-112Z" stroke-width="68"/>
+    <path d="m332 444 73 143 107-136 107 136 73-143" stroke-width="68" stroke-linecap="round"/>
+  </g>
+</svg>

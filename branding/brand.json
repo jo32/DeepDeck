@@ -1,0 +1,12 @@
+{
+  "id": "openworkbuddy",
+  "name": "OpenWorkBuddy",
+  "tagline": "你的本地智能工作伙伴",
+  "accentColor": "#635BFF",
+  "accentColorSoft": "#EEEAFE",
+  "upstreamName": "DeepSeek Harness",
+  "wordmark": "wordmark.svg",
+  "mark": "mark.svg",
+  "favicon": "favicon.svg",
+  "appIcon": "app-icon.png"
+}

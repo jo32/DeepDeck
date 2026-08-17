@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+dist/
+*.log
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+
+# Editor state
+.idea/
+.vscode/
