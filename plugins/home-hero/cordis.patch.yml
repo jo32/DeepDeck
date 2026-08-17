@@ -1,0 +1,4 @@
+# DeepDeck new-session character presentation.
+- insert:
+    - id: openworkbuddy-home-hero
+      name: '@openworkbuddy/dsh-client-ui-home-hero'

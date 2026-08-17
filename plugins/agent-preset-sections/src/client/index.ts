@@ -1,5 +1,5 @@
 /**
- * OpenWorkBuddy Agent-preset presentation enhancement.
+ * DeepDeck Agent-preset presentation enhancement.
  *
  * The upstream plugin remains the sole owner of loading, selection, copying,
  * viewing, deletion, and Creator-mode session staging. This plugin decorates

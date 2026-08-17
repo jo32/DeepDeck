@@ -1,0 +1,288 @@
+:root {
+  color: #080808;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #f7f7f4;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: clamp(18px, 6vmin, 64px);
+  padding-bottom: clamp(116px, 16vh, 154px);
+  overflow: hidden;
+  background: #f7f7f4;
+}
+
+.orb-stage {
+  position: relative;
+  display: grid;
+  width: min(72vmin, 540px);
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  cursor: grab;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.orb-stage:focus-visible {
+  outline: 2px solid rgb(8 8 8 / 22%);
+  outline-offset: 6px;
+}
+
+.orb-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+.orb-stage[data-dragging="true"],
+.orb-stage[data-dragging="true"] .orb-canvas {
+  cursor: grabbing;
+}
+
+.orb-canvas:focus {
+  outline: none;
+}
+
+.orb-stage[data-ready="true"] .orb-canvas {
+  animation: orb-reveal 680ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.orb-fallback {
+  position: absolute;
+  z-index: 0;
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #030303;
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+
+.orb-stage[data-ready="true"] .orb-fallback {
+  opacity: 0;
+}
+
+.fallback-eye {
+  position: absolute;
+  top: 32%;
+  width: 25%;
+  height: 38%;
+  background: #fafafa;
+  clip-path: polygon(
+    80% 0,
+    94% 24%,
+    98% 52%,
+    88% 76%,
+    62% 100%,
+    38% 94%,
+    0 63%,
+    27% 39%,
+    62% 17%
+  );
+}
+
+.fallback-eye-left {
+  left: 19%;
+  transform: scaleX(-1);
+}
+
+.fallback-eye-right {
+  right: 19%;
+}
+
+.orb-fallback-whale {
+  background: #4f67ff;
+  box-shadow:
+    inset 18px -18px 38px rgb(43 53 184 / 20%),
+    inset -20px 22px 34px rgb(170 200 255 / 18%);
+}
+
+.whale-fallback-eye {
+  position: absolute;
+  z-index: 2;
+  top: 41.75%;
+  width: 14.5%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #202840;
+  box-shadow: inset 0 2px 3px rgb(255 255 255 / 20%);
+}
+
+.whale-fallback-eye-left {
+  left: 25.5%;
+}
+
+.whale-fallback-eye-right {
+  right: 25.5%;
+}
+
+.control-panel {
+  position: fixed;
+  z-index: 20;
+  right: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  width: min(1120px, calc(100vw - 28px));
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border: 1px solid rgb(8 8 8 / 12%);
+  border-radius: 18px;
+  background: rgb(247 247 244 / 88%);
+  box-shadow: 0 16px 44px rgb(0 0 0 / 8%);
+  backdrop-filter: blur(18px);
+  transform: translateX(50%);
+}
+
+.appearance-switch {
+  display: grid;
+  flex: 0 0 auto;
+  min-width: 170px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgb(8 8 8 / 10%);
+  border-radius: 12px;
+  background: rgb(8 8 8 / 3%);
+}
+
+.control-panel button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  background: rgb(8 8 8 / 5%);
+  color: rgb(8 8 8 / 58%);
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.control-panel button:hover {
+  background: rgb(8 8 8 / 9%);
+  color: #080808;
+}
+
+.control-panel button:active {
+  transform: scale(0.96);
+}
+
+.control-panel button[aria-pressed="true"] {
+  background: #080808;
+  color: #fff;
+}
+
+.appearance-switch button:nth-child(2)[aria-pressed="true"] {
+  background: #4f67ff;
+}
+
+.control-panel button:focus-visible {
+  outline: 2px solid #080808;
+  outline-offset: 2px;
+}
+
+.reset-button {
+  flex: 0 0 auto;
+  border: 1px solid rgb(8 8 8 / 12%) !important;
+  background: transparent !important;
+  color: #080808 !important;
+}
+
+.expression-list {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.expression-list::-webkit-scrollbar {
+  display: none;
+}
+
+.expression-list button {
+  flex: 0 0 auto;
+}
+
+@keyframes orb-reveal {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding-bottom: 164px;
+  }
+
+  .orb-stage {
+    width: min(78vmin, 430px);
+  }
+
+  .control-panel {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .appearance-switch {
+    min-width: 0;
+  }
+
+  .expression-list {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-canvas,
+  .orb-stage[data-ready="true"] .orb-canvas {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

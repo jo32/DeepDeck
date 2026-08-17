@@ -1,0 +1,49 @@
+.artwork {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.heroTitleMask {
+  position: absolute;
+  top: -24px;
+  right: 0;
+  left: 0;
+  height: 80px;
+  background: color-mix(in srgb, rgb(97 135 216) 4.5%, var(--dsw-alias-bg-base));
+  mask-image: radial-gradient(
+    ellipse 48% 48% at 50% 50%,
+    #000 0%,
+    #000 60%,
+    transparent 100%
+  );
+}
+
+.mascot {
+  position: absolute;
+  right: -40px;
+  bottom: 68px;
+  width: 184px;
+  height: 232px;
+  pointer-events: none;
+  filter: drop-shadow(0 16px 22px rgb(16 24 40 / 10%));
+}
+
+@media (max-width: 720px) {
+  .mascot {
+    right: -12px;
+    bottom: 82px;
+    width: 140px;
+    height: 176px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mascot {
+    right: -2px;
+    bottom: 87px;
+    width: 116px;
+    height: 146px;
+  }
+}

@@ -3,8 +3,8 @@ import type { DesktopBranding } from "../shared/branding.js";
 import type { HarnessRuntimeStatus } from "../shared/runtime.js";
 
 const initialBranding: DesktopBranding = {
-  id: "openworkbuddy",
-  name: "OpenWorkBuddy",
+  id: "deepdeck",
+  name: "DeepDeck",
   tagline: "你的本地智能工作伙伴",
   accentColor: "#635BFF",
   accentColorSoft: "#EEEAFE",
@@ -13,7 +13,7 @@ const initialBranding: DesktopBranding = {
 
 const initialStatus: HarnessRuntimeStatus = {
   state: "starting",
-  message: "正在连接 OpenWorkBuddy…",
+  message: "正在连接 DeepDeck…",
 };
 
 export function App(): React.JSX.Element {

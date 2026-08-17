@@ -1,0 +1,115 @@
+.stage {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border-radius: 50%;
+  outline: none;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(.96);
+}
+
+.interactionSurface {
+  position: absolute;
+  z-index: 2;
+  width: 82.6087%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.stage[data-dragging='true'] .interactionSurface {
+  cursor: grabbing;
+}
+
+.stage[data-ready='true'] .canvas {
+  animation: reveal 680ms cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+.fallback {
+  position: absolute;
+  z-index: 0;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #030303;
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+
+.stage[data-ready='true'] .fallback {
+  opacity: 0;
+}
+
+.fallbackEye {
+  position: absolute;
+  top: 32%;
+  width: 25%;
+  height: 38%;
+  background: #fafafa;
+  clip-path: polygon(80% 0, 94% 24%, 98% 52%, 88% 76%, 62% 100%, 38% 94%, 0 63%, 27% 39%, 62% 17%);
+}
+
+.fallbackEyeLeft {
+  left: 19%;
+  transform: scaleX(-1);
+}
+
+.fallbackEyeRight {
+  right: 19%;
+}
+
+.fallbackWhale {
+  background: #4f67ff;
+}
+
+.whaleEye {
+  position: absolute;
+  z-index: 2;
+  top: 41.75%;
+  width: 14.5%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #202840;
+}
+
+.whaleEyeLeft {
+  left: 25.5%;
+}
+
+.whaleEyeRight {
+  right: 25.5%;
+}
+
+@keyframes reveal {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas,
+  .stage[data-ready='true'] .canvas {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -3,6 +3,7 @@ import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/d
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { BRAND } from './generated-brand.ts'
 import { NewSessionIcon } from './NewSessionIcon.tsx'
+import { DesktopUpdateControl } from './DesktopUpdateControl.tsx'
 import css from './desktop-chrome.module.css'
 
 export const DESKTOP_SIDEBAR_LOCALE = 'openworkbuddy.desktop.sidebar' as const
@@ -10,11 +11,31 @@ export const DESKTOP_SIDEBAR_LOCALE = 'openworkbuddy.desktop.sidebar' as const
 export const desktopSidebarZh = {
   'session.new': '新会话',
   'session.new.label': '新建会话',
+  'update.available': '发现新版本',
+  'update.download': '下载更新',
+  'update.downloading': '正在下载',
+  'update.downloaded': '更新已下载',
+  'update.restarting': '下载完成，正在自动重启…',
+  'update.retry': '重新下载',
+  'update.failed': '下载失败，请重试。',
+  'update.short': '更新',
+  'update.open': '查看可用更新',
+  'update.close': '关闭更新提示',
 } as const
 
 export const desktopSidebarEn = {
   'session.new': 'New Session',
   'session.new.label': 'New session',
+  'update.available': 'Update available',
+  'update.download': 'Download update',
+  'update.downloading': 'Downloading',
+  'update.downloaded': 'Update downloaded',
+  'update.restarting': 'Download complete. Restarting automatically…',
+  'update.retry': 'Try download again',
+  'update.failed': 'Download failed. Try again.',
+  'update.short': 'Update',
+  'update.open': 'View available update',
+  'update.close': 'Close update prompt',
 } satisfies Record<keyof typeof desktopSidebarZh, string>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -47,7 +68,15 @@ export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarPr
           aria-label={t('session.new.label')}
           onClick={() => { startSession() }}
         >
-          <img className={css.sidebarWordmark} src={BRAND.wordmarkDataUrl} alt="" />
+          <img
+            aria-hidden="true"
+            className={css.sidebarBrandMark}
+            data-openworkbuddy-brand-mark
+            src={BRAND.markDataUrl}
+          />
+          <span className={css.sidebarBrandName} data-openworkbuddy-brand-name>
+            {BRAND.name}
+          </span>
         </button>
       </div>
 
@@ -67,7 +96,12 @@ export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarPr
 
       <div className={css.sidebarFoot}>
         <div>{renderSlot('sidebar.footer.action', { wide: true })}</div>
-        <div>{renderSlot('sidebar.settings', { wide: true })}</div>
+        <div className={css.sidebarSettingsRow}>
+          <div className={css.sidebarSettingsSlot}>
+            {renderSlot('sidebar.settings', { wide: true })}
+          </div>
+          <DesktopUpdateControl t={t} />
+        </div>
       </div>
     </div>
   )

@@ -8,7 +8,7 @@ describe("desktop branding", () => {
   it("loads only native-window and splash branding", () => {
     const branding = loadBranding(manifest);
 
-    expect(branding.name).toBe("OpenWorkBuddy");
+    expect(branding.name).toBe("DeepDeck");
     expect(branding.markDataUrl).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(branding.appIconPath).toMatch(/branding\/app-icon\.png$/);
     expect(publicBranding(branding)).not.toHaveProperty("appIconPath");

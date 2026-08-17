@@ -24,6 +24,12 @@ describe("Harness plugin resolution", () => {
     )).toBe(
       "/tmp/dsh-home/profiles/web/node_modules/@openworkbuddy/dsh-client-ui-desktop-chrome",
     );
+    expect(resolveHarnessPluginLink(
+      "/tmp/dsh-home",
+      "@openworkbuddy/dsh-client-ui-home-hero",
+    )).toBe(
+      "/tmp/dsh-home/profiles/web/node_modules/@openworkbuddy/dsh-client-ui-home-hero",
+    );
   });
 
   it("rejects package paths that could escape node_modules", () => {

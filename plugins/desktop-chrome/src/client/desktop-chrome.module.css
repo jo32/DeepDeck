@@ -57,19 +57,34 @@
   min-width: 0;
   padding: 0;
   align-items: center;
+  gap: 7px;
   overflow: hidden;
   border: 0;
   background: transparent;
-  color: inherit;
+  color: var(--dsw-alias-label-primary);
   cursor: pointer;
 }
 
-.sidebarWordmark {
+.sidebarBrandMark {
   display: block;
-  width: 182px;
+  width: 24px;
   height: 24px;
+  flex: 0 0 24px;
   object-fit: contain;
-  object-position: left center;
+}
+
+:global(body[data-ds-dark-theme]) .sidebarBrandMark {
+  filter: invert(1);
+}
+
+.sidebarBrandName {
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 720;
+  letter-spacing: -0.55px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebarNewSession {
@@ -116,6 +131,268 @@
   flex: none;
   min-width: 0;
   width: 100%;
+}
+
+.sidebarSettingsRow {
+  position: relative;
+}
+
+.sidebarSettingsSlot {
+  min-width: 0;
+}
+
+.sidebarSettingsSlot > :global(button) {
+  padding-right: 44px;
+}
+
+.updateAnchor {
+  position: absolute;
+  z-index: 10;
+  right: 2px;
+  bottom: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.updateIconButton {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dsw-static-blue-600);
+  color: var(--dsw-static-neutral-bluish-00);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    width 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms ease,
+    transform 120ms ease;
+}
+
+.updateIconButton:hover,
+.updateIconButton:focus-visible {
+  width: 76px;
+  background: var(--dsw-static-blue-800);
+}
+
+.updateIconButton:active {
+  transform: scale(0.96);
+}
+
+.updateIconButton:focus-visible,
+.updatePrimaryButton:focus-visible,
+.updateClose:focus-visible {
+  outline: 2px solid var(--dsw-static-blue-500);
+  outline-offset: 1px;
+}
+
+.updateIconGlyph {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+}
+
+.updateIconGlyph svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.updateIconLabel {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  color: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  transform: translateX(-4px);
+  transition:
+    max-width 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 90ms ease,
+    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.updateIconButton:hover .updateIconLabel,
+.updateIconButton:focus-visible .updateIconLabel {
+  max-width: 44px;
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 0ms, 45ms, 25ms;
+}
+
+.updatePopover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: flex;
+  width: 244px;
+  padding: 14px;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 14px;
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: var(--dsw-shadow-lv2);
+  color: var(--dsw-alias-label-primary);
+  transform-origin: right bottom;
+  animation: updatePopoverIn 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes updatePopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .updateIconButton,
+  .updateIconLabel {
+    transition: none;
+  }
+
+  .updatePopover {
+    animation: none;
+  }
+}
+
+.updatePopoverHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.updatePopoverHeader > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.updatePopoverHeader strong {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.updatePopoverHeader span,
+.updateProgressLabel,
+.updateError,
+.updateRestarting {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.updateClose {
+  flex: none;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.updateClose:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.updateProgressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.updateProgressLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.updateProgress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dsw-static-blue-100);
+  accent-color: var(--dsw-static-blue-600);
+}
+
+.updateProgress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: var(--dsw-static-blue-100);
+}
+
+.updateProgress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--dsw-static-blue-600);
+}
+
+.updateError,
+.updateRestarting {
+  margin: 0;
+}
+
+.updateError {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.updatePrimaryButton {
+  display: inline-flex;
+  min-height: 32px;
+  padding: 6px 12px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 9px;
+  background: var(--dsw-static-blue-600);
+  color: var(--dsw-static-neutral-bluish-00);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.updatePrimaryButton:hover:not(:disabled) {
+  background: var(--dsw-static-blue-800);
+}
+
+.updatePrimaryButton:disabled {
+  cursor: default;
+  opacity: 0.65;
 }
 
 .centerCol {

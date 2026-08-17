@@ -3,8 +3,8 @@
   container-type: inline-size;
   box-sizing: border-box;
   width: 100%;
-  max-width: 960px !important;
-  gap: 16px !important;
+  max-width: 900px !important;
+  gap: 18px !important;
 }
 
 .pageIntro {
@@ -17,27 +17,28 @@
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
   grid-auto-rows: auto !important;
-  gap: 14px !important;
+  gap: 12px !important;
 }
 
 .modeSection {
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   width: 100%;
   overflow: hidden;
 }
 
 .modeMain {
   display: grid !important;
-  grid-template-columns: minmax(150px, 205px) minmax(220px, 1fr) minmax(210px, .9fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(210px, .85fr);
   grid-template-areas:
-    "head introduction example"
-    "id introduction example";
+    "head id"
+    "introduction example";
   align-items: start;
-  column-gap: 22px !important;
-  row-gap: 10px !important;
-  padding: 18px 20px !important;
-  border-radius: 12px 0 0 12px !important;
+  column-gap: 20px !important;
+  row-gap: 14px !important;
+  padding: 18px 20px 16px !important;
+  border-radius: 12px 12px 0 0 !important;
 }
 
 .modeHead {
@@ -48,7 +49,8 @@
 
 .modeId {
   grid-area: id;
-  align-self: end;
+  align-self: center;
+  justify-self: end;
   margin-top: 0 !important;
 }
 
@@ -73,12 +75,12 @@
 
 .introduction {
   grid-area: introduction;
-  padding-top: 1px;
 }
 
 .example {
   grid-area: example;
-  padding: 11px 13px;
+  align-self: stretch;
+  padding: 10px 12px;
   border-radius: 9px;
   background: var(--dsw-alias-bg-layer-2);
 }
@@ -97,50 +99,29 @@
 }
 
 .actions {
-  grid-column: 2;
-  grid-row: 1;
-  flex-direction: column;
+  grid-column: 1;
+  grid-row: 2;
+  flex-direction: row;
   align-items: center;
-  justify-content: center !important;
-  padding: 8px 6px !important;
-  border-top: 0 !important;
-  border-left: 1px solid var(--dsw-alias-border-l2);
+  justify-content: flex-end !important;
+  padding: 6px 10px !important;
+  border-top: 1px solid var(--dsw-alias-border-l2) !important;
+  border-left: 0;
 }
 
-@container preset-page (max-width: 760px) {
+@container preset-page (max-width: 480px) {
   .modeMain {
-    grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
-    grid-template-areas:
-      "head introduction"
-      "id introduction"
-      "example example";
-  }
-}
-
-@container preset-page (max-width: 520px) {
-  .modeSection {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .modeMain {
-    grid-column: 1;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "head"
+      "id"
       "introduction"
-      "example"
-      "id";
+      "example";
+    row-gap: 12px !important;
     padding: 16px !important;
-    border-radius: 12px 12px 0 0 !important;
   }
 
-  .actions {
-    grid-column: 1;
-    grid-row: auto;
-    flex-direction: row;
-    justify-content: flex-end !important;
-    padding: 6px 10px !important;
-    border-top: 1px solid var(--dsw-alias-border-l2) !important;
-    border-left: 0;
+  .modeId {
+    justify-self: start;
   }
 }

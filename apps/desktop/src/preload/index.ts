@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopApi, HarnessRuntimeStatus } from "../shared/runtime.js";
+import type { DesktopUpdateStatus } from "../shared/update.js";
 import { channels } from "./channels.js";
 
 const api: DesktopApi = {
@@ -15,6 +16,17 @@ const api: DesktopApi = {
       };
       ipcRenderer.on(channels.runtimeStatus, handler);
       return () => ipcRenderer.removeListener(channels.runtimeStatus, handler);
+    },
+  },
+  updates: {
+    get: () => ipcRenderer.invoke(channels.updatesGet),
+    download: () => ipcRenderer.invoke(channels.updatesDownload),
+    onStatus: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, status: DesktopUpdateStatus): void => {
+        listener(status);
+      };
+      ipcRenderer.on(channels.updatesStatus, handler);
+      return () => ipcRenderer.removeListener(channels.updatesStatus, handler);
     },
   },
 };

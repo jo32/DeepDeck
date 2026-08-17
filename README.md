@@ -1,6 +1,6 @@
-# OpenWorkBuddy Desktop
+# DeepDeck Desktop
 
-An OpenWorkBuddy-branded Electron desktop host for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, shell, and external branding layer.
+A DeepDeck-branded Electron desktop host for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, shell, and external branding layer.
 
 The first milestone deliberately reuses the official `web` profile and its complete plugin-composed UI. Electron starts the Harness process on an OS-assigned loopback port, waits for its readiness line, then opens that local UI in the desktop window. Closing the app shuts the Harness process down cleanly.
 
@@ -33,3 +33,9 @@ pnpm harness:build     # rebuild the pinned Harness checkout
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the dependency boundary and the plugin integration direction.
+
+## Desktop updates
+
+Packaged builds check for an update shortly after launch. When a release is available, the desktop sidebar shows an update indicator; the user starts the download explicitly and sees native updater progress. After the download completes, the desktop safely stops its Harness process, installs the update, and restarts automatically. Development launches do not contact an update service.
+
+`electron-updater` reads the release provider generated into `app-update.yml` by the packaging pipeline. `DEEPSEEK_DESKTOP_UPDATE_URL` can override that provider with a generic HTTP(S) feed for controlled builds and update testing. The feed must publish the platform metadata plus signed artifacts and blockmaps; Windows NSIS releases must be built with `differentialPackage: true`, while macOS releases must include the ZIP update target alongside the DMG.

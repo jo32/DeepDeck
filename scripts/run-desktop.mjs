@@ -9,7 +9,7 @@ const harnessCli = resolve(harnessRoot, "apps/cli/lib/bin.js");
 
 if (!existsSync(harnessCli)) {
   process.stderr.write(
-    "The OpenWorkBuddy engine has not been built. Run `pnpm bootstrap` before starting the desktop.\n",
+    "The DeepDeck engine has not been built. Run `pnpm bootstrap` before starting the desktop.\n",
   );
   process.exit(1);
 }

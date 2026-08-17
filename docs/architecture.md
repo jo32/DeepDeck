@@ -2,7 +2,7 @@
 
 ## Current boundary
 
-The desktop follows the same broad split as OpenWorkBuddy: an Electron main process owns local lifecycle and a sandboxed browser surface owns presentation. DeepSeek Harness remains an independently updatable dependency rather than copied application code.
+The desktop follows the same broad split as DeepDeck: an Electron main process owns local lifecycle and a sandboxed browser surface owns presentation. DeepSeek Harness remains an independently updatable dependency rather than copied application code.
 
 ```text
 Electron main process

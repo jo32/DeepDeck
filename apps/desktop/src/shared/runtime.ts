@@ -1,4 +1,5 @@
 import type { DesktopBranding } from "./branding.js";
+import type { DesktopUpdatesApi } from "./update.js";
 
 export type HarnessRuntimeState =
   | "idle"
@@ -23,4 +24,5 @@ export interface DesktopApi {
     restart(): Promise<HarnessRuntimeStatus>;
     onStatus(listener: (status: HarnessRuntimeStatus) => void): () => void;
   };
+  updates: DesktopUpdatesApi;
 }
