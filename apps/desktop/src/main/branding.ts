@@ -8,15 +8,11 @@ interface BrandManifest {
   tagline: string;
   accentColor: string;
   accentColorSoft: string;
-  upstreamName: string;
-  wordmark: string;
   mark: string;
-  favicon: string;
   appIcon: string;
 }
 
 export interface LoadedBranding extends DesktopBranding {
-  upstreamName: string;
   appIconPath: string;
 }
 
@@ -52,10 +48,7 @@ function readManifest(filename: string): BrandManifest {
     tagline: readRequiredString(value.tagline, "tagline"),
     accentColor: readRequiredString(value.accentColor, "accentColor"),
     accentColorSoft: readRequiredString(value.accentColorSoft, "accentColorSoft"),
-    upstreamName: readRequiredString(value.upstreamName, "upstreamName"),
-    wordmark: readRequiredString(value.wordmark, "wordmark"),
     mark: readRequiredString(value.mark, "mark"),
-    favicon: readRequiredString(value.favicon, "favicon"),
     appIcon: readRequiredString(value.appIcon, "appIcon"),
   };
   if (!/^[a-z0-9][a-z0-9-]*$/.test(manifest.id)) {
@@ -91,12 +84,9 @@ function readDataUrl(filename: string): string {
 export function loadBranding(filename: string): LoadedBranding {
   const manifest = readManifest(filename);
   const directory = dirname(resolve(filename));
-  const wordmarkPath = resolveAsset(directory, manifest.wordmark);
   const markPath = resolveAsset(directory, manifest.mark);
-  const faviconPath = resolveAsset(directory, manifest.favicon);
   const appIconPath = resolveAsset(directory, manifest.appIcon);
 
-  // Read the app icon as part of validation even though Electron consumes its path.
   readFileSync(appIconPath);
   return Object.freeze({
     id: manifest.id,
@@ -104,10 +94,7 @@ export function loadBranding(filename: string): LoadedBranding {
     tagline: manifest.tagline,
     accentColor: manifest.accentColor,
     accentColorSoft: manifest.accentColorSoft,
-    upstreamName: manifest.upstreamName,
-    wordmarkDataUrl: readDataUrl(wordmarkPath),
     markDataUrl: readDataUrl(markPath),
-    faviconDataUrl: readDataUrl(faviconPath),
     appIconPath,
   });
 }
@@ -119,9 +106,7 @@ export function publicBranding(branding: LoadedBranding): DesktopBranding {
     tagline,
     accentColor,
     accentColorSoft,
-    wordmarkDataUrl,
     markDataUrl,
-    faviconDataUrl,
   } = branding;
   return {
     id,
@@ -129,80 +114,6 @@ export function publicBranding(branding: LoadedBranding): DesktopBranding {
     tagline,
     accentColor,
     accentColorSoft,
-    wordmarkDataUrl,
     markDataUrl,
-    faviconDataUrl,
   };
-}
-
-export function brandPageTitle(title: string, branding: LoadedBranding): string {
-  if (title === branding.upstreamName) return branding.name;
-  const suffix = ` — ${branding.upstreamName}`;
-  return title.endsWith(suffix) ? `${title.slice(0, -suffix.length)} — ${branding.name}` : title;
-}
-
-export function harnessBrandingCss(branding: LoadedBranding): string {
-  const wordmark = JSON.stringify(branding.wordmarkDataUrl);
-  const mark = JSON.stringify(branding.markDataUrl);
-  return `
-html[data-desktop-brand="${branding.id}"] {
-  --openworkbuddy-accent: ${branding.accentColor};
-}
-
-html[data-desktop-brand="${branding.id}"] svg[viewBox="0 0 182 24"],
-html[data-desktop-brand="${branding.id}"] svg[viewBox="0 0 23.16 17.04"] {
-  background-color: var(--dsw-alias-label-primary, currentColor) !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  color: transparent !important;
-}
-
-html[data-desktop-brand="${branding.id}"] svg[viewBox="0 0 182 24"] {
-  -webkit-mask: url(${wordmark}) center / contain no-repeat;
-  mask: url(${wordmark}) center / contain no-repeat;
-}
-
-html[data-desktop-brand="${branding.id}"] svg[viewBox="0 0 23.16 17.04"] {
-  -webkit-mask: url(${mark}) center / contain no-repeat;
-  mask: url(${mark}) center / contain no-repeat;
-}
-
-html[data-desktop-brand="${branding.id}"] svg[viewBox="0 0 182 24"] > *,
-html[data-desktop-brand="${branding.id}"] svg[viewBox="0 0 23.16 17.04"] > * {
-  display: none !important;
-}
-`;
-}
-
-export function harnessBrandingScript(branding: LoadedBranding): string {
-  return `(() => {
-    const brand = ${JSON.stringify({
-      id: branding.id,
-      name: branding.name,
-      upstreamName: branding.upstreamName,
-      faviconDataUrl: branding.faviconDataUrl,
-    })};
-    document.documentElement.dataset.desktopBrand = brand.id;
-    const rewriteTitle = () => {
-      const suffix = \` — \${brand.upstreamName}\`;
-      const current = document.title;
-      const next = current === brand.upstreamName
-        ? brand.name
-        : current.endsWith(suffix)
-          ? \`\${current.slice(0, -suffix.length)} — \${brand.name}\`
-          : current;
-      if (next !== current) document.title = next;
-    };
-    rewriteTitle();
-    const title = document.querySelector('title');
-    if (title) new MutationObserver(rewriteTitle).observe(title, { childList: true, characterData: true, subtree: true });
-    let favicon = document.querySelector('link[rel~="icon"]');
-    if (!(favicon instanceof HTMLLinkElement)) {
-      favicon = document.createElement('link');
-      favicon.rel = 'icon';
-      document.head.append(favicon);
-    }
-    favicon.type = 'image/svg+xml';
-    favicon.href = brand.faviconDataUrl;
-  })()`;
 }

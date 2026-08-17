@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "paths": {
+      "react": ["../../apps/desktop/node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["../../apps/desktop/node_modules/@types/react/jsx-runtime.d.ts"],
+      "@deepseek-ai/dsh-client-runtime/client": ["../../vendor/deepseek-harness/packages/client/runtime/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-locale/client": ["../../vendor/deepseek-harness/packages/client/locale/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-conversation/client": ["../../vendor/deepseek-harness/packages/client/ui-conversation/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-layout/client": ["../../vendor/deepseek-harness/packages/client/ui-layout/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-primitives": ["../../vendor/deepseek-harness/packages/client/ui-primitives/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-sidebar/client": ["../../vendor/deepseek-harness/packages/client/ui-sidebar/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-slots": ["../../vendor/deepseek-harness/packages/client/ui-slots/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-theme/client": ["../../vendor/deepseek-harness/packages/client/ui-theme/lib/types/client/index.d.ts"]
+    }
+  },
+  "include": ["src"]
+}

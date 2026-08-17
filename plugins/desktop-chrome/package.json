@@ -1,0 +1,48 @@
+{
+  "name": "@openworkbuddy/dsh-client-ui-desktop-chrome",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-theme"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/generate-brand.mjs && ../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json && ../../vendor/deepseek-harness/node_modules/.bin/tsdown --config tsdown.config.ts",
+    "check": "node scripts/generate-brand.mjs && ../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/client.js.map",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts",
+    "cordis.patch.yml"
+  ]
+}

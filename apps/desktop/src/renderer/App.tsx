@@ -8,9 +8,7 @@ const initialBranding: DesktopBranding = {
   tagline: "你的本地智能工作伙伴",
   accentColor: "#635BFF",
   accentColorSoft: "#EEEAFE",
-  wordmarkDataUrl: "",
   markDataUrl: "",
-  faviconDataUrl: "",
 };
 
 const initialStatus: HarnessRuntimeStatus = {

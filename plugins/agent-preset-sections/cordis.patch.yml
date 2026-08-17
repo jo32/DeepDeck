@@ -1,0 +1,5 @@
+# OpenWorkBuddy presentation plugin. The upstream Agent preset plugin remains
+# mounted and owns every behavior; this row only enhances its browser UI.
+- insert:
+    - id: openworkbuddy-agent-preset-sections
+      name: '@openworkbuddy/dsh-client-ui-agent-preset-sections'

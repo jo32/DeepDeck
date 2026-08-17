@@ -13,8 +13,8 @@
     "bootstrap": "pnpm harness:install && pnpm harness:build && pnpm build",
     "harness:install": "node scripts/install-harness.mjs",
     "harness:build": "pnpm --dir vendor/deepseek-harness run build",
-    "build": "pnpm --filter @deepseek-harness/desktop run build",
-    "check": "pnpm --filter @deepseek-harness/desktop run check",
+    "build": "pnpm --filter @openworkbuddy/dsh-client-ui-desktop-chrome run build && pnpm --filter @openworkbuddy/dsh-client-ui-agent-preset-sections run build && pnpm --filter @deepseek-harness/desktop run build",
+    "check": "pnpm --filter @openworkbuddy/dsh-client-ui-desktop-chrome run check && pnpm --filter @openworkbuddy/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check",
     "test": "pnpm --filter @deepseek-harness/desktop run test",
     "start": "pnpm build && node scripts/run-desktop.mjs"
   }

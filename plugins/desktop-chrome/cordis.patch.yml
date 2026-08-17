@@ -1,0 +1,17 @@
+# OpenWorkBuddy desktop composition. The stock layout and rail-style sidebar,
+# document identity and visual branding are owned by one desktop-shell plugin;
+# Agent-preset presentation remains a separate contribution in the same overlay.
+- id: ui-layout
+  name: '@deepseek-ai/dsh-client-ui-layout'
+  disabled: true
+
+- id: ui-sidebar
+  name: '@deepseek-ai/dsh-client-ui-sidebar'
+  disabled: true
+
+- insert:
+    - id: openworkbuddy-desktop-chrome
+      name: '@openworkbuddy/dsh-client-ui-desktop-chrome'
+
+    - id: openworkbuddy-agent-preset-sections
+      name: '@openworkbuddy/dsh-client-ui-agent-preset-sections'

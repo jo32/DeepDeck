@@ -1,6 +1,15 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  symlinkSync,
+  unlinkSync,
+} from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import type { HarnessRuntimeStatus } from "../../shared/runtime.js";
 import { parseReadinessUrl } from "./readiness.js";
 
@@ -10,11 +19,36 @@ const MAX_LOG_LINES = 80;
 
 type StatusListener = (status: HarnessRuntimeStatus) => void;
 
+export interface HarnessClientPlugin {
+  packageName: string;
+  path: string;
+}
+
 export interface HarnessProcessOptions {
   harnessRoot: string;
   nodeBinary: string;
   workspaceRoot: string;
+  patchPath: string;
+  plugins: readonly HarnessClientPlugin[];
   displayName: string;
+}
+
+export function resolveHarnessHome(environment: NodeJS.ProcessEnv = process.env): string {
+  const configured = environment.DSH_HOME?.trim();
+  if (!configured) return join(homedir(), ".dsh");
+  if (configured === "~") return homedir();
+  if (configured.startsWith("~/") || configured.startsWith("~\\")) {
+    return resolve(homedir(), configured.slice(2));
+  }
+  return resolve(configured);
+}
+
+export function resolveHarnessPluginLink(dshHome: string, packageName: string): string {
+  const parts = packageName.split("/").filter(Boolean);
+  if (parts.length === 0 || parts.some((part) => part === "." || part === "..")) {
+    throw new Error(`无效的插件包名：${packageName}`);
+  }
+  return join(dshHome, "profiles", "web", "node_modules", ...parts);
 }
 
 function errorMessage(error: unknown): string {
@@ -25,6 +59,7 @@ export class HarnessProcess {
   private child: ChildProcess | undefined;
   private startPromise: Promise<string> | undefined;
   private intentionalStop = false;
+  private readonly ownedPluginLinks = new Map<string, string>();
   private readonly listeners = new Set<StatusListener>();
   private readonly logs: string[] = [];
   private status: HarnessRuntimeStatus;
@@ -105,16 +140,32 @@ export class HarnessProcess {
 
     const environment = { ...process.env };
     delete environment.ELECTRON_RUN_AS_NODE;
-    const child = spawn(
-      this.options.nodeBinary,
-      [cliPath, "web", "--port", "0"],
-      {
-        cwd: this.options.workspaceRoot,
-        env: environment,
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
+    try {
+      this.preparePluginLinks(environment);
+    } catch (error) {
+      const message = `${this.options.displayName} 无法准备插件配置：${errorMessage(error)}`;
+      this.publish({ state: "error", message });
+      return Promise.reject(new Error(message));
+    }
+
+    let child: ChildProcess;
+    try {
+      child = spawn(
+        this.options.nodeBinary,
+        [cliPath, "web", "--patch", this.options.patchPath, "--port", "0"],
+        {
+          cwd: this.options.workspaceRoot,
+          env: environment,
+          shell: false,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+    } catch (error) {
+      this.cleanupPluginLinks();
+      const message = `无法启动 ${this.options.displayName}：${errorMessage(error)}`;
+      this.publish({ state: "error", message });
+      return Promise.reject(new Error(message));
+    }
     this.child = child;
 
     return new Promise<string>((resolveReady, rejectReady) => {
@@ -161,9 +212,11 @@ export class HarnessProcess {
       child.stdout?.on("data", (chunk: Buffer) => consume(chunk, "stdout"));
       child.stderr?.on("data", (chunk: Buffer) => consume(chunk, "stderr"));
       child.once("error", (error) => {
+        this.cleanupPluginLinks();
         settleFailure(`无法启动 ${this.options.displayName}：${errorMessage(error)}`);
       });
       child.once("exit", (code, signal) => {
+        this.cleanupPluginLinks();
         if (stdoutBuffer) recordLine(stdoutBuffer, "stdout");
         if (stderrBuffer) recordLine(stderrBuffer, "stderr");
         if (this.child === child) this.child = undefined;
@@ -187,6 +240,77 @@ export class HarnessProcess {
         settleFailure(`${this.options.displayName} 启动超时`);
       }, START_TIMEOUT_MS);
     });
+  }
+
+  private preparePluginLinks(environment: NodeJS.ProcessEnv): void {
+    if (!existsSync(this.options.patchPath)) {
+      throw new Error(`插件配置不存在：${this.options.patchPath}`);
+    }
+
+    try {
+      const dshHome = resolveHarnessHome(environment);
+      const packageNames = new Set<string>();
+      for (const plugin of this.options.plugins) {
+        if (packageNames.has(plugin.packageName)) {
+          throw new Error(`插件包名重复：${plugin.packageName}`);
+        }
+        packageNames.add(plugin.packageName);
+
+        const pluginRoot = resolve(plugin.path);
+        for (const file of ["package.json", "lib/index.js", "lib/client.js"]) {
+          const path = join(pluginRoot, file);
+          if (!existsSync(path)) throw new Error(`插件尚未构建：${path}`);
+        }
+        const manifest = JSON.parse(readFileSync(join(pluginRoot, "package.json"), "utf8")) as {
+          name?: unknown;
+        };
+        if (manifest.name !== plugin.packageName) {
+          throw new Error(`插件包名不匹配：${pluginRoot}`);
+        }
+
+        const link = resolveHarnessPluginLink(dshHome, plugin.packageName);
+        mkdirSync(dirname(link), { recursive: true });
+        let stat;
+        try {
+          stat = lstatSync(link);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+        if (stat) {
+          if (!stat.isSymbolicLink()) {
+            throw new Error(`插件解析路径已被占用：${link}`);
+          }
+          const target = resolve(dirname(link), readlinkSync(link));
+          if (target !== pluginRoot) {
+            throw new Error(`插件解析路径指向了其他位置：${link}`);
+          }
+          continue;
+        }
+
+        symlinkSync(pluginRoot, link, "junction");
+        this.ownedPluginLinks.set(link, pluginRoot);
+      }
+    } catch (error) {
+      this.cleanupPluginLinks();
+      throw error;
+    }
+  }
+
+  private cleanupPluginLinks(): void {
+    const owned = [...this.ownedPluginLinks];
+    this.ownedPluginLinks.clear();
+    for (const [link, pluginRoot] of owned) {
+      try {
+        if (!lstatSync(link).isSymbolicLink()) continue;
+        const currentTarget = resolve(dirname(link), readlinkSync(link));
+        if (currentTarget === pluginRoot) unlinkSync(link);
+      } catch (error) {
+        const code = error instanceof Error && "code" in error ? error.code : undefined;
+        if (code !== "ENOENT") {
+          console.error(`[desktop] Unable to remove plugin link: ${errorMessage(error)}`);
+        }
+      }
+    }
   }
 
   private publish(status: HarnessRuntimeStatus): void {

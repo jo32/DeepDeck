@@ -33,6 +33,26 @@ export async function bootstrapDesktop(branding: LoadedBranding): Promise<void> 
       process.env.npm_node_execpath ?? "node",
     ),
     workspaceRoot: requiredEnvironment("DEEPSEEK_DESKTOP_WORKSPACE", process.cwd()),
+    patchPath: requiredEnvironment(
+      "OPENWORKBUDDY_HARNESS_PATCH",
+      resolve(app.getAppPath(), "../../plugins/desktop-chrome/cordis.patch.yml"),
+    ),
+    plugins: [
+      {
+        packageName: "@openworkbuddy/dsh-client-ui-desktop-chrome",
+        path: requiredEnvironment(
+          "OPENWORKBUDDY_DESKTOP_CHROME_PLUGIN",
+          resolve(app.getAppPath(), "../../plugins/desktop-chrome"),
+        ),
+      },
+      {
+        packageName: "@openworkbuddy/dsh-client-ui-agent-preset-sections",
+        path: requiredEnvironment(
+          "OPENWORKBUDDY_AGENT_PRESET_PLUGIN",
+          resolve(app.getAppPath(), "../../plugins/agent-preset-sections"),
+        ),
+      },
+    ],
     displayName: branding.name,
   });
   const removeIpc = registerIpc(harness, publicBranding(branding));

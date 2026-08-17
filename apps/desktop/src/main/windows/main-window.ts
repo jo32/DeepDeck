@@ -1,11 +1,6 @@
 import { join } from "node:path";
 import { app, BrowserWindow, shell } from "electron";
-import {
-  brandPageTitle,
-  harnessBrandingCss,
-  harnessBrandingScript,
-  type LoadedBranding,
-} from "../branding.js";
+import type { LoadedBranding } from "../branding.js";
 import { loadWindowState, saveWindowState } from "./window-state.js";
 
 export interface DesktopWindow {
@@ -27,7 +22,6 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   const statePath = join(app.getPath("userData"), "window-state.json");
   const state = await loadWindowState(statePath);
   let harnessOrigin: string | undefined;
-  let insertedCss: string | undefined;
 
   const window = new BrowserWindow({
     ...state,
@@ -37,6 +31,12 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     icon: branding.appIconPath,
     backgroundColor: "#f7f8f6",
     show: false,
+    ...(process.platform === "darwin"
+      ? {
+          titleBarStyle: "hiddenInset" as const,
+          trafficLightPosition: { x: 16, y: 16 },
+        }
+      : {}),
     webPreferences: {
       preload: join(import.meta.dirname, "../../preload/index.cjs"),
       contextIsolation: true,
@@ -44,21 +44,6 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
       sandbox: true,
     },
   });
-
-  const clearHarnessBranding = async (): Promise<void> => {
-    if (!insertedCss) return;
-    const key = insertedCss;
-    insertedCss = undefined;
-    await window.webContents.removeInsertedCSS(key);
-  };
-
-  const applyHarnessBranding = async (): Promise<void> => {
-    const currentUrl = window.webContents.getURL();
-    if (!harnessOrigin || !currentUrl.startsWith(harnessOrigin)) return;
-    await clearHarnessBranding();
-    insertedCss = await window.webContents.insertCSS(harnessBrandingCss(branding));
-    await window.webContents.executeJavaScript(harnessBrandingScript(branding), true);
-  };
 
   const loadSplash = async (): Promise<void> => {
     const developmentUrl = process.env.DEEPSEEK_DESKTOP_RENDERER_URL;
@@ -74,17 +59,10 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     const bounds = window.getBounds();
     void saveWindowState(statePath, { ...bounds, maximized: window.isMaximized() });
   });
-  window.webContents.on("did-finish-load", () => {
-    void applyHarnessBranding().catch((error: unknown) => {
-      console.error("Unable to apply desktop branding", error);
-    });
-  });
-  window.webContents.on("page-title-updated", (event, title) => {
+  window.webContents.on("page-title-updated", (event) => {
     if (!harnessOrigin || !window.webContents.getURL().startsWith(harnessOrigin)) return;
-    const brandedTitle = brandPageTitle(title, branding);
-    if (brandedTitle === title) return;
     event.preventDefault();
-    window.setTitle(brandedTitle);
+    window.setTitle(branding.name);
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalUrl(url)) void shell.openExternal(url);
@@ -101,12 +79,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   await loadSplash();
   return {
     window,
-    allowHarnessOrigin: (origin) => {
-      harnessOrigin = origin;
-      if (origin === undefined) {
-        void clearHarnessBranding().catch(() => undefined);
-      }
-    },
+    allowHarnessOrigin: (origin) => { harnessOrigin = origin; },
     loadSplash,
   };
 }

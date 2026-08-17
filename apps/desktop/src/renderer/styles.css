@@ -22,6 +22,17 @@ body {
   overflow: hidden;
 }
 
+body::before {
+  content: "";
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 42px;
+  -webkit-app-region: drag;
+}
+
 .shell {
   display: grid;
   min-height: 100%;
@@ -146,6 +157,7 @@ button {
   font-size: 14px;
   font-weight: 650;
   cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 
 button:disabled {

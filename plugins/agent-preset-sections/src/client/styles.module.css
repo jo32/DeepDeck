@@ -1,0 +1,146 @@
+.page {
+  container-name: preset-page;
+  container-type: inline-size;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 960px !important;
+  gap: 16px !important;
+}
+
+.pageIntro {
+  max-width: 760px;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
+}
+
+.list {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-auto-rows: auto !important;
+  gap: 14px !important;
+}
+
+.modeSection {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.modeMain {
+  display: grid !important;
+  grid-template-columns: minmax(150px, 205px) minmax(220px, 1fr) minmax(210px, .9fr);
+  grid-template-areas:
+    "head introduction example"
+    "id introduction example";
+  align-items: start;
+  column-gap: 22px !important;
+  row-gap: 10px !important;
+  padding: 18px 20px !important;
+  border-radius: 12px 0 0 12px !important;
+}
+
+.modeHead {
+  grid-area: head;
+  align-self: start;
+  flex-wrap: wrap;
+}
+
+.modeId {
+  grid-area: id;
+  align-self: end;
+  margin-top: 0 !important;
+}
+
+.originalDescription {
+  display: none !important;
+}
+
+.details {
+  display: contents;
+}
+
+.introduction,
+.example {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.introduction {
+  grid-area: introduction;
+  padding-top: 1px;
+}
+
+.example {
+  grid-area: example;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.detailLabel {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: .04em;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.detailText {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  grid-column: 2;
+  grid-row: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center !important;
+  padding: 8px 6px !important;
+  border-top: 0 !important;
+  border-left: 1px solid var(--dsw-alias-border-l2);
+}
+
+@container preset-page (max-width: 760px) {
+  .modeMain {
+    grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+    grid-template-areas:
+      "head introduction"
+      "id introduction"
+      "example example";
+  }
+}
+
+@container preset-page (max-width: 520px) {
+  .modeSection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modeMain {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "introduction"
+      "example"
+      "id";
+    padding: 16px !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+
+  .actions {
+    grid-column: 1;
+    grid-row: auto;
+    flex-direction: row;
+    justify-content: flex-end !important;
+    padding: 6px 10px !important;
+    border-top: 1px solid var(--dsw-alias-border-l2) !important;
+    border-left: 0;
+  }
+}
