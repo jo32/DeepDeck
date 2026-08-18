@@ -9,6 +9,7 @@ import { configureNativeApplicationIdentity } from "./native-identity.js";
 import type { DesktopRuntimePaths } from "./runtime-paths.js";
 import { readThemeSource } from "./theme-preference.js";
 import { createAutomaticUpdateInstaller } from "./update-installer.js";
+import { runtimeStatusDuringUpdate } from "./update-installation-status.js";
 import { armMacUpdateRelaunch, resolveMacAppPath } from "./update-relauncher.js";
 import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
 
@@ -40,6 +41,7 @@ export async function bootstrapDesktop(
   let removeUpdateListener = (): void => {};
   let updateCheckTimer: ReturnType<typeof setTimeout> | undefined;
   let quitReady = false;
+  let installingUpdateVersion: string | undefined;
   let prepareToQuitPromise: Promise<void> | undefined;
 
   const prepareToQuit = (): Promise<void> => {
@@ -59,12 +61,24 @@ export async function bootstrapDesktop(
   };
 
   const installUpdate = createAutomaticUpdateInstaller(updates, prepareToQuit, (status) => {
-    if (process.platform !== "darwin" || status.state !== "downloaded" || !status.version) return;
-    armMacUpdateRelaunch({
-      appPath: resolveMacAppPath(app.getPath("exe")),
-      currentPid: process.pid,
-      targetVersion: status.version,
-    });
+    if (status.state !== "downloaded" || !status.version) return;
+    installingUpdateVersion = status.version;
+    const current = desktopWindow;
+    if (current && !current.window.isDestroyed()) {
+      current.send(channels.runtimeStatus, runtimeStatusDuringUpdate(
+        harness.getStatus(),
+        branding.name,
+        installingUpdateVersion,
+      ));
+      current.showSplash();
+    }
+    if (process.platform === "darwin") {
+      armMacUpdateRelaunch({
+        appPath: resolveMacAppPath(app.getPath("exe")),
+        currentPid: process.pid,
+        targetVersion: status.version,
+      });
+    }
   });
 
   removeIpc = registerIpc(harness, publicBranding(branding), updates, {
@@ -76,7 +90,17 @@ export async function bootstrapDesktop(
   const showStatus = async (status: HarnessRuntimeStatus): Promise<void> => {
     const current = desktopWindow;
     if (!current || current.window.isDestroyed()) return;
-    current.send(channels.runtimeStatus, status);
+    const displayedStatus = runtimeStatusDuringUpdate(
+      status,
+      branding.name,
+      installingUpdateVersion,
+    );
+    if (installingUpdateVersion) {
+      current.send(channels.runtimeStatus, displayedStatus);
+      current.showSplash();
+      return;
+    }
+    current.send(channels.runtimeStatus, displayedStatus);
     if (status.state === "ready" && status.url) {
       await current.loadHarness(status.url);
     } else {
