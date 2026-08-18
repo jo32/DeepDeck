@@ -1,22 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
   <defs>
-    <linearGradient id="bg" x1="124" y1="80" x2="910" y2="948" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#8D87FF"/>
-      <stop offset="0.5" stop-color="#635BFF"/>
-      <stop offset="1" stop-color="#3564E8"/>
+    <linearGradient id="glass" x1="164" y1="112" x2="860" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset=".42" stop-color="#E7E9FF"/>
+      <stop offset="1" stop-color="#B8BEF5"/>
     </linearGradient>
-    <linearGradient id="shine" x1="250" y1="170" x2="786" y2="850" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#fff" stop-opacity=".26"/>
-      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    <radialGradient id="orb" cx="0" cy="0" r="1" gradientTransform="translate(390 350) rotate(52) scale(540)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4B4B59"/>
+      <stop offset=".24" stop-color="#15151D"/>
+      <stop offset=".72" stop-color="#050509"/>
+      <stop offset="1" stop-color="#11143B"/>
+    </radialGradient>
+    <linearGradient id="eye" x1="350" y1="370" x2="690" y2="600" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset=".62" stop-color="#F4F5FF"/>
+      <stop offset="1" stop-color="#AEB7F2"/>
     </linearGradient>
-    <filter id="shadow" x="80" y="100" width="864" height="824" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="26" stdDeviation="28" flood-color="#263A91" flood-opacity=".3"/>
+    <linearGradient id="rim" x1="250" y1="250" x2="790" y2="810" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#747A95"/>
+      <stop offset=".56" stop-color="#26273A"/>
+      <stop offset="1" stop-color="#6A63FF"/>
+    </linearGradient>
+    <filter id="panel-shadow" x="36" y="46" width="952" height="952" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="26" stdDeviation="30" flood-color="#282D70" flood-opacity=".24"/>
+    </filter>
+    <filter id="orb-shadow" x="126" y="184" width="772" height="746" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="34" stdDeviation="26" flood-color="#343676" flood-opacity=".4"/>
     </filter>
   </defs>
-  <rect x="72" y="72" width="880" height="880" rx="236" fill="url(#bg)"/>
-  <path d="M182 236c112-103 248-137 404-102 142 32 246 113 312 242v-68c0-97-79-176-176-176H308c-48 0-92 19-126 50Z" fill="url(#shine)"/>
-  <g filter="url(#shadow)" stroke="#fff" stroke-linejoin="round">
-    <path d="M286 310h452c62 0 112 50 112 112v191c0 62-50 112-112 112H606l-94 82-94-82H286c-62 0-112-50-112-112V422c0-62 50-112 112-112Z" stroke-width="68"/>
-    <path d="m332 444 73 143 107-136 107 136 73-143" stroke-width="68" stroke-linecap="round"/>
+  <g filter="url(#panel-shadow)">
+    <rect x="72" y="72" width="880" height="880" rx="224" fill="url(#glass)"/>
+    <rect x="78" y="78" width="868" height="868" rx="218" stroke="#FFFFFF" stroke-opacity=".72" stroke-width="12"/>
+    <path d="M158 244C268 112 486 84 684 128c94 21 173 62 232 122V184c0-42-34-76-76-76H184c-42 0-76 34-76 76v202c8-48 25-95 50-142Z" fill="#FFFFFF" fill-opacity=".3"/>
+  </g>
+  <g filter="url(#orb-shadow)">
+    <circle cx="512" cy="528" r="310" fill="url(#orb)" stroke="url(#rim)" stroke-width="12"/>
+    <ellipse cx="402" cy="360" rx="124" ry="62" transform="rotate(-28 402 360)" fill="#FFFFFF" fill-opacity=".13"/>
+    <ellipse cx="388" cy="500" rx="116" ry="154" transform="rotate(-25 388 500)" fill="url(#eye)" stroke="#686A84" stroke-width="12"/>
+    <ellipse cx="655" cy="445" rx="73" ry="123" transform="rotate(-10 655 445)" fill="url(#eye)" stroke="#686A84" stroke-width="12"/>
+    <ellipse cx="355" cy="454" rx="44" ry="68" transform="rotate(-25 355 454)" fill="#FFFFFF" fill-opacity=".34"/>
+    <ellipse cx="632" cy="406" rx="28" ry="48" transform="rotate(-10 632 406)" fill="#FFFFFF" fill-opacity=".3"/>
   </g>
 </svg>
