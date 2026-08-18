@@ -5,9 +5,15 @@ import css from './desktop-chrome.module.css'
 interface DesktopChromeProps {
   sidebarCollapsed: boolean
   hasConversation: boolean
+  sidebarWidth: number
+  detailsWidth: number
   actions: PanelActions
   startSession: () => void
 }
+
+const SIDEBAR_DRAG_START = 114
+const CONVERSATION_TITLE_GUARD = 420
+const CONVERSATION_UTILITY_GUARD = 72
 
 function SidebarIcon(): React.JSX.Element {
   return (
@@ -19,14 +25,38 @@ function SidebarIcon(): React.JSX.Element {
 }
 
 /** Native React controls that remain reachable when the sidebar is 0px. */
-export function DesktopChrome({ sidebarCollapsed, hasConversation, actions, startSession }: DesktopChromeProps) {
+export function DesktopChrome({
+  sidebarCollapsed,
+  hasConversation,
+  sidebarWidth,
+  detailsWidth,
+  actions,
+  startSession,
+}: DesktopChromeProps) {
   return (
     <div
       className={css.chrome}
       data-deepdeck-desktop-chrome
       data-has-conversation={hasConversation || undefined}
     >
-      <div className={css.dragRegion} aria-hidden="true" />
+      <div
+        className={css.dragRegion}
+        data-has-conversation={hasConversation || undefined}
+        style={hasConversation
+          ? { width: Math.max(0, sidebarWidth - SIDEBAR_DRAG_START) }
+          : undefined}
+        aria-hidden="true"
+      />
+      {hasConversation && (
+        <div
+          className={css.conversationDragRegion}
+          style={{
+            left: sidebarWidth + CONVERSATION_TITLE_GUARD,
+            right: detailsWidth + CONVERSATION_UTILITY_GUARD,
+          }}
+          aria-hidden="true"
+        />
+      )}
       <div
         className={css.controls}
         data-has-conversation={hasConversation || undefined}

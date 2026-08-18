@@ -13,6 +13,13 @@ const mainWindowSource = readFileSync(
   resolve(import.meta.dirname, "main-window.ts"),
   "utf8",
 );
+const desktopChromeSource = readFileSync(
+  resolve(
+    import.meta.dirname,
+    "../../../../../plugins/desktop-chrome/src/client/DesktopChrome.tsx",
+  ),
+  "utf8",
+);
 
 function rule(selector: string): string {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -33,28 +40,32 @@ describe("desktop titlebar hit testing", () => {
     expect(mainWindowSource).not.toContain("new BrowserWindow(");
   });
 
-  it("keeps the chrome overlay away from session header actions", () => {
+  it("keeps the full-width chrome overlay inert", () => {
     const chrome = rule(".chrome");
 
-    expect(chrome).toContain("width: 150px");
+    expect(chrome).toContain("width: 100%");
+    expect(chrome).toContain("pointer-events: none");
     expect(chrome).not.toContain("app-region: drag");
-    expect(chrome).not.toContain("right: 0");
   });
 
   it("uses a dedicated blank strip as the native drag surface", () => {
     const dragRegion = rule(".dragRegion");
     expect(dragRegion).toContain("left: 114px");
+    expect(dragRegion).toContain("pointer-events: auto");
     expect(dragRegion).toContain("app-region: drag");
     expect(dragRegion).toContain("-webkit-app-region: drag");
   });
 
-  it("extends the drag surface across a blank session", () => {
-    expect(rule(".chrome:not([data-has-conversation])")).toContain(
-      "width: 100%",
-    );
+  it("sizes the existing-session drag lanes around interactive controls", () => {
+    const conversationDragRegion = rule(".conversationDragRegion");
+    expect(conversationDragRegion).toContain("pointer-events: auto");
+    expect(conversationDragRegion).toContain("app-region: drag");
+    expect(desktopChromeSource).toContain("sidebarWidth - SIDEBAR_DRAG_START");
+    expect(desktopChromeSource).toContain("sidebarWidth + CONVERSATION_TITLE_GUARD");
+    expect(desktopChromeSource).toContain("detailsWidth + CONVERSATION_UTILITY_GUARD");
   });
 
-  it("keeps the conversation header and its buttons non-draggable", () => {
+  it("keeps the conversation header and its controls outside drag regions", () => {
     expect(rule(".frame .centerCol :global(header)")).toContain(
       "app-region: no-drag",
     );

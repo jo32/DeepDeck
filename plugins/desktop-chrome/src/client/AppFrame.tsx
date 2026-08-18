@@ -206,6 +206,8 @@ export function AppFrame({
       <DesktopChrome
         sidebarCollapsed={sidebarCollapsed}
         hasConversation={detailsSession !== undefined}
+        sidebarWidth={cols.sidebar}
+        detailsWidth={cols.details}
         actions={actions}
         startSession={startSession}
       />

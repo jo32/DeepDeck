@@ -453,6 +453,16 @@
   app-region: no-drag;
 }
 
+.frame .centerCol :global(header a),
+.frame .centerCol :global(header input),
+.frame .centerCol :global(header select),
+.frame .centerCol :global(header textarea),
+.frame .centerCol :global(header [role='button']),
+.frame .centerCol :global(header [role='tab']) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
 /* Session export is a utility, not the titlebar's visual focus. Keep its
    accessible label but present the shipped text capsule as a compact icon,
    matching the utility cluster in Codex. */
@@ -486,7 +496,7 @@
   z-index: 30;
   top: 0;
   left: 0;
-  width: 150px;
+  width: 100%;
   height: 44px;
   pointer-events: none;
 }
@@ -501,7 +511,21 @@
   right: 0;
   bottom: 0;
   left: 114px;
-  pointer-events: none;
+  pointer-events: auto;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.dragRegion[data-has-conversation] { right: auto; }
+
+/* Existing sessions keep their interactive upstream header entirely out of
+   the native hit-test region. This separate lane occupies only the flexible
+   blank space between the title/action cluster and the right-side utility. */
+.conversationDragRegion {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: auto;
   -webkit-app-region: drag;
   app-region: drag;
 }
@@ -510,8 +534,6 @@
    surface. Extend the native drag region only until a real conversation is
    present; populated sessions keep the compact overlay so header actions stay
    clickable. */
-.chrome:not([data-has-conversation]) { width: 100%; }
-
 .controls {
   position: absolute;
   top: 11px;
