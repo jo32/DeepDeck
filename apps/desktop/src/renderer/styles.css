@@ -82,6 +82,7 @@ body::before {
   left: 0;
   height: 42px;
   -webkit-app-region: drag;
+  app-region: drag;
 }
 
 .shell {
@@ -481,6 +482,7 @@ body::before {
   font-size: 14px;
   font-weight: 650;
   -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .retry-button:disabled {
