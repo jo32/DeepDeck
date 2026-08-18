@@ -478,7 +478,7 @@
 
 /* With no sidebar, the upstream title starts immediately after our controls. */
 .frame[data-sidebar-collapsed] .centerCol :global(header) {
-  padding-left: 152px;
+  padding-left: 158px;
 }
 
 .chrome {
@@ -486,7 +486,7 @@
   z-index: 30;
   top: 0;
   left: 0;
-  width: 144px;
+  width: 150px;
   height: 44px;
   pointer-events: none;
 }
@@ -500,7 +500,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  left: 108px;
+  left: 114px;
   pointer-events: none;
   -webkit-app-region: drag;
   app-region: drag;
@@ -514,8 +514,8 @@
 
 .controls {
   position: absolute;
-  top: 12px;
-  left: 76px;
+  top: 11px;
+  left: 82px;
   display: flex;
   align-items: center;
   gap: 8px;

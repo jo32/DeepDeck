@@ -9,6 +9,10 @@ const styles = readFileSync(
   new URL("../../../plugins/desktop-chrome/src/client/desktop-chrome.module.css", import.meta.url),
   "utf8",
 );
+const frameSource = readFileSync(
+  new URL("../../../plugins/desktop-chrome/src/client/AppFrame.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("desktop frame startup handoff", () => {
   it("reveals the static Harness immediately and enables panel motion in the next task", () => {
@@ -47,5 +51,11 @@ describe("desktop frame startup handoff", () => {
     expect(styles).toMatch(
       /\.frame\[data-layout-motion-ready\] \.handle\s*\{[\s\S]*?transition: left/,
     );
+  });
+
+  it("waits for the branded slot composition before revealing Harness", () => {
+    expect(frameSource).toContain("useSyncExternalStore(");
+    expect(frameSource).toContain("if (!brandCompositionReady) return");
+    expect(frameSource).toContain("scheduleDesktopFrameReveal(");
   });
 });

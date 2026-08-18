@@ -1,6 +1,9 @@
 export function shouldEnableDesktopUpdates(
   isPackaged: boolean,
+  isLocalPackage: boolean,
   environment: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return isPackaged && environment.DEEPDECK_LOCAL_BUILD?.trim() !== "1";
+  return isPackaged
+    && !isLocalPackage
+    && environment.DEEPDECK_LOCAL_BUILD?.trim() !== "1";
 }

@@ -36,14 +36,14 @@ describe("desktop titlebar hit testing", () => {
   it("keeps the chrome overlay away from session header actions", () => {
     const chrome = rule(".chrome");
 
-    expect(chrome).toContain("width: 144px");
+    expect(chrome).toContain("width: 150px");
     expect(chrome).not.toContain("app-region: drag");
     expect(chrome).not.toContain("right: 0");
   });
 
   it("uses a dedicated blank strip as the native drag surface", () => {
     const dragRegion = rule(".dragRegion");
-    expect(dragRegion).toContain("left: 108px");
+    expect(dragRegion).toContain("left: 114px");
     expect(dragRegion).toContain("app-region: drag");
     expect(dragRegion).toContain("-webkit-app-region: drag");
   });

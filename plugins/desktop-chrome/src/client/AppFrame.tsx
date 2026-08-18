@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import type { ReactNode } from 'react'
 import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -8,7 +15,15 @@ import { DesktopChrome } from './DesktopChrome.tsx'
 import { scheduleDesktopFrameReveal } from './desktop-runtime.ts'
 import css from './desktop-chrome.module.css'
 
-export interface AppFrameInjected { startSession: () => void }
+export interface BrandCompositionLedger {
+  isReady: () => boolean
+  subscribe: (listener: () => void) => () => void
+}
+
+export interface AppFrameInjected {
+  startSession: () => void
+  brandComposition: BrandCompositionLedger
+}
 
 export type AppFrameProps =
   & PropsRuntime<'root'>
@@ -80,7 +95,14 @@ function DragHandle({ side, left, onStart, onDrag, onEnd }: DragHandleProps) {
 }
 
 /** Three-column desktop frame with a real zero-width sidebar state. */
-export function AppFrame({ useStore, useSessions, actions, renderSlot, startSession }: AppFrameProps) {
+export function AppFrame({
+  useStore,
+  useSessions,
+  actions,
+  renderSlot,
+  startSession,
+  brandComposition,
+}: AppFrameProps) {
   const panels = useStore(state => state)
   const detailsSession = useSessions((state) => {
     const current = state.current
@@ -89,8 +111,16 @@ export function AppFrame({ useStore, useSessions, actions, renderSlot, startSess
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
   const [layoutMotionReady, setLayoutMotionReady] = useState(false)
+  const brandCompositionReady = useSyncExternalStore(
+    brandComposition.subscribe,
+    brandComposition.isReady,
+    brandComposition.isReady,
+  )
 
-  useEffect(() => scheduleDesktopFrameReveal(() => { setLayoutMotionReady(true) }), [])
+  useEffect(() => {
+    if (!brandCompositionReady) return
+    return scheduleDesktopFrameReveal(() => { setLayoutMotionReady(true) })
+  }, [brandCompositionReady])
 
   const lastSession = useRef(detailsSession)
   useLayoutEffect(() => {

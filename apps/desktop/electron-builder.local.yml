@@ -1,6 +1,9 @@
 extends: ./electron-builder.yml
 forceCodeSigning: false
 
+extraMetadata:
+  deepdeckLocalBuild: true
+
 mac:
   identity: null
   hardenedRuntime: false

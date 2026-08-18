@@ -54,6 +54,6 @@ Runtime preparation uses a generated pnpm deploy workspace outside the read-only
 
 electron-builder owns the native distribution boundary: permanent bundle identifier `com.jo32.deepdeck`, DeepDeck executable/helper identities, icon conversion, hardened runtime, signing, notarization, DMG/ZIP generation, and update metadata. A pre-signing hook removes Electron's remaining helper `CFBundleName` values. The renderer remains plugin-owned.
 
-Production update checks use an architecture-specific generic feed under `stable/darwin/<arch>`. Local unsigned packages set `DEEPDECK_LOCAL_BUILD=1`, so they cannot accidentally contact or install from the production feed. See [release.md](release.md) for publication and rollback rules.
+Production update checks use an architecture-specific generic feed under `stable/darwin/<arch>`. Local unsigned packages embed `deepdeckLocalBuild: true` in their packaged metadata (with `DEEPDECK_LOCAL_BUILD=1` retained as a launch-time override), so double-clicking a local app cannot accidentally contact or install from the production feed. See [release.md](release.md) for publication and rollback rules.
 
 The dependency install runs with `CI=true` because the outer repository owns Git hooks. This uses the upstream hook installer's documented unattended path and avoids trying to enable worktree-local hook configuration inside submodule Git metadata; dependency lifecycle scripts still run normally.
