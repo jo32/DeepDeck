@@ -8,6 +8,7 @@ import {
   type WebContents,
 } from "electron";
 import type { LoadedBranding } from "../branding.js";
+import { isExternalUrl, isPopupPlaceholder } from "./external-popup.js";
 import { HarnessViewGate } from "./harness-view-gate.js";
 import { loadWindowState, saveWindowState } from "./window-state.js";
 
@@ -18,15 +19,6 @@ export interface DesktopWindow {
   markHarnessClientReady(senderId: number): void;
   send(channel: string, ...args: unknown[]): void;
   showSplash(): void;
-}
-
-function isExternalUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
-  }
 }
 
 export function splashBackgroundColor(dark: boolean): string {
@@ -129,8 +121,37 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     window.setTitle(branding.name);
   });
   harnessContents.setWindowOpenHandler(({ url }) => {
+    if (isPopupPlaceholder(url)) {
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          show: false,
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+          },
+        },
+      };
+    }
     if (isExternalUrl(url) && !gate.allows(url)) void shell.openExternal(url);
     return { action: "deny" };
+  });
+  harnessContents.on("did-create-window", (popup, details) => {
+    if (!isPopupPlaceholder(details.url)) {
+      popup.close();
+      return;
+    }
+
+    popup.webContents.setWindowOpenHandler(({ url }) => {
+      if (isExternalUrl(url)) void shell.openExternal(url);
+      return { action: "deny" };
+    });
+    popup.webContents.on("will-navigate", (event, target) => {
+      event.preventDefault();
+      if (isExternalUrl(target)) void shell.openExternal(target);
+      if (!popup.isDestroyed()) popup.close();
+    });
   });
   harnessContents.on("will-navigate", (event, target) => {
     if (gate.allows(target)) return;
