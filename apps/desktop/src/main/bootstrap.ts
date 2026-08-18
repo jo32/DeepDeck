@@ -10,6 +10,7 @@ import type { DesktopRuntimePaths } from "./runtime-paths.js";
 import { readThemeSource } from "./theme-preference.js";
 import { createAutomaticUpdateInstaller } from "./update-installer.js";
 import { runtimeStatusDuringUpdate } from "./update-installation-status.js";
+import { shouldForceExitForUpdate } from "./update-quit-policy.js";
 import { armMacUpdateRelaunch, resolveMacAppPath } from "./update-relauncher.js";
 import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
 
@@ -138,6 +139,7 @@ export async function bootstrapDesktop(
     window.focus();
   });
   app.on("activate", () => {
+    if (installingUpdateVersion) return;
     if (BaseWindow.getAllWindows().length === 0) void createWindow();
   });
   app.on("window-all-closed", () => {
@@ -145,6 +147,11 @@ export async function bootstrapDesktop(
   });
 
   app.on("before-quit", (event) => {
+    if (shouldForceExitForUpdate(quitReady, installingUpdateVersion)) {
+      event.preventDefault();
+      app.exit(0);
+      return;
+    }
     if (quitReady) return;
     event.preventDefault();
     void prepareToQuit().then(() => app.quit());

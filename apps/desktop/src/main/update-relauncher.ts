@@ -7,11 +7,11 @@ app_path="$2"
 target_version="$3"
 
 while kill -0 "$parent_pid" 2>/dev/null; do
-  sleep 0.25
+  sleep 1
 done
 
 attempt=0
-while [ "$attempt" -lt 480 ]; do
+while [ "$attempt" -lt 300 ]; do
   installed_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Contents/Info.plist" 2>/dev/null || true)
   if [ "$installed_version" = "$target_version" ]; then
     sleep 1
@@ -19,7 +19,7 @@ while [ "$attempt" -lt 480 ]; do
     exit 0
   fi
   attempt=$((attempt + 1))
-  sleep 0.25
+  sleep 1
 done
 
 # Do not strand the user if ShipIt fails. Reopen the surviving bundle so the
