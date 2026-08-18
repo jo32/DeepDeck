@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import {
   app,
-  BrowserWindow,
+  BaseWindow,
   nativeTheme,
   shell,
   WebContentsView,
@@ -12,7 +12,7 @@ import { HarnessViewGate } from "./harness-view-gate.js";
 import { loadWindowState, saveWindowState } from "./window-state.js";
 
 export interface DesktopWindow {
-  window: BrowserWindow;
+  window: BaseWindow;
   loadHarness(url: string): Promise<void>;
   loadSplash(): Promise<void>;
   markHarnessClientReady(senderId: number): void;
@@ -42,7 +42,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   const gate = new HarnessViewGate();
   let harnessLoadGeneration = 0;
 
-  const window = new BrowserWindow({
+  const window = new BaseWindow({
     ...state,
     minWidth: 960,
     minHeight: 680,
@@ -56,6 +56,9 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
           trafficLightPosition: { x: 16, y: 16 },
         }
       : {}),
+  });
+
+  const splashView = new WebContentsView({
     webPreferences: {
       preload,
       contextIsolation: true,
@@ -63,6 +66,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
       sandbox: true,
     },
   });
+  const splashContents = splashView.webContents;
 
   const harnessView = new WebContentsView({
     webPreferences: {
@@ -74,43 +78,48 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     },
   });
   const harnessContents = harnessView.webContents;
+  splashView.setBackgroundColor(splashBackgroundColor(nativeTheme.shouldUseDarkColors));
   harnessView.setVisible(false);
   harnessView.setBackgroundColor(splashBackgroundColor(nativeTheme.shouldUseDarkColors));
+  window.contentView.addChildView(splashView);
   window.contentView.addChildView(harnessView);
 
-  const resizeHarnessView = (): void => {
+  const resizeContentViews = (): void => {
     const [width = 0, height = 0] = window.getContentSize();
-    harnessView.setBounds({ x: 0, y: 0, width, height });
+    const bounds = { x: 0, y: 0, width, height };
+    splashView.setBounds(bounds);
+    harnessView.setBounds(bounds);
   };
-  resizeHarnessView();
+  resizeContentViews();
 
   const revealHarness = (): void => {
+    splashView.setVisible(false);
     harnessView.setVisible(true);
     harnessContents.focus();
   };
 
   const loadSplash = async (): Promise<void> => {
-    if (developmentUrl) await window.loadURL(developmentUrl);
-    else await window.loadFile(join(import.meta.dirname, "../../renderer/index.html"));
+    harnessView.setVisible(false);
+    splashView.setVisible(true);
+    if (developmentUrl) await splashContents.loadURL(developmentUrl);
+    else await splashContents.loadFile(join(import.meta.dirname, "../../renderer/index.html"));
   };
 
-  window.once("ready-to-show", () => {
-    if (state.maximized) window.maximize();
-    window.show();
-  });
   window.on("close", () => {
     const bounds = window.getBounds();
     void saveWindowState(statePath, { ...bounds, maximized: window.isMaximized() });
   });
-  window.on("resize", resizeHarnessView);
+  window.on("resize", resizeContentViews);
   const syncBackgroundColor = (): void => {
     const color = splashBackgroundColor(nativeTheme.shouldUseDarkColors);
     window.setBackgroundColor(color);
+    splashView.setBackgroundColor(color);
     harnessView.setBackgroundColor(color);
   };
   nativeTheme.on("updated", syncBackgroundColor);
   window.once("closed", () => {
     nativeTheme.off("updated", syncBackgroundColor);
+    if (!splashContents.isDestroyed()) splashContents.close();
     if (!harnessContents.isDestroyed()) harnessContents.close();
   });
 
@@ -137,13 +146,13 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     if (gate.finishDocument(harnessContents.getURL())) revealHarness();
   });
 
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  splashContents.setWindowOpenHandler(({ url }) => {
     if (isExternalUrl(url) && new URL(url).origin !== developmentOrigin) {
       void shell.openExternal(url);
     }
     return { action: "deny" };
   });
-  window.webContents.on("will-navigate", (event, target) => {
+  splashContents.on("will-navigate", (event, target) => {
     const targetUrl = new URL(target);
     if (targetUrl.protocol === "file:" || targetUrl.origin === developmentOrigin) return;
     event.preventDefault();
@@ -151,6 +160,8 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   });
 
   await loadSplash();
+  if (state.maximized) window.maximize();
+  window.show();
   return {
     window,
     loadHarness: async (url) => {
@@ -170,7 +181,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
       if (gate.markClientReady(harnessContents.getURL())) revealHarness();
     },
     send: (channel, ...args) => {
-      const renderers: WebContents[] = [window.webContents, harnessContents];
+      const renderers: WebContents[] = [splashContents, harnessContents];
       for (const renderer of renderers) {
         if (!renderer.isDestroyed()) renderer.send(channel, ...args);
       }
@@ -179,7 +190,8 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
       harnessLoadGeneration += 1;
       gate.suspend();
       harnessView.setVisible(false);
-      window.webContents.focus();
+      splashView.setVisible(true);
+      splashContents.focus();
     },
   };
 }

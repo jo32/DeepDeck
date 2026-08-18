@@ -9,6 +9,10 @@ const desktopChromeStyles = readFileSync(
   ),
   "utf8",
 );
+const mainWindowSource = readFileSync(
+  resolve(import.meta.dirname, "main-window.ts"),
+  "utf8",
+);
 
 function rule(selector: string): string {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -21,13 +25,27 @@ function rule(selector: string): string {
 }
 
 describe("desktop titlebar hit testing", () => {
+  it("hosts splash and Harness views without an intercepting BrowserWindow page", () => {
+    expect(mainWindowSource).toContain("new BaseWindow(");
+    expect(mainWindowSource).toContain(
+      "window.contentView.addChildView(harnessView)",
+    );
+    expect(mainWindowSource).not.toContain("new BrowserWindow(");
+  });
+
   it("keeps the chrome overlay away from session header actions", () => {
     const chrome = rule(".chrome");
 
     expect(chrome).toContain("width: 144px");
-    expect(chrome).toContain("app-region: drag");
-    expect(chrome).toContain("-webkit-app-region: drag");
+    expect(chrome).not.toContain("app-region: drag");
     expect(chrome).not.toContain("right: 0");
+  });
+
+  it("uses a dedicated blank strip as the native drag surface", () => {
+    const dragRegion = rule(".dragRegion");
+    expect(dragRegion).toContain("left: 108px");
+    expect(dragRegion).toContain("app-region: drag");
+    expect(dragRegion).toContain("-webkit-app-region: drag");
   });
 
   it("extends the drag surface across a blank session", () => {
@@ -36,12 +54,12 @@ describe("desktop titlebar hit testing", () => {
     );
   });
 
-  it("lets the header drag while preserving clickable buttons", () => {
+  it("keeps the conversation header and its buttons non-draggable", () => {
     expect(rule(".frame .centerCol :global(header)")).toContain(
-      "app-region: drag",
+      "app-region: no-drag",
     );
     expect(rule(".frame .centerCol :global(header)")).toContain(
-      "-webkit-app-region: drag",
+      "-webkit-app-region: no-drag",
     );
     expect(rule(".frame .centerCol :global(header button)")).toContain(
       "app-region: no-drag",

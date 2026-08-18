@@ -26,6 +26,7 @@ export function DesktopChrome({ sidebarCollapsed, hasConversation, actions, star
       data-deepdeck-desktop-chrome
       data-has-conversation={hasConversation || undefined}
     >
+      <div className={css.dragRegion} aria-hidden="true" />
       <div
         className={css.controls}
         data-has-conversation={hasConversation || undefined}

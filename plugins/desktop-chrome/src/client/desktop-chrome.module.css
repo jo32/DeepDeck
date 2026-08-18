@@ -444,8 +444,8 @@
   padding-top: 7px;
   padding-bottom: 5px;
   box-sizing: border-box;
-  -webkit-app-region: drag;
-  app-region: drag;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .frame .centerCol :global(header button) {
@@ -488,6 +488,19 @@
   left: 0;
   width: 144px;
   height: 44px;
+  pointer-events: none;
+}
+
+/* Keep native dragging on a dedicated blank strip instead of marking a parent
+   containing interactive controls as draggable. On macOS, overlapping drag
+   ancestors can swallow mouse events before descendant no-drag regions are
+   considered when the Harness is hosted in a WebContentsView. */
+.dragRegion {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 108px;
   pointer-events: none;
   -webkit-app-region: drag;
   app-region: drag;

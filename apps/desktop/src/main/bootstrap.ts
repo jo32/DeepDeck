@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeTheme } from "electron";
+import { app, BaseWindow, nativeTheme } from "electron";
 import { channels } from "../preload/channels.js";
 import type { HarnessRuntimeStatus } from "../shared/runtime.js";
 import { publicBranding, type LoadedBranding } from "./branding.js";
@@ -106,7 +106,7 @@ export async function bootstrapDesktop(
     window.focus();
   });
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+    if (BaseWindow.getAllWindows().length === 0) void createWindow();
   });
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
