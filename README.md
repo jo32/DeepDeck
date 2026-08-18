@@ -1,4 +1,14 @@
-# DeepDeck
+<p align="center">
+  <img src="branding/app-icon.png" alt="DeepDeck app icon" width="160" height="160">
+</p>
+
+<h1 align="center">DeepDeck</h1>
+
+<p align="center">
+  A native-feeling desktop client for DeepSeek Harness.
+</p>
+
+![DeepDeck desktop app](docs/deepdeck-brand-preview.png)
 
 DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, plugin-composed interface, branding, packaging, and automatic-update layer.
 
