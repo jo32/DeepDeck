@@ -3,6 +3,7 @@
   "productName": "DeepDeck",
   "version": "1.0.0",
   "description": "DeepDeck desktop client",
+  "author": "jo32",
   "private": true,
   "type": "module",
   "main": "dist/main/index.js",

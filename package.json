@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "DeepDeck desktop client built on DeepSeek Harness",
+  "author": "jo32",
   "license": "MIT",
   "packageManager": "pnpm@11.7.0",
   "engines": {
