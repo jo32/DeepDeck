@@ -133,7 +133,7 @@ function decorateBuiltInCard(card: HTMLElement, id: string, copy: PageCopy, loca
   const main = code?.closest('button')
   if (!(code instanceof HTMLElement) || !(main instanceof HTMLElement)) return
 
-  card.dataset.openworkbuddyPresetId = id
+  card.dataset.deepdeckPresetId = id
   addClass(main, css.modeMain)
   addClass(code, css.modeId)
   const children = directChildren(main)
@@ -143,15 +143,15 @@ function decorateBuiltInCard(card: HTMLElement, id: string, copy: PageCopy, loca
   const originalDescription = children.find(child => child !== head && child.tagName === 'SPAN')
   if (originalDescription !== undefined) addClass(originalDescription, css.originalDescription)
 
-  let details = directChildren(main).find(child => child.dataset.openworkbuddyPresetDetails === 'true')
+  let details = directChildren(main).find(child => child.dataset.deepdeckPresetDetails === 'true')
   if (details === undefined) {
     details = main.ownerDocument.createElement('span')
-    details.dataset.openworkbuddyPresetDetails = 'true'
+    details.dataset.deepdeckPresetDetails = 'true'
     details.className = css.details ?? ''
     main.insertBefore(details, code)
   }
-  if (details.dataset.openworkbuddyLocale === locale) return
-  details.dataset.openworkbuddyLocale = locale
+  if (details.dataset.deepdeckLocale === locale) return
+  details.dataset.deepdeckLocale = locale
   details.replaceChildren()
   appendTextBlock(main.ownerDocument, details, css.introduction ?? '', copy.introductionLabel, mode.introduction)
   appendTextBlock(main.ownerDocument, details, css.example ?? '', copy.exampleLabel, mode.example)
@@ -174,8 +174,8 @@ export function decorateAgentPresetSections(document: Document, locale: string):
 
     const pageIntro = heading.nextElementSibling
     if (pageIntro instanceof HTMLParagraphElement) {
-      if (pageIntro.dataset.openworkbuddyOriginalText === undefined) {
-        pageIntro.dataset.openworkbuddyOriginalText = pageIntro.textContent ?? ''
+      if (pageIntro.dataset.deepdeckOriginalText === undefined) {
+        pageIntro.dataset.deepdeckOriginalText = pageIntro.textContent ?? ''
       }
       if (pageIntro.textContent !== copy.intro) pageIntro.textContent = copy.intro
       addClass(pageIntro, css.pageIntro)
@@ -201,17 +201,17 @@ export function decorateAgentPresetSections(document: Document, locale: string):
 }
 
 function removeDecorations(document: Document): void {
-  for (const details of document.querySelectorAll<HTMLElement>('[data-openworkbuddy-preset-details="true"]')) {
+  for (const details of document.querySelectorAll<HTMLElement>('[data-deepdeck-preset-details="true"]')) {
     details.remove()
   }
-  for (const intro of document.querySelectorAll<HTMLElement>('[data-openworkbuddy-original-text]')) {
-    intro.textContent = intro.dataset.openworkbuddyOriginalText ?? ''
-    delete intro.dataset.openworkbuddyOriginalText
+  for (const intro of document.querySelectorAll<HTMLElement>('[data-deepdeck-original-text]')) {
+    intro.textContent = intro.dataset.deepdeckOriginalText ?? ''
+    delete intro.dataset.deepdeckOriginalText
   }
   const classes = Object.values(css).filter(Boolean)
   for (const node of document.querySelectorAll<HTMLElement>('[data-slot="settings.section"] *')) {
     node.classList.remove(...classes)
-    delete node.dataset.openworkbuddyPresetId
+    delete node.dataset.deepdeckPresetId
   }
 }
 
@@ -241,5 +241,5 @@ export function apply(ctx: ClientContext): void {
       unsubscribeLocale()
       removeDecorations(document)
     }
-  }, 'openworkbuddy: horizontal Agent-preset sections')
+  }, 'deepdeck: horizontal Agent-preset sections')
 }

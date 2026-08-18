@@ -6,7 +6,7 @@ import { NewSessionIcon } from './NewSessionIcon.tsx'
 import { DesktopUpdateControl } from './DesktopUpdateControl.tsx'
 import css from './desktop-chrome.module.css'
 
-export const DESKTOP_SIDEBAR_LOCALE = 'openworkbuddy.desktop.sidebar' as const
+export const DESKTOP_SIDEBAR_LOCALE = 'deepdeck.desktop.sidebar' as const
 
 export const desktopSidebarZh = {
   'session.new': '新会话',
@@ -40,7 +40,7 @@ export const desktopSidebarEn = {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    'openworkbuddy.desktop.sidebar': keyof typeof desktopSidebarZh
+    'deepdeck.desktop.sidebar': keyof typeof desktopSidebarZh
   }
 }
 
@@ -60,7 +60,7 @@ export type DesktopSidebarProps =
  */
 export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarProps) {
   return (
-    <div className={css.desktopSidebar} data-openworkbuddy-desktop-sidebar>
+    <div className={css.desktopSidebar} data-deepdeck-desktop-sidebar>
       <div className={css.sidebarLogoRow}>
         <button
           type="button"
@@ -71,13 +71,13 @@ export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarPr
           <img
             aria-hidden="true"
             className={css.sidebarBrandMark}
-            data-openworkbuddy-brand-mark
+            data-deepdeck-brand-mark
             src={BRAND.markDataUrl}
           />
-          <span className={css.sidebarBrandName} data-openworkbuddy-brand-name>
+          <span className={css.sidebarBrandName} data-deepdeck-brand-name>
             {BRAND.name}
           </span>
-          <span className={css.sidebarBrandAttribution} data-openworkbuddy-brand-attribution>
+          <span className={css.sidebarBrandAttribution} data-deepdeck-brand-attribution>
             {BRAND.attribution}
           </span>
         </button>

@@ -35,7 +35,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(DESKTOP_SIDEBAR_LOCALE, {
     zh: desktopSidebarZh,
     en: desktopSidebarEn,
-  }), 'openworkbuddy desktop: sidebar dictionaries')
+  }), 'deepdeck desktop: sidebar dictionaries')
 
   ctx.effect(() => {
     const disposeService = ctx.reflect.provide('layout', layout)
@@ -57,7 +57,7 @@ export function apply(ctx: ClientContext): void {
       disposeRegistration()
       void disposeService()
     }
-  }, 'openworkbuddy desktop: layout service + root')
+  }, 'deepdeck desktop: layout service + root')
 
   ctx.effect(() => ctx.slots.register({
     name: 'sidebar',
@@ -70,7 +70,7 @@ export function apply(ctx: ClientContext): void {
     inject: () => ({
       startSession: (workspaceId) => { ctx.workspaces.startSession(workspaceId) },
     }),
-  }, DesktopSidebar), 'openworkbuddy desktop: wide-only sidebar shell')
+  }, DesktopSidebar), 'deepdeck desktop: wide-only sidebar shell')
 
   ctx.effect(() => {
     const presenter = new ThemePresenter()
@@ -80,7 +80,7 @@ export function apply(ctx: ClientContext): void {
       off()
       presenter.dispose()
     }
-  }, 'openworkbuddy desktop: theme presenter')
+  }, 'deepdeck desktop: theme presenter')
 
   const views: ViewsLedger = {
     list: (): readonly ViewTab[] => ctx.slots.entries('conversation.view').flatMap((entry) => {
@@ -96,7 +96,7 @@ export function apply(ctx: ClientContext): void {
     const chatStore = chatStoreFromHeader(ctx.slots.entries('conversation.session.header'))
     return ctx.slots.register({
       name: 'conversation.session.header.actions',
-      id: 'openworkbuddy-view-toggle',
+      id: 'deepdeck-view-toggle',
       order: -100,
       store: chatStore,
       inject: () => ({ views }),

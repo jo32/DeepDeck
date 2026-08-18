@@ -8,7 +8,7 @@ describe("resolveDesktopRuntimePaths", () => {
       cwd: "/repo/workspace",
       environment: {
         DEEPSEEK_DESKTOP_NODE_BINARY: "/toolchain/node",
-        OPENWORKBUDDY_HOME_HERO_PLUGIN: "/custom/home-hero",
+        DEEPDECK_HOME_HERO_PLUGIN: "/custom/home-hero",
       },
       home: "/Users/deepdeck",
       isPackaged: false,

@@ -47,7 +47,7 @@ export function HomeHeroArtwork({ session, input, t }: HomeHeroArtworkProps) {
   if (session.composerPhase !== 'blank') return null
 
   return (
-    <div className={css.artwork} data-openworkbuddy-home-hero="">
+    <div className={css.artwork} data-deepdeck-home-hero="">
       <div className={css.heroTitleMask} aria-hidden="true" />
       <div className={css.mascot} aria-label={t('characterLabel')}>
         <SpiderOrbThree

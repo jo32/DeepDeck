@@ -154,7 +154,7 @@ export function AppFrame({ useStore, useSessions, actions, renderSlot, startSess
     <div
       ref={frameRef}
       className={css.frame}
-      data-openworkbuddy-desktop-frame
+      data-deepdeck-desktop-frame
       style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px` }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-details-collapsed={cols.details === 0 || undefined}

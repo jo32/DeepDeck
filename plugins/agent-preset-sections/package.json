@@ -1,5 +1,5 @@
 {
-  "name": "@openworkbuddy/dsh-client-ui-agent-preset-sections",
+  "name": "@deepdeck/dsh-client-ui-agent-preset-sections",
   "version": "0.1.0",
   "private": true,
   "type": "module",

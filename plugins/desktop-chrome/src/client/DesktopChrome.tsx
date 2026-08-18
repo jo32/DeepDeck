@@ -23,7 +23,7 @@ export function DesktopChrome({ sidebarCollapsed, hasConversation, actions, star
   return (
     <div
       className={css.chrome}
-      data-openworkbuddy-desktop-chrome
+      data-deepdeck-desktop-chrome
       data-has-conversation={hasConversation || undefined}
     >
       <div

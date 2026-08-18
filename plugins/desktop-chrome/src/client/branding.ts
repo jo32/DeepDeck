@@ -4,24 +4,24 @@ import { BRAND } from './generated-brand.ts'
 function brandStyles(): string {
   const mark = JSON.stringify(BRAND.markDataUrl)
   return `
-html[data-openworkbuddy-brand="${BRAND.id}"] {
-  --openworkbuddy-accent: ${BRAND.accentColor};
-  --openworkbuddy-accent-soft: ${BRAND.accentColorSoft};
+html[data-deepdeck-brand="${BRAND.id}"] {
+  --deepdeck-accent: ${BRAND.accentColor};
+  --deepdeck-accent-soft: ${BRAND.accentColorSoft};
 }
 
-html[data-openworkbuddy-brand="${BRAND.id}"] svg[viewBox="0 0 23.16 17.04"] {
+html[data-deepdeck-brand="${BRAND.id}"] svg[viewBox="0 0 23.16 17.04"] {
   background-color: var(--dsw-alias-label-primary, currentColor) !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
   color: transparent !important;
 }
 
-html[data-openworkbuddy-brand="${BRAND.id}"] svg[viewBox="0 0 23.16 17.04"] {
+html[data-deepdeck-brand="${BRAND.id}"] svg[viewBox="0 0 23.16 17.04"] {
   -webkit-mask: url(${mark}) center / contain no-repeat;
   mask: url(${mark}) center / contain no-repeat;
 }
 
-html[data-openworkbuddy-brand="${BRAND.id}"] svg[viewBox="0 0 23.16 17.04"] > * {
+html[data-deepdeck-brand="${BRAND.id}"] svg[viewBox="0 0 23.16 17.04"] > * {
   display: none !important;
 }
 `
@@ -31,13 +31,13 @@ html[data-openworkbuddy-brand="${BRAND.id}"] svg[viewBox="0 0 23.16 17.04"] > * 
 export function installBranding(ctx: ClientContext): void {
   ctx.effect(() => {
     const root = document.documentElement
-    const previousBrand = root.getAttribute('data-openworkbuddy-brand')
+    const previousBrand = root.getAttribute('data-deepdeck-brand')
     const previousTitle = document.title
-    root.dataset.openworkbuddyBrand = BRAND.id
+    root.dataset.deepdeckBrand = BRAND.id
     document.title = BRAND.name
 
     const style = document.createElement('style')
-    style.dataset.openworkbuddyBrandStyles = BRAND.id
+    style.dataset.deepdeckBrandStyles = BRAND.id
     style.textContent = brandStyles()
     document.head.append(style)
 
@@ -53,8 +53,8 @@ export function installBranding(ctx: ClientContext): void {
 
     return () => {
       style.remove()
-      if (previousBrand === null) delete root.dataset.openworkbuddyBrand
-      else root.setAttribute('data-openworkbuddy-brand', previousBrand)
+      if (previousBrand === null) delete root.dataset.deepdeckBrand
+      else root.setAttribute('data-deepdeck-brand', previousBrand)
       document.title = previousTitle
       if (previousIcon === undefined) icon.remove()
       else {
@@ -64,5 +64,5 @@ export function installBranding(ctx: ClientContext): void {
         else icon.setAttribute('type', previousIcon.type)
       }
     }
-  }, 'openworkbuddy desktop: document metadata + visual identity')
+  }, 'deepdeck desktop: document metadata + visual identity')
 }
