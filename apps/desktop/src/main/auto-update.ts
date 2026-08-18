@@ -12,6 +12,12 @@ export function createDesktopUpdateService(): DesktopUpdateService {
     autoUpdater.setFeedURL({ provider: "generic", url: updateUrl });
   }
   autoUpdater.logger = console;
+  // Squirrel.Mac can relaunch the old bundle before ShipIt has replaced it,
+  // causing the install to fail with "App Still Running Error". DeepDeck
+  // relaunches only after the target version is visible on disk instead.
+  if (process.platform === "darwin") {
+    autoUpdater.autoRunAppAfterInstall = false;
+  }
 
   return new DesktopUpdateService(autoUpdater as unknown as UpdateDriver, {
     currentVersion: app.getVersion(),

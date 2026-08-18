@@ -48,4 +48,22 @@ describe("createAutomaticUpdateInstaller", () => {
     expect(order).toEqual(["stop", "install"]);
     expect(updates.quitAndInstall).toHaveBeenCalledOnce();
   });
+
+  it("arms the relaunch watcher before stopping the runtime", async () => {
+    const order: string[] = [];
+    const updates = { quitAndInstall: vi.fn(() => { order.push("install"); }) };
+    const prepareToQuit = vi.fn(async () => { order.push("stop"); });
+    const beforeInstall = vi.fn(() => { order.push("arm"); });
+    const install = createAutomaticUpdateInstaller(updates, prepareToQuit, beforeInstall);
+    const downloaded: DesktopUpdateStatus = {
+      ...available,
+      state: "downloaded",
+      percent: 100,
+    };
+
+    await install(downloaded);
+
+    expect(order).toEqual(["arm", "stop", "install"]);
+    expect(beforeInstall).toHaveBeenCalledWith(downloaded);
+  });
 });

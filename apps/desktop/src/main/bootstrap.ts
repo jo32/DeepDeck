@@ -9,6 +9,7 @@ import { configureNativeApplicationIdentity } from "./native-identity.js";
 import type { DesktopRuntimePaths } from "./runtime-paths.js";
 import { readThemeSource } from "./theme-preference.js";
 import { createAutomaticUpdateInstaller } from "./update-installer.js";
+import { armMacUpdateRelaunch, resolveMacAppPath } from "./update-relauncher.js";
 import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
 
 export async function bootstrapDesktop(
@@ -57,7 +58,14 @@ export async function bootstrapDesktop(
     return prepareToQuitPromise;
   };
 
-  const installUpdate = createAutomaticUpdateInstaller(updates, prepareToQuit);
+  const installUpdate = createAutomaticUpdateInstaller(updates, prepareToQuit, (status) => {
+    if (process.platform !== "darwin" || status.state !== "downloaded" || !status.version) return;
+    armMacUpdateRelaunch({
+      appPath: resolveMacAppPath(app.getPath("exe")),
+      currentPid: process.pid,
+      targetVersion: status.version,
+    });
+  });
 
   removeIpc = registerIpc(harness, publicBranding(branding), updates, {
     onHarnessClientReady: (senderId) => {
