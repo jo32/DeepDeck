@@ -1,0 +1,183 @@
+.root {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.trigger:hover { background: var(--dsw-alias-interactive-bg-hover); }
+
+.trigger:focus-visible {
+  outline: 2px solid var(--dsw-static-blue-500);
+  outline-offset: 1px;
+}
+
+.track {
+  fill: none;
+  stroke: var(--dsw-alias-border-l3);
+  stroke-width: 2;
+}
+
+.fill {
+  fill: none;
+  stroke: var(--dsw-alias-label-tertiary);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.panel {
+  position: absolute;
+  z-index: 100;
+  right: 0;
+  bottom: calc(100% + 8px);
+  box-sizing: border-box;
+  width: 300px;
+  padding: 14px;
+  border: 1px solid var(--dsw-alias-border-inverted);
+  border-radius: 12px;
+  background: var(--dsw-specific-menu);
+  box-shadow: var(--dsw-shadow-lv3);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 20px;
+  cursor: default;
+}
+
+.contextHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.percent,
+.figures,
+.metric dd {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted { color: var(--dsw-alias-label-tertiary); }
+.figures { margin-left: auto; }
+
+.bar {
+  display: flex;
+  gap: 1px;
+  height: 4px;
+  margin: 10px 0 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.segment {
+  flex: none;
+  min-width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--meter-tint, var(--dsw-alias-label-tertiary));
+}
+
+.colorSystem { --meter-tint: var(--dsw-static-neutral-bluish-400); }
+.colorTools { --meter-tint: rgb(167, 139, 250); }
+.colorMessages { --meter-tint: var(--dsw-static-blue-450); }
+
+.contextRows,
+.metricGrid { margin: 0; }
+
+.contextRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.contextRow dt { color: var(--dsw-alias-label-secondary); }
+
+.contextRow dd {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 2px;
+  background: var(--meter-tint);
+}
+
+.divider {
+  height: 1px;
+  margin: 12px 0 10px;
+  background: var(--dsw-alias-separator-primary);
+}
+
+.sessionTitle {
+  margin-bottom: 8px;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.metric {
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.metric dt {
+  overflow: hidden;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metric dd {
+  margin: 1px 0 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Harness currently has no slot for its resident ContextMeter. Hide only that
+   semantic dialog trigger inside the stable composer-card boundary; the
+   plugin-owned trigger opts out with its data attribute. */
+:global([data-composer-card]) :global(button[aria-haspopup="dialog"]:not([data-deepdeck-session-meter])) {
+  display: none;
+}
+
+@media (max-width: 520px) {
+  .panel { width: min(300px, calc(100vw - 32px)); }
+}
+

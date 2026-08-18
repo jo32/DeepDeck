@@ -16,6 +16,13 @@ import { DesktopLayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 import { ViewToggle, type ViewsLedger } from './ViewToggle.tsx'
 import { installBranding } from './branding.ts'
+import {
+  HiddenComposerStats,
+  SESSION_METRICS_LOCALE,
+  SessionMetricsPopover,
+  sessionMetricsEn,
+  sessionMetricsZh,
+} from './SessionMetricsPopover.tsx'
 
 export const inject = ['slots', 'theme', 'workspaces', 'locale']
 
@@ -43,6 +50,10 @@ export function apply(ctx: ClientContext): void {
     zh: desktopSidebarZh,
     en: desktopSidebarEn,
   }), 'deepdeck desktop: sidebar dictionaries')
+  ctx.effect(() => ctx.locale.register(SESSION_METRICS_LOCALE, {
+    zh: sessionMetricsZh,
+    en: sessionMetricsEn,
+  }), 'deepdeck desktop: session metrics dictionaries')
 
   ctx.effect(() => {
     const disposeService = ctx.reflect.provide('layout', layout)
@@ -112,4 +123,19 @@ export function apply(ctx: ClientContext): void {
       inject: () => ({ views }),
     }, ViewToggle)
   })
+
+  // The stock strip is a list cell, so a lower-priority entry with the same
+  // id shadows it without reaching into the upstream plugin's lifecycle.
+  ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
+    name: 'conversation.composer.dock',
+    id: 'stats',
+    priority: -100,
+  }, HiddenComposerStats))
+
+  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
+    name: 'conversation.input.right',
+    id: 'deepdeck-session-metrics',
+    order: 100,
+    locale: SESSION_METRICS_LOCALE,
+  }, SessionMetricsPopover))
 }
