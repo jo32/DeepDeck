@@ -74,6 +74,16 @@ async function stopChild(child, exitPromise) {
   }
 }
 
+function pluginRoot(runtimeRoot, pluginName) {
+  if (pluginName === "dsh-market") {
+    return join(runtimeRoot, "harness", "node_modules", "dshmarket");
+  }
+  if (pluginName === "dsh-codex-connect") {
+    return join(runtimeRoot, "harness", "node_modules", "dsh-codex-connect");
+  }
+  return join(runtimeRoot, "plugins", pluginName);
+}
+
 async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
   const dshHome = await mkdtemp(join(tmpdir(), "deepdeck-runtime-verify-"));
   let child;
@@ -81,12 +91,12 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
   let bootTimeout;
   try {
     for (const plugin of manifest.plugins) {
-      const pluginRoot = join(runtimeRoot, "plugins", plugin);
-      const pluginManifest = JSON.parse(await readFile(join(pluginRoot, "package.json"), "utf8"));
+      const root = pluginRoot(runtimeRoot, plugin);
+      const pluginManifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
       if (typeof pluginManifest.name !== "string") throw new Error(`Runtime plugin has no package name: ${plugin}`);
       const link = join(dshHome, "profiles", "web", "node_modules", ...pluginManifest.name.split("/"));
       await mkdir(dirname(link), { recursive: true });
-      await symlink(pluginRoot, link, process.platform === "win32" ? "junction" : "dir");
+      await symlink(root, link, process.platform === "win32" ? "junction" : "dir");
     }
 
     let output = "";
@@ -147,18 +157,30 @@ const nodeBinary = manifest.platform === "win32"
   ? join(runtimeRoot, "runtime", "node", "node.exe")
   : join(runtimeRoot, "runtime", "node", "bin", "node");
 const cli = join(runtimeRoot, "harness", "apps", "cli", "lib", "bin.js");
+const pnpm = manifest.platform === "win32"
+  ? join(runtimeRoot, "runtime", "bin", "pnpm.cmd")
+  : join(runtimeRoot, "runtime", "bin", "pnpm");
 
-for (const required of [
+const requiredRuntimePaths = [
   nodeBinary,
+  pnpm,
   cli,
   join(runtimeRoot, "branding", "brand.json"),
   join(runtimeRoot, "cordis.patch.yml"),
-  ...manifest.plugins.flatMap((plugin) => [
-    join(runtimeRoot, "plugins", plugin, "package.json"),
-    join(runtimeRoot, "plugins", plugin, "lib", "index.js"),
-    join(runtimeRoot, "plugins", plugin, "lib", "client.js"),
-  ]),
-]) {
+];
+for (const plugin of manifest.plugins) {
+  const root = pluginRoot(runtimeRoot, plugin);
+  const pluginManifestPath = join(root, "package.json");
+  requiredRuntimePaths.push(pluginManifestPath);
+  if (await pathExists(pluginManifestPath)) {
+    const pluginManifest = JSON.parse(await readFile(pluginManifestPath, "utf8"));
+    const clientExport = pluginManifest.exports?.["./client"];
+    const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
+    requiredRuntimePaths.push(join(root, pluginManifest.main ?? "lib/index.js"));
+    if (typeof clientEntry === "string") requiredRuntimePaths.push(join(root, clientEntry));
+  }
+}
+for (const required of requiredRuntimePaths) {
   if (!(await pathExists(required))) throw new Error(`Runtime resource is missing: ${required}`);
 }
 
@@ -167,6 +189,8 @@ if (remainingLink) throw new Error(`Runtime contains a non-portable symbolic lin
 
 const help = await run(nodeBinary, [cli, "--help"]);
 if (!help.includes("Usage: dsh")) throw new Error("Bundled Harness CLI did not return its help output");
+const pnpmVersion = await run(pnpm, ["--version"]);
+if (pnpmVersion.trim() !== "11.7.0") throw new Error(`Bundled pnpm returned ${JSON.stringify(pnpmVersion.trim())}`);
 await verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli);
 console.log(
   `verify-runtime: DeepDeck ${manifest.applicationVersion}, Node ${manifest.nodeVersion}, ${manifest.platform}-${manifest.architecture}`,

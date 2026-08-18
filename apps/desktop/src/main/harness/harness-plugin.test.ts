@@ -37,6 +37,24 @@ describe("Harness plugin resolution", () => {
     )).toBe(
       "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-client-ui-home-hero",
     );
+    expect(resolveHarnessPluginLink(
+      "/tmp/dsh-home",
+      "@deepdeck/dsh-market-desktop-bridge",
+    )).toBe(
+      "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-market-desktop-bridge",
+    );
+    expect(resolveHarnessPluginLink(
+      "/tmp/dsh-home",
+      "dshmarket",
+    )).toBe(
+      "/tmp/dsh-home/profiles/web/node_modules/dshmarket",
+    );
+    expect(resolveHarnessPluginLink(
+      "/tmp/dsh-home",
+      "dsh-codex-connect",
+    )).toBe(
+      "/tmp/dsh-home/profiles/web/node_modules/dsh-codex-connect",
+    );
   });
 
   it("rejects package paths that could escape node_modules", () => {

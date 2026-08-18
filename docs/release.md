@@ -61,6 +61,8 @@ Use Node 24 and pnpm 11.7.0, then run:
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm market:install
+pnpm codex-connect:install
 pnpm harness:install
 pnpm harness:build
 pnpm package:local
@@ -74,7 +76,7 @@ pnpm package:local
 - the bundled Harness contains no checkout-bound symlinks;
 - bundled Node can start the complete Web profile with an empty system `PATH` and return an HTTP page.
 
-`pnpm start` performs this branded package flow and launches DeepDeck. `pnpm start:raw` is the explicit raw-Electron development path.
+`pnpm start:packaged` performs this branded package flow and launches DeepDeck. The normal `pnpm start` command uses the raw-Electron development path so routine launches do not rebuild and verify a complete application package; `pnpm start:raw` remains an explicit alias for that path.
 
 ## Production release
 

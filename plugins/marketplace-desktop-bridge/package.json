@@ -1,0 +1,40 @@
+{
+  "name": "@deepdeck/dsh-market-desktop-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json && ../../vendor/deepseek-harness/node_modules/.bin/tsdown --config tsdown.config.ts",
+    "check": "../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json --noEmit"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/client.js.map",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts",
+    "cordis.patch.yml"
+  ]
+}

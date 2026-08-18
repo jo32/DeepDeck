@@ -9,19 +9,30 @@ import {
   unlinkSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { HarnessRuntimeStatus } from "../../shared/runtime.js";
 import { parseReadinessUrl } from "./readiness.js";
+import { migratePresetBundles } from "./preset-profile.js";
 
 const START_TIMEOUT_MS = 90_000;
 const STOP_TIMEOUT_MS = 5_000;
 const MAX_LOG_LINES = 80;
+export const MARKETPLACE_RESTART_REQUEST = "dsh-market:restart";
 
 type StatusListener = (status: HarnessRuntimeStatus) => void;
+
+export function isMarketplaceRestartRequest(message: unknown): boolean {
+  if (typeof message !== "object" || message === null) return false;
+  return (message as { type?: unknown }).type === MARKETPLACE_RESTART_REQUEST;
+}
 
 export interface HarnessClientPlugin {
   packageName: string;
   path: string;
+  /** Select where bare package resolution is anchored; defaults to the web profile. */
+  linkLocation?: "profile" | "harness" | false;
+  /** Remove an older Marketplace-installed bundle declaration before loading this preset. */
+  presetBundle?: boolean;
 }
 
 export interface HarnessProcessOptions {
@@ -178,7 +189,17 @@ export class HarnessProcess {
 
     const environment = { ...process.env };
     delete environment.ELECTRON_RUN_AS_NODE;
+    const bundledTools = resolve(this.options.harnessRoot, "..", "runtime", "bin");
+    const bundledPnpm = join(bundledTools, process.platform === "win32" ? "pnpm.cmd" : "pnpm");
+    if (existsSync(bundledPnpm)) {
+      environment.PATH = `${bundledTools}${delimiter}${environment.PATH ?? ""}`;
+    }
     try {
+      const dshHome = resolveHarnessHome(environment);
+      migratePresetBundles(
+        dshHome,
+        this.options.plugins.filter((plugin) => plugin.presetBundle).map((plugin) => plugin.packageName),
+      );
       this.preparePluginLinks(environment);
     } catch (error) {
       const message = `${this.options.displayName} 无法准备插件配置：${errorMessage(error)}`;
@@ -195,7 +216,7 @@ export class HarnessProcess {
           cwd: this.options.workspaceRoot,
           env: environment,
           shell: false,
-          stdio: ["ignore", "pipe", "pipe"],
+          stdio: ["ignore", "pipe", "pipe", "ipc"],
         },
       );
     } catch (error) {
@@ -249,6 +270,13 @@ export class HarnessProcess {
 
       child.stdout?.on("data", (chunk: Buffer) => consume(chunk, "stdout"));
       child.stderr?.on("data", (chunk: Buffer) => consume(chunk, "stderr"));
+      child.on("message", (message: unknown) => {
+        if (!isMarketplaceRestartRequest(message) || this.child !== child) return;
+        void this.restart().catch((error: unknown) => {
+          const detail = errorMessage(error);
+          this.publish({ state: "error", message: `无法重启 ${this.options.displayName}：${detail}` });
+        });
+      });
       child.once("error", (error) => {
         this.cleanupPluginLinks();
         settleFailure(`无法启动 ${this.options.displayName}：${errorMessage(error)}`);
@@ -295,18 +323,39 @@ export class HarnessProcess {
         packageNames.add(plugin.packageName);
 
         const pluginRoot = resolve(plugin.path);
-        for (const file of ["package.json", "lib/index.js", "lib/client.js"]) {
-          const path = join(pluginRoot, file);
-          if (!existsSync(path)) throw new Error(`插件尚未构建：${path}`);
-        }
-        const manifest = JSON.parse(readFileSync(join(pluginRoot, "package.json"), "utf8")) as {
+        const manifestPath = join(pluginRoot, "package.json");
+        if (!existsSync(manifestPath)) throw new Error(`插件清单不存在：${manifestPath}`);
+        const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
           name?: unknown;
+          main?: unknown;
+          exports?: { "./client"?: unknown };
         };
         if (manifest.name !== plugin.packageName) {
           throw new Error(`插件包名不匹配：${pluginRoot}`);
         }
+        const hostEntry = typeof manifest.main === "string" ? manifest.main : "lib/index.js";
+        const clientExport = manifest.exports?.["./client"];
+        const clientEntry = typeof clientExport === "string"
+          ? clientExport
+          : typeof clientExport === "object" && clientExport !== null && "default" in clientExport
+            ? (clientExport as { default?: unknown }).default
+            : undefined;
+        if (typeof clientEntry !== "string") {
+          throw new Error(`插件未声明浏览器入口：${pluginRoot}`);
+        }
+        for (const file of [hostEntry, clientEntry]) {
+          const path = resolve(pluginRoot, file);
+          const fromRoot = relative(pluginRoot, path);
+          if (fromRoot.startsWith("..") || isAbsolute(fromRoot) || !existsSync(path)) {
+            throw new Error(`插件入口不存在：${path}`);
+          }
+        }
 
-        const link = resolveHarnessPluginLink(dshHome, plugin.packageName);
+        if (plugin.linkLocation === false) continue;
+        const link = plugin.linkLocation === "harness"
+          ? join(this.options.harnessRoot, "node_modules", ...plugin.packageName.split("/"))
+          : resolveHarnessPluginLink(dshHome, plugin.packageName);
+        if (resolve(link) === pluginRoot) continue;
         mkdirSync(dirname(link), { recursive: true });
         const ownership = ensureHarnessPluginLink(link, pluginRoot);
         if (ownership) this.ownedPluginLinks.set(link, ownership);

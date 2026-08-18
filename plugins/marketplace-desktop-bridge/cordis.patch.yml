@@ -1,0 +1,3 @@
+- insert:
+    - id: deepdeck-marketplace-desktop-bridge
+      name: '@deepdeck/dsh-market-desktop-bridge'

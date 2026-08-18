@@ -64,6 +64,20 @@ export function resolveDesktopRuntimePaths(
           packageName: "@deepdeck/dsh-client-ui-agent-preset-sections",
           path: join(options.resourcesPath, "plugins", "agent-preset-sections"),
         },
+        {
+          packageName: "@deepdeck/dsh-market-desktop-bridge",
+          path: join(options.resourcesPath, "plugins", "marketplace-desktop-bridge"),
+        },
+        {
+          packageName: "dsh-codex-connect",
+          path: join(options.resourcesPath, "harness", "node_modules", "dsh-codex-connect"),
+          presetBundle: true,
+        },
+        {
+          packageName: "dshmarket",
+          path: join(options.resourcesPath, "harness", "node_modules", "dshmarket"),
+          presetBundle: true,
+        },
       ],
       workspaceRoot,
     };
@@ -115,6 +129,32 @@ export function resolveDesktopRuntimePaths(
           "DEEPDECK_AGENT_PRESET_PLUGIN",
           join(workspaceRepository, "plugins", "agent-preset-sections"),
         ),
+      },
+      {
+        packageName: "@deepdeck/dsh-market-desktop-bridge",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_MARKETPLACE_DESKTOP_BRIDGE_PLUGIN",
+          join(workspaceRepository, "plugins", "marketplace-desktop-bridge"),
+        ),
+      },
+      {
+        packageName: "dsh-codex-connect",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_CODEX_CONNECT_PLUGIN",
+          join(workspaceRepository, "vendor", "dsh-codex-connect"),
+        ),
+        presetBundle: true,
+      },
+      {
+        packageName: "dshmarket",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_PLUGIN_MARKET_PLUGIN",
+          join(workspaceRepository, "vendor", "dsh-market"),
+        ),
+        presetBundle: true,
       },
     ],
     workspaceRoot,

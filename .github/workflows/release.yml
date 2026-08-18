@@ -118,6 +118,11 @@ jobs:
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install bundled plugin dependencies
+        run: |
+          pnpm market:install
+          pnpm codex-connect:install
+
       - name: Install and build Harness
         run: |
           pnpm harness:install

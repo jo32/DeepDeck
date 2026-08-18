@@ -49,6 +49,16 @@ describe("resolveDesktopRuntimePaths", () => {
       "/Applications/DeepDeck.app/Contents/Resources/plugins/desktop-chrome",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/home-hero",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/agent-preset-sections",
+      "/Applications/DeepDeck.app/Contents/Resources/plugins/marketplace-desktop-bridge",
+      "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-codex-connect",
+      "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dshmarket",
+    ]);
+    expect(paths.plugins.slice(-2).map((plugin) => ({
+      packageName: plugin.packageName,
+      presetBundle: plugin.presetBundle,
+    }))).toEqual([
+      { packageName: "dsh-codex-connect", presetBundle: true },
+      { packageName: "dshmarket", presetBundle: true },
     ]);
   });
 

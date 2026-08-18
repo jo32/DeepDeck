@@ -10,7 +10,7 @@
 
 ![DeepDeck desktop app](docs/deepdeck-brand-preview.png)
 
-DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, plugin-composed interface, branding, packaging, and automatic-update layer.
+DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, plugin-composed interface, branding, packaging, and automatic-update layer. The official [dsh-market](https://github.com/dsh-market/dsh-market) plugin and [dsh-codex-connect](https://github.com/franksong2702/dsh-codex-connect) are pinned separately and preloaded as ordinary Cordis bundles.
 
 DeepDeck reuses the official `web` profile and its complete plugin-composed UI. The desktop host starts the Harness process on an OS-assigned loopback port, waits for it to become ready, then opens the local UI in the application window. Closing the app shuts the Harness process down cleanly.
 
@@ -25,7 +25,7 @@ pnpm bootstrap
 pnpm start
 ```
 
-`pnpm bootstrap` installs and builds the pinned Harness checkout, then builds the desktop app. Later starts only need `pnpm start` unless the submodule revision changes.
+`pnpm bootstrap` installs and builds the pinned Harness, dsh-market, and Codex Connect checkouts, then builds the desktop app. Later starts only need `pnpm start` unless a submodule revision changes.
 
 The desktop uses the standard Harness home (`$DSH_HOME`, or `~/.dsh` when unset), so profiles, model settings, credentials, patches, and installed plugins remain compatible with the upstream CLI. Set `DSH_HOME` before launch if an isolated desktop profile is desired.
 
@@ -37,11 +37,13 @@ User-facing branding lives outside the upstream submodule in `branding/brand.jso
 
 ```sh
 pnpm start             # build and launch the desktop client
+pnpm start:packaged    # rebuild and launch the packaged desktop client
 pnpm check             # type-check desktop main, preload, and renderer code
 pnpm test              # run focused desktop tests
 pnpm package:local     # build and verify an unsigned local macOS package
 pnpm package:mac       # build signed production macOS packages
 pnpm harness:build     # rebuild the pinned Harness checkout
+pnpm market:build      # rebuild the pinned dsh-market host bundle
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the dependency boundary and the plugin integration direction.

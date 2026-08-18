@@ -18,3 +18,15 @@
 
     - id: deepdeck-agent-preset-sections
       name: '@deepdeck/dsh-client-ui-agent-preset-sections'
+
+    - id: deepdeck-marketplace-desktop-bridge
+      name: '@deepdeck/dsh-market-desktop-bridge'
+
+    - id: llm-openai-codex
+      name: 'dsh-codex-connect'
+      config:
+        enableSearch: false
+        enableImageTool: false
+
+    - id: dsh-market
+      name: 'dshmarket'

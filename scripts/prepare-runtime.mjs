@@ -44,7 +44,28 @@ const PLUGINS = Object.freeze([
   "desktop-chrome",
   "home-hero",
   "agent-preset-sections",
+  "marketplace-desktop-bridge",
+  "dsh-codex-connect",
+  "dsh-market",
 ]);
+
+const VENDOR_PLUGIN_PACKAGES = Object.freeze({
+  "dsh-codex-connect": "dsh-codex-connect",
+  "dsh-market": "dshmarket",
+});
+
+function pluginSource(pluginName) {
+  return Object.hasOwn(VENDOR_PLUGIN_PACKAGES, pluginName)
+    ? join(workspaceRoot, "vendor", pluginName)
+    : join(workspaceRoot, "plugins", pluginName);
+}
+
+function pluginDestination(pluginName, destinationRoot) {
+  const packageName = VENDOR_PLUGIN_PACKAGES[pluginName];
+  return packageName !== undefined
+    ? join(destinationRoot, "harness", "node_modules", packageName)
+    : join(destinationRoot, "plugins", pluginName);
+}
 
 function parseOptions(arguments_) {
   const options = { platform: hostPlatform, arch: hostArch };
@@ -404,10 +425,36 @@ async function materializeMissingWorkspacePackages(nodeModules, workspacePackage
   if (copied > 0) console.log(`prepare-runtime: materialized ${copied} pruned workspace packages`);
 }
 
+async function copyPluginDependencies(source, destination, dependencies) {
+  const pending = Object.keys(dependencies ?? {});
+  const copied = new Set();
+  while (pending.length > 0) {
+    const packageName = pending.pop();
+    if (!packageName || copied.has(packageName)) continue;
+    copied.add(packageName);
+    const dependencySource = join(source, "node_modules", packageName);
+    if (!(await pathExists(dependencySource))) {
+      throw new Error(`Plugin dependency is not installed: ${packageName}`);
+    }
+    const dependencyDestination = join(destination, "node_modules", packageName);
+    await mkdir(dirname(dependencyDestination), { recursive: true });
+    await cp(dependencySource, dependencyDestination, { recursive: true, dereference: true });
+    const dependencyManifest = JSON.parse(
+      await readFile(join(dependencySource, "package.json"), "utf8"),
+    );
+    pending.push(...Object.keys(dependencyManifest.dependencies ?? {}));
+  }
+}
+
 async function copyPlugin(pluginName, destinationRoot) {
-  const source = join(workspaceRoot, "plugins", pluginName);
-  const destination = join(destinationRoot, "plugins", pluginName);
-  for (const required of ["package.json", "cordis.patch.yml", join("lib", "index.js"), join("lib", "client.js")]) {
+  const source = pluginSource(pluginName);
+  const destination = pluginDestination(pluginName, destinationRoot);
+  const manifest = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
+  const clientExport = manifest.exports?.["./client"];
+  const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
+  const hostEntry = manifest.main ?? "lib/index.js";
+  for (const required of ["package.json", "cordis.patch.yml", hostEntry, clientEntry]) {
+    if (typeof required !== "string") throw new Error(`Plugin ${pluginName} has no client entry`);
     if (!(await pathExists(join(source, required)))) {
       throw new Error(`Plugin ${pluginName} is not built: missing ${required}`);
     }
@@ -416,6 +463,37 @@ async function copyPlugin(pluginName, destinationRoot) {
   await cp(join(source, "package.json"), join(destination, "package.json"));
   await cp(join(source, "cordis.patch.yml"), join(destination, "cordis.patch.yml"));
   await cp(join(source, "lib"), join(destination, "lib"), { recursive: true });
+  for (const optionalDirectory of ["client", "data", "src"]) {
+    if (await pathExists(join(source, optionalDirectory))) {
+      await cp(join(source, optionalDirectory), join(destination, optionalDirectory), { recursive: true });
+    }
+  }
+  for (const optional of ["LICENSE", "README.md", "README.zh.md"]) {
+    if (await pathExists(join(source, optional))) await cp(join(source, optional), join(destination, optional));
+  }
+  await copyPluginDependencies(source, destination, manifest.dependencies);
+}
+
+async function bundlePnpm(destinationRoot, platform) {
+  const require = createRequire(import.meta.url);
+  const pnpmSource = dirname(require.resolve("pnpm"));
+  const pnpmDestination = join(destinationRoot, "runtime", "pnpm");
+  const tools = join(destinationRoot, "runtime", "bin");
+  await cp(pnpmSource, pnpmDestination, { recursive: true, dereference: true });
+  await mkdir(tools, { recursive: true });
+  if (platform === "win32") {
+    await writeFile(
+      join(tools, "pnpm.cmd"),
+      '@"%~dp0..\\node\\node.exe" "%~dp0..\\pnpm\\bin\\pnpm.mjs" %*\r\n',
+    );
+    return;
+  }
+  const launcher = join(tools, "pnpm");
+  await writeFile(
+    launcher,
+    '#!/bin/sh\ntool_dir=${0%/*}\nexec "$tool_dir/../node/bin/node" "$tool_dir/../pnpm/bin/pnpm.mjs" "$@"\n',
+  );
+  await chmod(launcher, 0o755);
 }
 
 async function prepare() {
@@ -431,10 +509,7 @@ async function prepare() {
 
   for (const path of [
     join(harnessRoot, "apps", "cli", "lib", "bin.js"),
-    ...PLUGINS.flatMap((plugin) => [
-      join(workspaceRoot, "plugins", plugin, "lib", "index.js"),
-      join(workspaceRoot, "plugins", plugin, "lib", "client.js"),
-    ]),
+    ...PLUGINS.map((plugin) => join(pluginSource(plugin), "package.json")),
   ]) {
     if (!(await pathExists(path))) throw new Error(`Required build output is missing: ${path}`);
   }
@@ -451,6 +526,7 @@ async function prepare() {
   try {
     const archive = await obtainNodeArchive(descriptor);
     const nodeBinary = await extractNode(archive, join(temporaryRoot, "runtime", "node"), options.platform);
+    await bundlePnpm(temporaryRoot, options.platform);
 
     const closure = await createRuntimeWorkspace(runtimeWorkspace);
     const deployedHarness = join(temporaryRoot, "harness");

@@ -100,6 +100,7 @@ for (const required of [
   join(resources, "icon.icns"),
   join(resources, "runtime-manifest.json"),
   join(resources, "runtime", "node", "bin", "node"),
+  join(resources, "runtime", "bin", "pnpm"),
   join(resources, "harness", "apps", "cli", "lib", "bin.js"),
 ]) {
   if (!(await pathExists(required))) throw new Error(`Packaged resource is missing: ${required}`);
