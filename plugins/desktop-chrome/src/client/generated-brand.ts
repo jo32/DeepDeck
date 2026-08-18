@@ -2,6 +2,7 @@
 export const BRAND = Object.freeze({
   "id": "deepdeck",
   "name": "DeepDeck",
+  "attribution": "DeepSeek Harness Desktop",
   "tagline": "你的本地智能工作伙伴",
   "accentColor": "#635BFF",
   "accentColorSoft": "#EEEAFE",

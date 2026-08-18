@@ -1,8 +1,8 @@
-# DeepDeck Desktop
+# DeepDeck
 
-A DeepDeck-branded Electron desktop host for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, shell, and external branding layer.
+DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, plugin-composed interface, branding, packaging, and automatic-update layer.
 
-The first milestone deliberately reuses the official `web` profile and its complete plugin-composed UI. Electron starts the Harness process on an OS-assigned loopback port, waits for its readiness line, then opens that local UI in the desktop window. Closing the app shuts the Harness process down cleanly.
+DeepDeck reuses the official `web` profile and its complete plugin-composed UI. The desktop host starts the Harness process on an OS-assigned loopback port, waits for it to become ready, then opens the local UI in the application window. Closing the app shuts the Harness process down cleanly.
 
 ## First run
 
@@ -29,6 +29,8 @@ User-facing branding lives outside the upstream submodule in `branding/brand.jso
 pnpm start             # build and launch the desktop client
 pnpm check             # type-check desktop main, preload, and renderer code
 pnpm test              # run focused desktop tests
+pnpm package:local     # build and verify an unsigned local macOS package
+pnpm package:mac       # build signed production macOS packages
 pnpm harness:build     # rebuild the pinned Harness checkout
 ```
 
@@ -38,4 +40,10 @@ See [docs/architecture.md](docs/architecture.md) for the dependency boundary and
 
 Packaged builds check for an update shortly after launch. When a release is available, the desktop sidebar shows an update indicator; the user starts the download explicitly and sees native updater progress. After the download completes, the desktop safely stops its Harness process, installs the update, and restarts automatically. Development launches do not contact an update service.
 
-`electron-updater` reads the release provider generated into `app-update.yml` by the packaging pipeline. `DEEPSEEK_DESKTOP_UPDATE_URL` can override that provider with a generic HTTP(S) feed for controlled builds and update testing. The feed must publish the platform metadata plus signed artifacts and blockmaps; Windows NSIS releases must be built with `differentialPackage: true`, while macOS releases must include the ZIP update target alongside the DMG.
+`electron-updater` reads the release provider generated into `app-update.yml` by the packaging pipeline. `DEEPSEEK_DESKTOP_UPDATE_URL` can override that provider with a generic HTTP(S) feed for controlled builds and update testing. Production updates are published to `https://deepdeck-updates.getmegaportal.com`. The feed contains platform metadata, signed artifacts, and blockmaps; macOS releases include the ZIP update target alongside the DMG.
+
+See [docs/release.md](docs/release.md) for the signed release process and rollback model.
+
+## License
+
+DeepDeck is available under the [MIT License](LICENSE). The pinned DeepSeek Harness submodule and other third-party dependencies retain their own licenses.

@@ -5,6 +5,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
 import type { createLayoutStore } from './stores.ts'
 import { DesktopChrome } from './DesktopChrome.tsx'
+import { scheduleDesktopFrameReveal } from './desktop-runtime.ts'
 import css from './desktop-chrome.module.css'
 
 export interface AppFrameInjected { startSession: () => void }
@@ -87,6 +88,9 @@ export function AppFrame({ useStore, useSessions, actions, renderSlot, startSess
   })
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
+  const [layoutMotionReady, setLayoutMotionReady] = useState(false)
+
+  useEffect(() => scheduleDesktopFrameReveal(() => { setLayoutMotionReady(true) }), [])
 
   const lastSession = useRef(detailsSession)
   useLayoutEffect(() => {
@@ -150,10 +154,12 @@ export function AppFrame({ useStore, useSessions, actions, renderSlot, startSess
     <div
       ref={frameRef}
       className={css.frame}
+      data-openworkbuddy-desktop-frame
       style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px` }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-details-collapsed={cols.details === 0 || undefined}
       data-dragging={dragging || undefined}
+      data-layout-motion-ready={layoutMotionReady || undefined}
     >
       <div className={css.sidebarCol}>
         {!sidebarCollapsed && (

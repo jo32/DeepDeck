@@ -1,4 +1,5 @@
 import type { DesktopBranding } from "./branding.js";
+import type { DesktopAppearanceApi } from "./theme.js";
 import type { DesktopUpdatesApi } from "./update.js";
 
 export type HarnessRuntimeState =
@@ -16,12 +17,14 @@ export interface HarnessRuntimeStatus {
 }
 
 export interface DesktopApi {
+  appearance: DesktopAppearanceApi;
   branding: {
     get(): Promise<DesktopBranding>;
   };
   runtime: {
     get(): Promise<HarnessRuntimeStatus>;
     restart(): Promise<HarnessRuntimeStatus>;
+    readyForDisplay(): void;
     onStatus(listener: (status: HarnessRuntimeStatus) => void): () => void;
   };
   updates: DesktopUpdatesApi;

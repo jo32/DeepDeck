@@ -1,72 +1,39 @@
-import { resolve } from "node:path";
-import { app, BrowserWindow, Menu, nativeImage } from "electron";
+import { app, BrowserWindow, nativeTheme } from "electron";
 import { channels } from "../preload/channels.js";
 import type { HarnessRuntimeStatus } from "../shared/runtime.js";
 import { publicBranding, type LoadedBranding } from "./branding.js";
 import { createDesktopUpdateService } from "./auto-update.js";
-import { HarnessProcess } from "./harness/harness-process.js";
+import { HarnessProcess, resolveHarnessHome } from "./harness/harness-process.js";
 import { registerIpc } from "./ipc.js";
+import { configureNativeApplicationIdentity } from "./native-identity.js";
+import type { DesktopRuntimePaths } from "./runtime-paths.js";
+import { readThemeSource } from "./theme-preference.js";
 import { createAutomaticUpdateInstaller } from "./update-installer.js";
 import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
 
-function requiredEnvironment(name: string, fallback: string): string {
-  const value = process.env[name];
-  return value && value.trim() ? value : fallback;
-}
-
-export async function bootstrapDesktop(branding: LoadedBranding): Promise<void> {
+export async function bootstrapDesktop(
+  branding: LoadedBranding,
+  runtimePaths: DesktopRuntimePaths,
+): Promise<void> {
   if (!app.requestSingleInstanceLock()) {
     app.quit();
     return;
   }
 
   await app.whenReady();
-  Menu.setApplicationMenu(null);
-  const appIcon = nativeImage.createFromPath(branding.appIconPath);
-  if (process.platform === "darwin" && !appIcon.isEmpty()) app.dock?.setIcon(appIcon);
+  nativeTheme.themeSource = await readThemeSource(resolveHarnessHome());
+  configureNativeApplicationIdentity(branding);
 
   const harness = new HarnessProcess({
-    harnessRoot: requiredEnvironment(
-      "DEEPSEEK_HARNESS_PATH",
-      resolve(app.getAppPath(), "../../vendor/deepseek-harness"),
-    ),
-    nodeBinary: requiredEnvironment(
-      "DEEPSEEK_DESKTOP_NODE_BINARY",
-      process.env.npm_node_execpath ?? "node",
-    ),
-    workspaceRoot: requiredEnvironment("DEEPSEEK_DESKTOP_WORKSPACE", process.cwd()),
-    patchPath: requiredEnvironment(
-      "OPENWORKBUDDY_HARNESS_PATCH",
-      resolve(app.getAppPath(), "../../plugins/desktop-chrome/cordis.patch.yml"),
-    ),
-    plugins: [
-      {
-        packageName: "@openworkbuddy/dsh-client-ui-desktop-chrome",
-        path: requiredEnvironment(
-          "OPENWORKBUDDY_DESKTOP_CHROME_PLUGIN",
-          resolve(app.getAppPath(), "../../plugins/desktop-chrome"),
-        ),
-      },
-      {
-        packageName: "@openworkbuddy/dsh-client-ui-home-hero",
-        path: requiredEnvironment(
-          "OPENWORKBUDDY_HOME_HERO_PLUGIN",
-          resolve(app.getAppPath(), "../../plugins/home-hero"),
-        ),
-      },
-      {
-        packageName: "@openworkbuddy/dsh-client-ui-agent-preset-sections",
-        path: requiredEnvironment(
-          "OPENWORKBUDDY_AGENT_PRESET_PLUGIN",
-          resolve(app.getAppPath(), "../../plugins/agent-preset-sections"),
-        ),
-      },
-    ],
+    harnessRoot: runtimePaths.harnessRoot,
+    nodeBinary: runtimePaths.nodeBinary,
+    workspaceRoot: runtimePaths.workspaceRoot,
+    patchPath: runtimePaths.patchPath,
+    plugins: runtimePaths.plugins,
     displayName: branding.name,
   });
   const updates = createDesktopUpdateService();
   let desktopWindow: DesktopWindow | undefined;
-  let showingSplash = true;
   let removeIpc = (): void => {};
   let removeStatusListener = (): void => {};
   let removeUpdateListener = (): void => {};
@@ -92,31 +59,27 @@ export async function bootstrapDesktop(branding: LoadedBranding): Promise<void> 
 
   const installUpdate = createAutomaticUpdateInstaller(updates, prepareToQuit);
 
-  removeIpc = registerIpc(harness, publicBranding(branding), updates);
+  removeIpc = registerIpc(harness, publicBranding(branding), updates, {
+    onHarnessClientReady: (senderId) => {
+      desktopWindow?.markHarnessClientReady(senderId);
+    },
+  });
 
   const showStatus = async (status: HarnessRuntimeStatus): Promise<void> => {
     const current = desktopWindow;
     if (!current || current.window.isDestroyed()) return;
-    current.window.webContents.send(channels.runtimeStatus, status);
+    current.send(channels.runtimeStatus, status);
     if (status.state === "ready" && status.url) {
-      current.allowHarnessOrigin(new URL(status.url).origin);
-      showingSplash = false;
-      if (!current.window.webContents.getURL().startsWith(status.url)) {
-        await current.window.loadURL(status.url);
-      }
-    } else if (status.state === "error" && !showingSplash) {
-      current.allowHarnessOrigin(undefined);
-      showingSplash = true;
-      await current.loadSplash();
-      current.window.webContents.send(channels.runtimeStatus, status);
+      await current.loadHarness(status.url);
+    } else {
+      current.showSplash();
     }
   };
 
   const createWindow = async (): Promise<void> => {
     desktopWindow = await createMainWindow(branding);
-    showingSplash = true;
     await showStatus(harness.getStatus());
-    desktopWindow.window.webContents.send(channels.updatesStatus, updates.getStatus());
+    desktopWindow.send(channels.updatesStatus, updates.getStatus());
   };
 
   await createWindow();
@@ -126,9 +89,9 @@ export async function bootstrapDesktop(branding: LoadedBranding): Promise<void> 
     });
   });
   removeUpdateListener = updates.onStatus((status) => {
-    const window = desktopWindow?.window;
-    if (window && !window.isDestroyed()) {
-      window.webContents.send(channels.updatesStatus, status);
+    const current = desktopWindow;
+    if (current && !current.window.isDestroyed()) {
+      current.send(channels.updatesStatus, status);
     }
     void installUpdate(status).catch((error: unknown) => {
       console.error("Unable to restart into the downloaded update", error);

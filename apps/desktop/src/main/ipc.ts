@@ -1,14 +1,29 @@
-import { ipcMain } from "electron";
+import { ipcMain, nativeTheme, type IpcMainEvent } from "electron";
 import { channels } from "../preload/channels.js";
 import type { DesktopBranding } from "../shared/branding.js";
+import { isDesktopThemeSource } from "../shared/theme.js";
 import type { HarnessProcess } from "./harness/harness-process.js";
 import type { DesktopUpdateService } from "./update-service.js";
+
+export interface DesktopIpcHooks {
+  onHarnessClientReady(senderId: number): void;
+}
 
 export function registerIpc(
   harness: HarnessProcess,
   branding: DesktopBranding,
   updates: DesktopUpdateService,
+  hooks: DesktopIpcHooks,
 ): () => void {
+  const onHarnessClientReady = (event: IpcMainEvent): void => {
+    hooks.onHarnessClientReady(event.sender.id);
+  };
+
+  ipcMain.on(channels.runtimeClientReady, onHarnessClientReady);
+  ipcMain.handle(channels.appearanceSetThemeSource, (_event, source: unknown) => {
+    if (!isDesktopThemeSource(source)) throw new TypeError("Invalid desktop theme source");
+    nativeTheme.themeSource = source;
+  });
   ipcMain.handle(channels.brandingGet, () => branding);
   ipcMain.handle(channels.runtimeGet, () => harness.getStatus());
   ipcMain.handle(channels.runtimeRestart, async () => {
@@ -22,6 +37,8 @@ export function registerIpc(
   ipcMain.handle(channels.updatesGet, () => updates.getStatus());
   ipcMain.handle(channels.updatesDownload, () => updates.download());
   return () => {
+    ipcMain.removeListener(channels.runtimeClientReady, onHarnessClientReady);
+    ipcMain.removeHandler(channels.appearanceSetThemeSource);
     ipcMain.removeHandler(channels.brandingGet);
     ipcMain.removeHandler(channels.runtimeGet);
     ipcMain.removeHandler(channels.runtimeRestart);

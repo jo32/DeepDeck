@@ -2,6 +2,19 @@ import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 
 const DARK_ATTRIBUTE = 'data-ds-dark-theme'
 
+type DesktopThemeSource = 'light' | 'dark' | 'system'
+
+interface DesktopAppearanceBridge {
+  setThemeSource(source: DesktopThemeSource): Promise<void>
+}
+
+function desktopAppearanceBridge(): DesktopAppearanceBridge | undefined {
+  const desktopGlobal = globalThis as typeof globalThis & {
+    deepseekDesktop?: { appearance?: DesktopAppearanceBridge }
+  }
+  return desktopGlobal.deepseekDesktop?.appearance
+}
+
 /** Projects the Harness theme service onto the document. */
 export class ThemePresenter {
   private appliedTokens: string[] = []
@@ -25,6 +38,11 @@ export class ThemePresenter {
     }
     this.meta.content = getComputedStyle(document.body).backgroundColor
     if (!this.meta.isConnected) document.head.append(this.meta)
+
+    const nativeSource = snapshot.preference === 'system' ? 'system' : scheme
+    void desktopAppearanceBridge()?.setThemeSource(nativeSource).catch(() => {
+      // The same plugin also runs in ordinary browsers where no desktop host exists.
+    })
   }
 
   dispose(): void {

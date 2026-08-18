@@ -1,0 +1,253 @@
+name: Release DeepDeck
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v-prefixed SemVer tag to release
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production-release
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      version: ${{ steps.release.outputs.version }}
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      UPDATE_BASE_URL: ${{ secrets.UPDATE_BASE_URL }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          package-manager-cache: false
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+
+      - name: Install release tooling
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate tag and production configuration
+        id: release
+        run: >-
+          node scripts/verify-release-config.mjs
+          --tag "$RELEASE_TAG"
+          --base-url "$UPDATE_BASE_URL"
+          --github-output "$GITHUB_OUTPUT"
+
+  build-macos:
+    needs: validate
+    name: Build macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    environment: production-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x64
+            runner: macos-15-intel
+    env:
+      CI: "true"
+      RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
+      UPDATE_BASE_URL: ${{ secrets.UPDATE_BASE_URL }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+    steps:
+      - name: Checkout release tag with Harness submodule
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          package-manager-cache: false
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+
+      - name: Require production signing and notarization credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${CSC_LINK:?CSC_LINK is required}"
+          : "${CSC_KEY_PASSWORD:?CSC_KEY_PASSWORD is required}"
+          : "${APPLE_API_KEY_CONTENT:?APPLE_API_KEY is required}"
+          : "${APPLE_API_KEY_ID:?APPLE_API_KEY_ID is required}"
+          : "${APPLE_API_ISSUER:?APPLE_API_ISSUER is required}"
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          umask 077
+          printf '%s' "$APPLE_API_KEY_CONTENT" > "$key_path"
+          echo "APPLE_API_KEY=$key_path" >> "$GITHUB_ENV"
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install and build Harness
+        run: |
+          pnpm harness:install
+          pnpm harness:build
+
+      - name: Check and test
+        run: |
+          pnpm check
+          pnpm test
+
+      - name: Build signed and notarized packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          export UPDATE_FEED_URL="${UPDATE_BASE_URL%/}/stable/darwin/${{ matrix.arch }}"
+          pnpm package:mac
+
+      - name: Verify Apple signatures and notarization ticket
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="release/mac-${{ matrix.arch }}/DeepDeck.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+
+      - name: Upload signed release outputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-mac-${{ matrix.arch }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.blockmap
+            release/latest-mac.yml
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    needs:
+      - validate
+      - build-macos
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production-release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
+      GH_TOKEN: ${{ github.token }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      UPDATE_BASE_URL: ${{ secrets.UPDATE_BASE_URL }}
+    steps:
+      - name: Checkout release tooling
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          package-manager-cache: false
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+
+      - name: Install release tooling
+        run: pnpm install --frozen-lockfile
+
+      - name: Download signed architecture outputs
+        uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-mac-*
+          path: ${{ runner.temp }}/deepdeck-builds
+          merge-multiple: false
+
+      - name: Assemble and cryptographically validate release assets
+        run: >-
+          node scripts/prepare-release-assets.mjs
+          --input "${{ runner.temp }}/deepdeck-builds"
+          --output "${{ runner.temp }}/deepdeck-release"
+
+      - name: Validate both R2 publication phases locally
+        run: |
+          node scripts/publish-r2.mjs --manifest "${{ runner.temp }}/deepdeck-release/release-manifest.json" --phase immutable --dry-run
+          node scripts/publish-r2.mjs --manifest "${{ runner.temp }}/deepdeck-release/release-manifest.json" --phase latest --dry-run
+          aws --version
+
+      - name: Create or resume draft GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            is_draft="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"
+            test "$is_draft" = "true"
+          else
+            gh release create "$RELEASE_TAG" --draft --verify-tag --generate-notes --title "DeepDeck $RELEASE_TAG"
+          fi
+
+      - name: Attest release assets
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ runner.temp }}/deepdeck-release/github/*
+
+      - name: Upload immutable GitHub Release assets
+        shell: bash
+        run: gh release upload "$RELEASE_TAG" "${{ runner.temp }}/deepdeck-release/github/"*
+
+      - name: Upload and verify immutable R2 assets
+        run: >-
+          node scripts/publish-r2.mjs
+          --manifest "${{ runner.temp }}/deepdeck-release/release-manifest.json"
+          --phase immutable
+
+      - name: Publish and verify R2 latest metadata
+        run: >-
+          node scripts/publish-r2.mjs
+          --manifest "${{ runner.temp }}/deepdeck-release/release-manifest.json"
+          --phase latest
+
+      - name: Publish GitHub Release
+        run: gh release edit "$RELEASE_TAG" --draft=false

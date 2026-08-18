@@ -4,6 +4,8 @@ node_modules/
 dist/
 plugins/*/lib/
 *.log
+.deepdeck/
+release/
 
 # Local environment and credentials
 .env
