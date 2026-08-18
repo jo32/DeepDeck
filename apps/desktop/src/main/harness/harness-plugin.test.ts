@@ -21,21 +21,21 @@ describe("Harness plugin resolution", () => {
   it("places scoped packages where the web profile and browser scanner resolve them", () => {
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",
-      "@openworkbuddy/dsh-client-ui-agent-preset-sections",
+      "@deepdeck/dsh-client-ui-agent-preset-sections",
     )).toBe(
-      "/tmp/dsh-home/profiles/web/node_modules/@openworkbuddy/dsh-client-ui-agent-preset-sections",
+      "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-client-ui-agent-preset-sections",
     );
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",
-      "@openworkbuddy/dsh-client-ui-desktop-chrome",
+      "@deepdeck/dsh-client-ui-desktop-chrome",
     )).toBe(
-      "/tmp/dsh-home/profiles/web/node_modules/@openworkbuddy/dsh-client-ui-desktop-chrome",
+      "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-client-ui-desktop-chrome",
     );
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",
-      "@openworkbuddy/dsh-client-ui-home-hero",
+      "@deepdeck/dsh-client-ui-home-hero",
     )).toBe(
-      "/tmp/dsh-home/profiles/web/node_modules/@openworkbuddy/dsh-client-ui-home-hero",
+      "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-client-ui-home-hero",
     );
   });
 
@@ -52,7 +52,7 @@ describe("Harness plugin resolution", () => {
     const dshHome = join(root, "dsh-home");
     const link = resolveHarnessPluginLink(
       dshHome,
-      "@openworkbuddy/dsh-client-ui-desktop-chrome",
+      "@deepdeck/dsh-client-ui-desktop-chrome",
     );
     mkdirSync(oldPlugin, { recursive: true });
     mkdirSync(newPlugin, { recursive: true });

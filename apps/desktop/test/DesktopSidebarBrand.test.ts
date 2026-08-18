@@ -20,12 +20,12 @@ const brand = JSON.parse(readFileSync(
 
 describe("DesktopSidebar brand", () => {
   it("keeps the fixed-color mark beside a theme-colored brand name", () => {
-    expect(sidebar).toContain("data-openworkbuddy-brand-mark");
+    expect(sidebar).toContain("data-deepdeck-brand-mark");
     expect(sidebar).toContain("src={BRAND.markDataUrl}");
     expect(sidebar).not.toContain("maskImage:");
-    expect(sidebar).toContain("data-openworkbuddy-brand-name");
+    expect(sidebar).toContain("data-deepdeck-brand-name");
     expect(sidebar).toContain("{BRAND.name}");
-    expect(sidebar).toContain("data-openworkbuddy-brand-attribution");
+    expect(sidebar).toContain("data-deepdeck-brand-attribution");
     expect(sidebar).toContain("{BRAND.attribution}");
     expect(sidebar).not.toContain("BRAND.wordmarkDataUrl");
 

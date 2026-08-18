@@ -1,5 +1,5 @@
 /** Companion name exposed for Harness package discovery. */
-export const name = 'openworkbuddy-agent-preset-sections-invariant'
+export const name = 'deepdeck-agent-preset-sections-invariant'
 
 /** The presentation-only companion owns no host services. */
 export const inject: readonly string[] = []

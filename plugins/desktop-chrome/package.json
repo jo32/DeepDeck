@@ -1,5 +1,5 @@
 {
-  "name": "@openworkbuddy/dsh-client-ui-desktop-chrome",
+  "name": "@deepdeck/dsh-client-ui-desktop-chrome",
   "version": "0.1.0",
   "private": true,
   "type": "module",

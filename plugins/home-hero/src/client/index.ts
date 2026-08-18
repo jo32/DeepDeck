@@ -23,11 +23,11 @@ export const inject = ['slots', 'locale']
 
 /** Install the blank-session character through the declared input dock slot. */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'openworkbuddy home hero: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'deepdeck home hero: dictionaries')
 
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',
-    id: 'openworkbuddy-home-hero',
+    id: 'deepdeck-home-hero',
     order: -1000,
     locale: NS,
   }, HomeHeroArtwork))

@@ -31,7 +31,7 @@ describe("HomeHeroArtwork", () => {
       t,
     }));
 
-    expect(html).toContain("data-openworkbuddy-home-hero")
+    expect(html).toContain("data-deepdeck-home-hero")
     expect(html).toContain('data-character="alien"')
     expect(html).toContain('data-expression="auto"')
     expect(html).not.toContain('data-renderer="baked-svg"')

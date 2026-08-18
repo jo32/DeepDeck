@@ -10,11 +10,11 @@
   disabled: true
 
 - insert:
-    - id: openworkbuddy-desktop-chrome
-      name: '@openworkbuddy/dsh-client-ui-desktop-chrome'
+    - id: deepdeck-desktop-chrome
+      name: '@deepdeck/dsh-client-ui-desktop-chrome'
 
-    - id: openworkbuddy-home-hero
-      name: '@openworkbuddy/dsh-client-ui-home-hero'
+    - id: deepdeck-home-hero
+      name: '@deepdeck/dsh-client-ui-home-hero'
 
-    - id: openworkbuddy-agent-preset-sections
-      name: '@openworkbuddy/dsh-client-ui-agent-preset-sections'
+    - id: deepdeck-agent-preset-sections
+      name: '@deepdeck/dsh-client-ui-agent-preset-sections'

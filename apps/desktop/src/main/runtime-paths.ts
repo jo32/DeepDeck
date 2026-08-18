@@ -53,15 +53,15 @@ export function resolveDesktopRuntimePaths(
       patchPath: join(options.resourcesPath, "cordis.patch.yml"),
       plugins: [
         {
-          packageName: "@openworkbuddy/dsh-client-ui-desktop-chrome",
+          packageName: "@deepdeck/dsh-client-ui-desktop-chrome",
           path: join(options.resourcesPath, "plugins", "desktop-chrome"),
         },
         {
-          packageName: "@openworkbuddy/dsh-client-ui-home-hero",
+          packageName: "@deepdeck/dsh-client-ui-home-hero",
           path: join(options.resourcesPath, "plugins", "home-hero"),
         },
         {
-          packageName: "@openworkbuddy/dsh-client-ui-agent-preset-sections",
+          packageName: "@deepdeck/dsh-client-ui-agent-preset-sections",
           path: join(options.resourcesPath, "plugins", "agent-preset-sections"),
         },
       ],
@@ -88,31 +88,31 @@ export function resolveDesktopRuntimePaths(
     ),
     patchPath: environmentValue(
       environment,
-      "OPENWORKBUDDY_HARNESS_PATCH",
+      "DEEPDECK_HARNESS_PATCH",
       join(workspaceRepository, "plugins", "desktop-chrome", "cordis.patch.yml"),
     ),
     plugins: [
       {
-        packageName: "@openworkbuddy/dsh-client-ui-desktop-chrome",
+        packageName: "@deepdeck/dsh-client-ui-desktop-chrome",
         path: environmentValue(
           environment,
-          "OPENWORKBUDDY_DESKTOP_CHROME_PLUGIN",
+          "DEEPDECK_DESKTOP_CHROME_PLUGIN",
           join(workspaceRepository, "plugins", "desktop-chrome"),
         ),
       },
       {
-        packageName: "@openworkbuddy/dsh-client-ui-home-hero",
+        packageName: "@deepdeck/dsh-client-ui-home-hero",
         path: environmentValue(
           environment,
-          "OPENWORKBUDDY_HOME_HERO_PLUGIN",
+          "DEEPDECK_HOME_HERO_PLUGIN",
           join(workspaceRepository, "plugins", "home-hero"),
         ),
       },
       {
-        packageName: "@openworkbuddy/dsh-client-ui-agent-preset-sections",
+        packageName: "@deepdeck/dsh-client-ui-agent-preset-sections",
         path: environmentValue(
           environment,
-          "OPENWORKBUDDY_AGENT_PRESET_PLUGIN",
+          "DEEPDECK_AGENT_PRESET_PLUGIN",
           join(workspaceRepository, "plugins", "agent-preset-sections"),
         ),
       },
