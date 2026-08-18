@@ -12,11 +12,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 const NS = 'homeHero'
 
 const zh: Record<HomeHeroKey, string> = {
-  characterLabel: '黑色圆球角色，眼睛会跟随鼠标，拖动角色可旋转',
+  characterLabel: 'Alien Orb 外星人圆球角色，眼睛会跟随鼠标，拖动角色可旋转',
 }
 
 const en: Record<HomeHeroKey, string> = {
-  characterLabel: 'Black orb character; eyes follow the pointer and the character can be dragged to rotate',
+  characterLabel: 'Alien Orb character; eyes follow the pointer and the character can be dragged to rotate',
 }
 
 export const inject = ['slots', 'locale']

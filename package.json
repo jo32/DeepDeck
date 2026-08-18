@@ -1,9 +1,10 @@
 {
-  "name": "deepseek-harness-desktop-workspace",
+  "name": "deepdeck",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "A desktop host for DeepSeek Harness",
+  "description": "DeepDeck desktop client built on DeepSeek Harness",
+  "author": "jo32",
   "license": "MIT",
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -16,6 +17,12 @@
     "build": "pnpm --filter @openworkbuddy/dsh-client-ui-desktop-chrome run build && pnpm --filter @openworkbuddy/dsh-client-ui-home-hero run build && pnpm --filter @openworkbuddy/dsh-client-ui-agent-preset-sections run build && pnpm --filter @deepseek-harness/desktop run build",
     "check": "pnpm --filter @openworkbuddy/dsh-client-ui-desktop-chrome run check && pnpm --filter @openworkbuddy/dsh-client-ui-home-hero run check && pnpm --filter @openworkbuddy/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check",
     "test": "pnpm --filter @deepseek-harness/desktop run test",
-    "start": "pnpm build && node scripts/run-desktop.mjs"
+    "runtime:prepare": "node scripts/prepare-runtime.mjs",
+    "runtime:verify": "node scripts/verify-runtime.mjs",
+    "package:local": "pnpm build && pnpm runtime:prepare && node scripts/build-desktop-package.mjs --local && node scripts/verify-desktop-package.mjs --local",
+    "package:mac": "pnpm build && pnpm runtime:prepare && node scripts/build-desktop-package.mjs --mac && node scripts/verify-desktop-package.mjs --production",
+    "package:verify": "node scripts/verify-desktop-package.mjs --local",
+    "start": "pnpm package:local && node scripts/run-packaged-desktop.mjs",
+    "start:raw": "pnpm build && node scripts/run-desktop.mjs"
   }
 }

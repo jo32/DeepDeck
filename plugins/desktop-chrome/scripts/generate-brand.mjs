@@ -38,6 +38,7 @@ const dataUrl = (field) => {
 const brand = {
   id: required('id'),
   name: required('name'),
+  attribution: required('attribution'),
   tagline: required('tagline'),
   accentColor: required('accentColor'),
   accentColorSoft: required('accentColorSoft'),

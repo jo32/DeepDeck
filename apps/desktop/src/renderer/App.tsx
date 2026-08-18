@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useEffect, useState, type CSSProperties } from "react";
 import type { DesktopBranding } from "../shared/branding.js";
 import type { HarnessRuntimeStatus } from "../shared/runtime.js";
@@ -16,10 +17,14 @@ const initialStatus: HarnessRuntimeStatus = {
   message: "正在连接 DeepDeck…",
 };
 
+export const CONNECTION_STATUS_DELAY_MS = 3_000;
+
 export function App(): React.JSX.Element {
   const [branding, setBranding] = useState(initialBranding);
   const [status, setStatus] = useState(initialStatus);
   const [restarting, setRestarting] = useState(false);
+  const [showConnectionStatus, setShowConnectionStatus] = useState(false);
+  const hasError = status.state === "error";
 
   useEffect(() => {
     let active = true;
@@ -38,6 +43,18 @@ export function App(): React.JSX.Element {
     };
   }, []);
 
+  useEffect(() => {
+    if (hasError) {
+      setShowConnectionStatus(false);
+      return;
+    }
+    setShowConnectionStatus(false);
+    const timer = window.setTimeout(() => {
+      setShowConnectionStatus(true);
+    }, CONNECTION_STATUS_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [hasError]);
+
   const restart = async (): Promise<void> => {
     setRestarting(true);
     try {
@@ -52,26 +69,109 @@ export function App(): React.JSX.Element {
     "--brand-accent-soft": branding.accentColorSoft,
   } as CSSProperties;
 
+  const connectionState = status.state === "ready" ? "starting" : status.state;
+  const connectionMessage = status.state === "ready"
+    ? `正在打开 ${branding.name}…`
+    : status.message;
+
   return (
-    <main className="shell" style={style}>
-      <section className="card" aria-live="polite">
-        <div className="mark" aria-hidden="true">
-          {branding.markDataUrl ? <img src={branding.markDataUrl} alt="" /> : null}
+    <main className="shell" style={style} data-desktop-splash>
+      <aside className="skeleton-sidebar" aria-hidden="true" data-splash-sidebar>
+        <div className="sidebar-brand">
+          <span className="sidebar-brand-mark">
+            {branding.markDataUrl ? (
+              <img src={branding.markDataUrl} alt="" />
+            ) : (
+              <span className="sidebar-brand-fallback" />
+            )}
+          </span>
+          <span className="sidebar-brand-name">{branding.name}</span>
         </div>
-        <p className="eyebrow">LOCAL AI WORKSPACE</p>
-        <h1>{branding.name}</h1>
-        <p className="tagline">{branding.tagline}</p>
-        <div className={`status status-${status.state}`}>
-          <span className="status-dot" />
-          <span>{status.message}</span>
+        <span className="skeleton-block sidebar-primary" />
+        <div className="sidebar-section">
+          <span className="skeleton-block sidebar-caption" />
+          <span className="skeleton-block sidebar-row sidebar-row-wide" />
+          <span className="skeleton-block sidebar-row" />
+          <span className="skeleton-block sidebar-row sidebar-row-short" />
         </div>
-        {status.details ? <pre className="details">{status.details}</pre> : null}
-        {status.state === "error" ? (
-          <button type="button" disabled={restarting} onClick={() => void restart()}>
-            {restarting ? "正在重试…" : "重新启动"}
-          </button>
-        ) : null}
-        <p className="hint">本地智能服务就绪后会自动打开工作区。</p>
+        <div className="sidebar-footer">
+          <span className="skeleton-block sidebar-footer-row" />
+          <span className="skeleton-block sidebar-footer-row" />
+        </div>
+      </aside>
+
+      <section className="workspace-shell">
+        <header className="workspace-header">
+          <div className="header-skeleton" aria-hidden="true">
+            <span className="skeleton-block header-icon" />
+            <span className="skeleton-block header-title" />
+          </div>
+          {showConnectionStatus ? (
+            <div
+              className={`status status-${connectionState}`}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="status-dot" />
+              <span>{connectionMessage}</span>
+            </div>
+          ) : null}
+        </header>
+
+        {hasError ? (
+          <div className="error-state" data-splash-error>
+            <span className="error-symbol" aria-hidden="true">!</span>
+            <h1>无法打开工作区</h1>
+            <p className="error-message">{status.message}</p>
+            {status.details ? <pre className="details">{status.details}</pre> : null}
+            <button
+              className="retry-button"
+              type="button"
+              disabled={restarting}
+              onClick={() => void restart()}
+            >
+              {restarting ? "正在重试…" : "重新启动"}
+            </button>
+            <p className="hint">重试后，工作区会在本地服务就绪时自动打开。</p>
+          </div>
+        ) : (
+          <div className="skeleton-stage" aria-hidden="true" data-splash-skeleton>
+            <div className="conversation-skeleton">
+              <div className="message-skeleton message-user">
+                <div className="message-lines message-lines-user">
+                  <span className="skeleton-block line line-medium" />
+                  <span className="skeleton-block line line-short" />
+                </div>
+              </div>
+              <div className="message-skeleton message-assistant">
+                <span className="skeleton-block message-avatar" />
+                <div className="message-lines">
+                  <span className="skeleton-block line line-wide" />
+                  <span className="skeleton-block line" />
+                  <span className="skeleton-block line line-medium" />
+                </div>
+              </div>
+              <div className="message-skeleton message-assistant message-assistant-last">
+                <span className="skeleton-block message-avatar" />
+                <div className="message-lines">
+                  <span className="skeleton-block line line-wide" />
+                  <span className="skeleton-block line line-short" />
+                </div>
+              </div>
+            </div>
+
+            <div className="composer-skeleton" data-splash-composer>
+              <span className="skeleton-block composer-placeholder" />
+              <div className="composer-actions">
+                <div className="composer-actions-left">
+                  <span className="skeleton-block composer-circle" />
+                  <span className="skeleton-block composer-pill" />
+                </div>
+                <span className="skeleton-block composer-send" />
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

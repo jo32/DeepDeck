@@ -33,6 +33,44 @@ export interface HarnessProcessOptions {
   displayName: string;
 }
 
+export interface OwnedPluginLink {
+  pluginRoot: string;
+  previousTarget?: string;
+}
+
+export function ensureHarnessPluginLink(link: string, pluginRoot: string): OwnedPluginLink | undefined {
+  let stat;
+  try {
+    stat = lstatSync(link);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (stat) {
+    if (!stat.isSymbolicLink()) {
+      throw new Error(`插件解析路径已被占用：${link}`);
+    }
+    const previousTarget = readlinkSync(link);
+    const target = resolve(dirname(link), previousTarget);
+    if (target === pluginRoot) return undefined;
+    unlinkSync(link);
+    symlinkSync(pluginRoot, link, "junction");
+    return { pluginRoot, previousTarget };
+  }
+
+  symlinkSync(pluginRoot, link, "junction");
+  return { pluginRoot };
+}
+
+export function restoreHarnessPluginLink(link: string, ownership: OwnedPluginLink): void {
+  if (!lstatSync(link).isSymbolicLink()) return;
+  const currentTarget = resolve(dirname(link), readlinkSync(link));
+  if (currentTarget !== ownership.pluginRoot) return;
+  unlinkSync(link);
+  if (ownership.previousTarget) {
+    symlinkSync(ownership.previousTarget, link, "junction");
+  }
+}
+
 export function resolveHarnessHome(environment: NodeJS.ProcessEnv = process.env): string {
   const configured = environment.DSH_HOME?.trim();
   if (!configured) return join(homedir(), ".dsh");
@@ -59,7 +97,7 @@ export class HarnessProcess {
   private child: ChildProcess | undefined;
   private startPromise: Promise<string> | undefined;
   private intentionalStop = false;
-  private readonly ownedPluginLinks = new Map<string, string>();
+  private readonly ownedPluginLinks = new Map<string, OwnedPluginLink>();
   private readonly listeners = new Set<StatusListener>();
   private readonly logs: string[] = [];
   private status: HarnessRuntimeStatus;
@@ -270,25 +308,8 @@ export class HarnessProcess {
 
         const link = resolveHarnessPluginLink(dshHome, plugin.packageName);
         mkdirSync(dirname(link), { recursive: true });
-        let stat;
-        try {
-          stat = lstatSync(link);
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-        }
-        if (stat) {
-          if (!stat.isSymbolicLink()) {
-            throw new Error(`插件解析路径已被占用：${link}`);
-          }
-          const target = resolve(dirname(link), readlinkSync(link));
-          if (target !== pluginRoot) {
-            throw new Error(`插件解析路径指向了其他位置：${link}`);
-          }
-          continue;
-        }
-
-        symlinkSync(pluginRoot, link, "junction");
-        this.ownedPluginLinks.set(link, pluginRoot);
+        const ownership = ensureHarnessPluginLink(link, pluginRoot);
+        if (ownership) this.ownedPluginLinks.set(link, ownership);
       }
     } catch (error) {
       this.cleanupPluginLinks();
@@ -299,11 +320,9 @@ export class HarnessProcess {
   private cleanupPluginLinks(): void {
     const owned = [...this.ownedPluginLinks];
     this.ownedPluginLinks.clear();
-    for (const [link, pluginRoot] of owned) {
+    for (const [link, ownership] of owned) {
       try {
-        if (!lstatSync(link).isSymbolicLink()) continue;
-        const currentTarget = resolve(dirname(link), readlinkSync(link));
-        if (currentTarget === pluginRoot) unlinkSync(link);
+        restoreHarnessPluginLink(link, ownership);
       } catch (error) {
         const code = error instanceof Error && "code" in error ? error.code : undefined;
         if (code !== "ENOENT") {

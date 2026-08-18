@@ -18,6 +18,10 @@
       "types": "./lib/types/invariant.d.ts",
       "default": "./lib/invariant.js"
     },
+    "./icon": {
+      "types": "./lib/types/icon.d.ts",
+      "default": "./lib/icon.js"
+    },
     "./package.json": "./package.json"
   },
   "dsh": {
@@ -48,6 +52,7 @@
     "lib/client.js",
     "lib/client.js.map",
     "lib/invariant.js",
+    "lib/icon.js",
     "lib/types/**/*.d.ts",
     "cordis.patch.yml"
   ]

@@ -1,0 +1,12 @@
+extends: ./electron-builder.yml
+forceCodeSigning: false
+
+mac:
+  identity: null
+  hardenedRuntime: false
+  notarize: false
+
+publish:
+  provider: generic
+  url: ${env.UPDATE_FEED_URL}
+  useMultipleRangeRequest: false

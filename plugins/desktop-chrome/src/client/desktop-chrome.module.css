@@ -5,13 +5,16 @@
   height: 100%;
   overflow: hidden;
   background: var(--dsw-alias-bg-base);
+}
+
+.frame[data-layout-motion-ready] {
   transition: grid-template-columns var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
 .frame[data-dragging] { transition: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .frame, .handle { transition: none; }
+  .frame[data-layout-motion-ready] { transition: none; }
 }
 
 .sidebarCol {
@@ -53,23 +56,27 @@
 }
 
 .sidebarBrand {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-rows: 24px 14px;
   min-width: 0;
   padding: 0;
   align-items: center;
-  gap: 7px;
+  column-gap: 7px;
   overflow: hidden;
   border: 0;
   background: transparent;
   color: var(--dsw-alias-label-primary);
   cursor: pointer;
+  text-align: left;
 }
 
 .sidebarBrandMark {
+  grid-column: 1;
+  grid-row: 1;
   display: block;
   width: 24px;
   height: 24px;
-  flex: 0 0 24px;
   object-fit: contain;
 }
 
@@ -78,11 +85,26 @@
 }
 
 .sidebarBrandName {
+  grid-column: 2;
+  grid-row: 1;
   overflow: hidden;
   font-size: 16px;
   line-height: 24px;
   font-weight: 720;
   letter-spacing: -0.55px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarBrandAttribution {
+  grid-column: 2;
+  grid-row: 2;
+  overflow: hidden;
+  color: var(--dsw-alias-label-caption);
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -560,10 +582,17 @@
   margin-left: -4px;
   cursor: col-resize;
   touch-action: none;
+}
+
+.frame[data-layout-motion-ready] .handle {
   transition: left var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
 .frame[data-dragging] .handle { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .frame[data-layout-motion-ready] .handle { transition: none; }
+}
 
 .handle[data-side='details']::after {
   content: '';

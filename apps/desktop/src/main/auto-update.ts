@@ -1,6 +1,7 @@
 import { app } from "electron";
 import electronUpdater from "electron-updater";
 import { DesktopUpdateService, type UpdateDriver } from "./update-service.js";
+import { shouldEnableDesktopUpdates } from "./update-policy.js";
 
 const { autoUpdater } = electronUpdater;
 
@@ -13,6 +14,6 @@ export function createDesktopUpdateService(): DesktopUpdateService {
 
   return new DesktopUpdateService(autoUpdater as unknown as UpdateDriver, {
     currentVersion: app.getVersion(),
-    enabled: app.isPackaged,
+    enabled: shouldEnableDesktopUpdates(app.isPackaged),
   });
 }

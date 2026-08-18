@@ -8,7 +8,7 @@ The desktop follows the same broad split as DeepDeck: an Electron main process o
 Electron main process
   ├─ BrowserWindow + sandboxed preload
   └─ HarnessProcess
-       └─ system Node → pinned apps/cli/lib/bin.js → `dsh web --port 0`
+       └─ resolved Node → pinned apps/cli/lib/bin.js → `dsh web --port 0`
             ├─ dsh-base bundle
             ├─ dsh-web-app bundle
             ├─ user/profile cordis.patch.yml layers
@@ -17,7 +17,7 @@ Electron main process
 
 The desktop waits for the upstream readiness line (`dsh web: http://127.0.0.1:<port>`) before navigating. This preserves Harness's own definition of readiness: the Cordis loader has settled, the API route exists, and the frontend bundle is available. The service binds only to loopback and receives an OS-assigned port.
 
-The Harness process runs in the directory from which the desktop is launched, so the outer project is the initial filesystem context rather than the vendored Harness checkout. The Node executable is captured by the launcher instead of reusing Electron's embedded Node runtime; this keeps Harness's declared Node engine independent of Electron.
+The Harness process runs in the selected workspace rather than the Harness checkout. Development captures the launcher's Node executable. A packaged app uses the pinned Node 24 runtime under `process.resourcesPath`; it never reuses Electron's embedded Node runtime. This keeps Harness's declared Node engine independent of Electron and removes any production dependency on a system Node or pnpm installation.
 
 ## Why the official Web UI is reused
 
@@ -35,6 +35,25 @@ Until such a capability exists, the desktop launches the standard `web` profile 
 
 ## Packaging boundary
 
-Development runs the built CLI from the submodule with the host machine's Node executable. A distributable application will need to bundle a compatible Node runtime plus the built/published Harness artifact and declare that runtime as an Electron resource. That packaging step does not require changing the process protocol or the plugin composition described above.
+Development runs the built CLI from the submodule with the host machine's Node executable and workspace plugin outputs. Production packaging creates a self-contained, relocatable resource tree before electron-builder runs:
+
+```text
+DeepDeck.app/Contents/Resources/
+  ├─ runtime/node/                 # pinned official Node 24 distribution
+  ├─ harness/apps/cli/             # built dsh launcher
+  ├─ harness/node_modules/         # materialized production dependency closure
+  ├─ plugins/{desktop-chrome,home-hero,agent-preset-sections}/
+  ├─ branding/
+  ├─ cordis.patch.yml
+  └─ runtime-manifest.json
+```
+
+`runtime-paths.ts` is the single development/production resolver. When `app.isPackaged` is true, program resources resolve only below `process.resourcesPath`; development-only path overrides cannot redirect a production app back into a source checkout. The packaged default workspace is the user's home directory unless an explicit workspace override is supplied.
+
+Runtime preparation uses a generated pnpm deploy workspace outside the read-only Harness submodule, materializes all workspace links, embeds the official Node archive after SHA-256 verification, and then performs a real `dsh web` boot with an empty `PATH`. Packaging fails unless the local HTTP surface becomes ready. The app-bundle verifier independently checks that same boot from inside `DeepDeck.app`.
+
+electron-builder owns the native distribution boundary: permanent bundle identifier `com.jo32.deepdeck`, DeepDeck executable/helper identities, icon conversion, hardened runtime, signing, notarization, DMG/ZIP generation, and update metadata. A pre-signing hook removes Electron's remaining helper `CFBundleName` values. The renderer remains plugin-owned.
+
+Production update checks use an architecture-specific generic feed under `stable/darwin/<arch>`. Local unsigned packages set `DEEPDECK_LOCAL_BUILD=1`, so they cannot accidentally contact or install from the production feed. See [release.md](release.md) for publication and rollback rules.
 
 The dependency install runs with `CI=true` because the outer repository owns Git hooks. This uses the upstream hook installer's documented unattended path and avoids trying to enable worktree-local hook configuration inside submodule Git metadata; dependency lifecycle scripts still run normally.

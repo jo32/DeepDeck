@@ -77,6 +77,9 @@ export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarPr
           <span className={css.sidebarBrandName} data-openworkbuddy-brand-name>
             {BRAND.name}
           </span>
+          <span className={css.sidebarBrandAttribution} data-openworkbuddy-brand-attribution>
+            {BRAND.attribution}
+          </span>
         </button>
       </div>
 

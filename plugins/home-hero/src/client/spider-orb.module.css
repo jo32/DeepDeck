@@ -80,6 +80,32 @@
   background: #4f67ff;
 }
 
+.fallbackAlien {
+  background:
+    radial-gradient(circle at 28% 18%, rgb(74 77 91 / 95%) 0 2%, rgb(26 28 37) 15%, rgb(8 9 15) 56%, rgb(1 2 8) 100%);
+  box-shadow:
+    inset 1px 1px 0 rgb(255 255 255 / 22%),
+    inset -1px -2px 0 rgb(102 121 255 / 40%);
+}
+
+.alienEye {
+  position: absolute;
+  top: 31%;
+  width: 25%;
+  height: 39%;
+  background: linear-gradient(155deg, #fff 0%, #f4f5ff 48%, #cbd4ff 82%, #f8f5ff 100%);
+  clip-path: polygon(80% 0, 94% 24%, 98% 52%, 88% 76%, 62% 100%, 38% 94%, 0 63%, 27% 39%, 62% 17%);
+}
+
+.alienEyeLeft {
+  left: 18%;
+  transform: scaleX(-1);
+}
+
+.alienEyeRight {
+  right: 18%;
+}
+
 .whaleEye {
   position: absolute;
   z-index: 2;

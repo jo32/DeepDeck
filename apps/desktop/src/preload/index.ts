@@ -4,12 +4,16 @@ import type { DesktopUpdateStatus } from "../shared/update.js";
 import { channels } from "./channels.js";
 
 const api: DesktopApi = {
+  appearance: {
+    setThemeSource: (source) => ipcRenderer.invoke(channels.appearanceSetThemeSource, source),
+  },
   branding: {
     get: () => ipcRenderer.invoke(channels.brandingGet),
   },
   runtime: {
     get: () => ipcRenderer.invoke(channels.runtimeGet),
     restart: () => ipcRenderer.invoke(channels.runtimeRestart),
+    readyForDisplay: () => ipcRenderer.send(channels.runtimeClientReady),
     onStatus: (listener) => {
       const handler = (_event: Electron.IpcRendererEvent, status: HarnessRuntimeStatus): void => {
         listener(status);
