@@ -139,7 +139,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          app="release/mac-${{ matrix.arch }}/DeepDeck.app"
+          if [[ "${{ matrix.arch }}" == "x64" ]]; then
+            app="release/mac/DeepDeck.app"
+          else
+            app="release/mac-${{ matrix.arch }}/DeepDeck.app"
+          fi
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=2 "$app"

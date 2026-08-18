@@ -30,7 +30,10 @@ function parseOptions(arguments_) {
     } else if (argument.startsWith("--app=")) options.appPath = resolve(argument.slice("--app=".length));
     else if (argument !== "--") throw new Error(`Unknown package verification option: ${argument}`);
   }
-  if (!options.appPath) options.appPath = join(workspaceRoot, "release", `mac-${options.arch}`, "DeepDeck.app");
+  if (!options.appPath) {
+    const outputDirectory = options.arch === "x64" ? "mac" : `mac-${options.arch}`;
+    options.appPath = join(workspaceRoot, "release", outputDirectory, "DeepDeck.app");
+  }
   return options;
 }
 
