@@ -45,6 +45,12 @@ describe("Harness plugin resolution", () => {
     );
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",
+      "@deepdeck/dsh-first-run",
+    )).toBe(
+      "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-first-run",
+    );
+    expect(resolveHarnessPluginLink(
+      "/tmp/dsh-home",
       "dshmarket",
     )).toBe(
       "/tmp/dsh-home/profiles/web/node_modules/dshmarket",

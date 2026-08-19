@@ -69,6 +69,10 @@ export function resolveDesktopRuntimePaths(
           path: join(options.resourcesPath, "plugins", "marketplace-desktop-bridge"),
         },
         {
+          packageName: "@deepdeck/dsh-first-run",
+          path: join(options.resourcesPath, "plugins", "first-run"),
+        },
+        {
           packageName: "dsh-codex-connect",
           path: join(options.resourcesPath, "harness", "node_modules", "dsh-codex-connect"),
           presetBundle: true,
@@ -136,6 +140,14 @@ export function resolveDesktopRuntimePaths(
           environment,
           "DEEPDECK_MARKETPLACE_DESKTOP_BRIDGE_PLUGIN",
           join(workspaceRepository, "plugins", "marketplace-desktop-bridge"),
+        ),
+      },
+      {
+        packageName: "@deepdeck/dsh-first-run",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_FIRST_RUN_PLUGIN",
+          join(workspaceRepository, "plugins", "first-run"),
         ),
       },
       {

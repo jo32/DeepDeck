@@ -72,6 +72,12 @@ importers:
         specifier: ^18.2.0 || ^19.0.0
         version: 19.1.1
 
+  plugins/first-run:
+    dependencies:
+      react:
+        specifier: ^18.2.0 || ^19.0.0
+        version: 19.1.1
+
   plugins/home-hero:
     dependencies:
       react:

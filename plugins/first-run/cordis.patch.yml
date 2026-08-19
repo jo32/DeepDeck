@@ -1,0 +1,3 @@
+- insert:
+    - id: deepdeck-first-run
+      name: '@deepdeck/dsh-first-run'

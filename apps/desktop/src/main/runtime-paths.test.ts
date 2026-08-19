@@ -50,6 +50,7 @@ describe("resolveDesktopRuntimePaths", () => {
       "/Applications/DeepDeck.app/Contents/Resources/plugins/home-hero",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/agent-preset-sections",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/marketplace-desktop-bridge",
+      "/Applications/DeepDeck.app/Contents/Resources/plugins/first-run",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-codex-connect",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dshmarket",
     ]);

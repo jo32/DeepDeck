@@ -45,6 +45,7 @@ const PLUGINS = Object.freeze([
   "home-hero",
   "agent-preset-sections",
   "marketplace-desktop-bridge",
+  "first-run",
   "dsh-codex-connect",
   "dsh-market",
 ]);

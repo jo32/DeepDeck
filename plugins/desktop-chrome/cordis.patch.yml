@@ -9,6 +9,13 @@
   name: '@deepseek-ai/dsh-client-ui-sidebar'
   disabled: true
 
+# Let whichever single configured provider is usable own web search. Fresh
+# DeepSeek profiles therefore use DeepSeek; ChatGPT onboarding enables the
+# Codex search provider without leaving this row pinned to a missing key.
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config: {}
+
 - insert:
     - id: deepdeck-desktop-chrome
       name: '@deepdeck/dsh-client-ui-desktop-chrome'
@@ -21,6 +28,9 @@
 
     - id: deepdeck-marketplace-desktop-bridge
       name: '@deepdeck/dsh-market-desktop-bridge'
+
+    - id: deepdeck-first-run
+      name: '@deepdeck/dsh-first-run'
 
     - id: llm-openai-codex
       name: 'dsh-codex-connect'
