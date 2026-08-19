@@ -16,10 +16,15 @@ const copy: Record<string, string> = {
   "update.downloaded": "更新已下载",
   "update.downloading": "正在下载",
   "update.failed": "下载失败，请重试",
+  "update.install": "重启并更新",
+  "update.installing": "正在安装更新",
+  "update.installingDescription": "DeepDeck 即将退出，安装窗口会持续显示进度。",
   "update.open": "查看可用更新",
-  "update.restarting": "下载完成，正在自动重启…",
+  "update.readyDescription": "更新将在重启后安装，DeepDeck 会自动重新打开。",
   "update.retry": "重新下载",
   "update.short": "更新",
+  "update.updated": "已完成更新",
+  "update.updatedDescription": "DeepDeck 已更新到最新版本。",
 };
 
 const t = ((key: string) => copy[key] ?? key) as ComponentProps<typeof DesktopUpdateControl>["t"];
@@ -38,7 +43,7 @@ afterEach(async () => {
 });
 
 describe("DesktopUpdateControl", () => {
-  it("downloads an available update, reports progress, and announces automatic restart", async () => {
+  it("downloads an available update and installs only after explicit confirmation", async () => {
     let statusListener: ((status: UpdateStatus) => void) | undefined;
     const available: UpdateStatus = {
       state: "available",
@@ -52,12 +57,18 @@ describe("DesktopUpdateControl", () => {
       transferred: 370,
       total: 1_000,
     }));
+    const install = vi.fn(async (): Promise<UpdateStatus> => ({
+      ...available,
+      state: "installing",
+      percent: 100,
+    }));
     Object.defineProperty(window, "deepseekDesktop", {
       configurable: true,
       value: {
         updates: {
           get: vi.fn(async () => available),
           download,
+          install,
           onStatus: (listener: (status: UpdateStatus) => void) => {
             statusListener = listener;
             return () => { statusListener = undefined; };
@@ -88,7 +99,14 @@ describe("DesktopUpdateControl", () => {
     await act(async () => {
       statusListener?.({ ...available, state: "downloaded", percent: 100 });
     });
-    expect(container.textContent).toContain("下载完成，正在自动重启…");
-    expect(container.textContent).not.toContain("重启并更新");
+    expect(container.textContent).toContain("更新将在重启后安装");
+    const installButton = [...container.querySelectorAll("button")]
+      .find(button => button.textContent === "重启并更新");
+    expect(installButton).toBeDefined();
+    expect(install).not.toHaveBeenCalled();
+
+    await act(async () => { installButton?.click(); });
+    expect(install).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain("安装窗口会持续显示进度");
   });
 });

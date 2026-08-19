@@ -321,7 +321,7 @@
 .updatePopoverHeader span,
 .updateProgressLabel,
 .updateError,
-.updateRestarting {
+.updateDescription {
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
   line-height: 18px;
@@ -382,7 +382,7 @@
 }
 
 .updateError,
-.updateRestarting {
+.updateDescription {
   margin: 0;
 }
 

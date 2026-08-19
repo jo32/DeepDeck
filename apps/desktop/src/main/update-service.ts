@@ -40,6 +40,7 @@ type StatusListener = (status: DesktopUpdateStatus) => void;
 export interface DesktopUpdateServiceOptions {
   currentVersion: string;
   enabled: boolean;
+  initialStatus?: DesktopUpdateStatus;
 }
 
 function errorMessage(error: unknown): string {
@@ -56,6 +57,7 @@ function progressPercent(value: number): number {
 
 export class DesktopUpdateService {
   private status: DesktopUpdateStatus;
+  private refreshBeforeDownload: boolean;
   private readonly listeners = new Set<StatusListener>();
   private readonly removeDriverListeners: Array<() => void> = [];
 
@@ -63,9 +65,14 @@ export class DesktopUpdateService {
     private readonly driver: UpdateDriver,
     private readonly options: DesktopUpdateServiceOptions,
   ) {
-    this.status = { state: "idle", currentVersion: options.currentVersion };
+    this.status = options.initialStatus
+      ? { ...options.initialStatus }
+      : { state: "idle", currentVersion: options.currentVersion };
+    this.refreshBeforeDownload = options.initialStatus?.state === "error";
     driver.autoDownload = false;
-    driver.autoInstallOnAppQuit = true;
+    // A downloaded update must remain inert until the user explicitly chooses
+    // Restart and update; normal app quits must never bypass the native helper.
+    driver.autoInstallOnAppQuit = false;
     driver.disableWebInstaller = true;
     driver.disableDifferentialDownload = false;
 
@@ -120,7 +127,12 @@ export class DesktopUpdateService {
 
   async check(): Promise<DesktopUpdateStatus> {
     if (!this.options.enabled) return this.getStatus();
-    this.publish({ state: "checking", currentVersion: this.options.currentVersion });
+    const version = this.status.version;
+    this.publish({
+      state: "checking",
+      currentVersion: this.options.currentVersion,
+      ...(version ? { version } : {}),
+    });
     try {
       await this.driver.checkForUpdates();
     } catch (error) {
@@ -130,9 +142,16 @@ export class DesktopUpdateService {
   }
 
   async download(): Promise<DesktopUpdateStatus> {
+    if (!this.options.enabled) return this.getStatus();
+    if (this.status.state === "error" && this.refreshBeforeDownload) {
+      this.refreshBeforeDownload = false;
+      const refreshed = await this.check();
+      if (refreshed.state !== "available") return refreshed;
+    }
+
     const version = this.status.version;
     const canDownload = this.status.state === "available" || this.status.state === "error";
-    if (!this.options.enabled || !version || !canDownload) return this.getStatus();
+    if (!version || !canDownload) return this.getStatus();
 
     this.publish({
       state: "downloading",
@@ -148,8 +167,33 @@ export class DesktopUpdateService {
     return this.getStatus();
   }
 
+  markInstalling(): DesktopUpdateStatus {
+    if (this.status.state !== "downloaded" || !this.status.version) return this.getStatus();
+    this.publish({
+      state: "installing",
+      currentVersion: this.options.currentVersion,
+      version: this.status.version,
+      percent: 100,
+    });
+    return this.getStatus();
+  }
+
+  reportInstallFailure(error: unknown, version?: string): DesktopUpdateStatus {
+    this.publish({
+      state: "error",
+      currentVersion: this.options.currentVersion,
+      ...(version ? { version } : {}),
+      message: errorMessage(error),
+    });
+    this.refreshBeforeDownload = true;
+    return this.getStatus();
+  }
+
   quitAndInstall(): void {
-    if (!this.options.enabled || this.status.state !== "downloaded") return;
+    if (
+      !this.options.enabled
+      || (this.status.state !== "downloaded" && this.status.state !== "installing")
+    ) return;
     this.driver.quitAndInstall(false, true);
   }
 

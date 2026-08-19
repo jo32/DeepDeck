@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { buildUpdateHelper } from "./build-update-helper.mjs";
 
 function parseOptions(arguments_) {
   const options = { mode: undefined, arch: process.arch };
@@ -47,6 +48,8 @@ const builderArguments = [
   "--publish",
   "never",
 ];
+
+await buildUpdateHelper(options.arch);
 
 await new Promise((resolveRun, rejectRun) => {
   const child = spawn(pnpm, builderArguments, {

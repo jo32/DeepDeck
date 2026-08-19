@@ -2,11 +2,13 @@ import { ipcMain, nativeTheme, type IpcMainEvent } from "electron";
 import { channels } from "../preload/channels.js";
 import type { DesktopBranding } from "../shared/branding.js";
 import { isDesktopThemeSource } from "../shared/theme.js";
+import type { DesktopUpdateStatus } from "../shared/update.js";
 import type { HarnessProcess } from "./harness/harness-process.js";
 import type { DesktopUpdateService } from "./update-service.js";
 
 export interface DesktopIpcHooks {
   onHarnessClientReady(senderId: number): void;
+  onInstallUpdate(): DesktopUpdateStatus;
 }
 
 export function registerIpc(
@@ -36,6 +38,7 @@ export function registerIpc(
   });
   ipcMain.handle(channels.updatesGet, () => updates.getStatus());
   ipcMain.handle(channels.updatesDownload, () => updates.download());
+  ipcMain.handle(channels.updatesInstall, () => hooks.onInstallUpdate());
   return () => {
     ipcMain.removeListener(channels.runtimeClientReady, onHarnessClientReady);
     ipcMain.removeHandler(channels.appearanceSetThemeSource);
@@ -44,5 +47,6 @@ export function registerIpc(
     ipcMain.removeHandler(channels.runtimeRestart);
     ipcMain.removeHandler(channels.updatesGet);
     ipcMain.removeHandler(channels.updatesDownload);
+    ipcMain.removeHandler(channels.updatesInstall);
   };
 }

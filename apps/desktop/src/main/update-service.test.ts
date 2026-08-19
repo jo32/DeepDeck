@@ -44,7 +44,7 @@ describe("DesktopUpdateService", () => {
     });
 
     expect(driver.autoDownload).toBe(false);
-    expect(driver.autoInstallOnAppQuit).toBe(true);
+    expect(driver.autoInstallOnAppQuit).toBe(false);
     expect(driver.disableWebInstaller).toBe(true);
     expect(driver.disableDifferentialDownload).toBe(false);
 
@@ -87,8 +87,60 @@ describe("DesktopUpdateService", () => {
       version: "1.1.0",
       percent: 100,
     });
+    service.markInstalling();
+    expect(service.getStatus()).toMatchObject({
+      state: "installing",
+      version: "1.1.0",
+    });
     service.quitAndInstall();
     expect(driver.quitAndInstall).toHaveBeenCalledWith(false, true);
+  });
+
+  it("refreshes the update feed before retrying a failed installation from startup", async () => {
+    const driver = new FakeUpdateDriver();
+    driver.checkForUpdates.mockImplementationOnce(async () => {
+      driver.emit("update-available", { version: "1.1.0" });
+    });
+    const service = new DesktopUpdateService(driver, {
+      currentVersion: "1.0.0",
+      enabled: true,
+      initialStatus: {
+        state: "error",
+        currentVersion: "1.0.0",
+        version: "1.1.0",
+        message: "installer stopped",
+      },
+    });
+
+    await service.download();
+
+    expect(driver.checkForUpdates).toHaveBeenCalledOnce();
+    expect(driver.downloadUpdate).toHaveBeenCalledOnce();
+    expect(service.getStatus()).toMatchObject({ state: "downloading", version: "1.1.0" });
+  });
+
+  it("keeps the target visible when refreshing a failed install also fails", async () => {
+    const driver = new FakeUpdateDriver();
+    driver.checkForUpdates.mockRejectedValueOnce(new Error("feed unavailable"));
+    const service = new DesktopUpdateService(driver, {
+      currentVersion: "1.0.0",
+      enabled: true,
+      initialStatus: {
+        state: "error",
+        currentVersion: "1.0.0",
+        version: "1.1.0",
+        message: "installer stopped",
+      },
+    });
+
+    await service.download();
+
+    expect(service.getStatus()).toEqual({
+      state: "error",
+      currentVersion: "1.0.0",
+      version: "1.1.0",
+      message: "feed unavailable",
+    });
   });
 
   it("keeps the target version after a download error so the UI can retry", async () => {

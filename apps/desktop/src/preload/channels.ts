@@ -7,5 +7,6 @@ export const channels = {
   runtimeStatus: "runtime:status",
   updatesGet: "updates:get",
   updatesDownload: "updates:download",
+  updatesInstall: "updates:install",
   updatesStatus: "updates:status",
 } as const;

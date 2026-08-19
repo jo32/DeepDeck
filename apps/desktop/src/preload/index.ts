@@ -25,6 +25,7 @@ const api: DesktopApi = {
   updates: {
     get: () => ipcRenderer.invoke(channels.updatesGet),
     download: () => ipcRenderer.invoke(channels.updatesDownload),
+    install: () => ipcRenderer.invoke(channels.updatesInstall),
     onStatus: (listener) => {
       const handler = (_event: Electron.IpcRendererEvent, status: DesktopUpdateStatus): void => {
         listener(status);

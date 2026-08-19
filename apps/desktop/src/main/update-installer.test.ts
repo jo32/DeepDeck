@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopUpdateStatus } from "../shared/update.js";
-import { createAutomaticUpdateInstaller } from "./update-installer.js";
+import { createUpdateInstaller } from "./update-installer.js";
 
 const available: DesktopUpdateStatus = {
   state: "available",
@@ -8,11 +8,11 @@ const available: DesktopUpdateStatus = {
   version: "1.1.0",
 };
 
-describe("createAutomaticUpdateInstaller", () => {
+describe("createUpdateInstaller", () => {
   it("ignores updates that have not finished downloading", async () => {
     const updates = { quitAndInstall: vi.fn() };
     const prepareToQuit = vi.fn(async () => {});
-    const install = createAutomaticUpdateInstaller(updates, prepareToQuit);
+    const install = createUpdateInstaller(updates, prepareToQuit);
 
     await install(available);
 
@@ -20,7 +20,7 @@ describe("createAutomaticUpdateInstaller", () => {
     expect(updates.quitAndInstall).not.toHaveBeenCalled();
   });
 
-  it("stops the runtime once before automatically restarting into the update", async () => {
+  it("stops the runtime once after the user requests installation", async () => {
     const order: string[] = [];
     let finishStopping: (() => void) | undefined;
     const updates = {
@@ -30,7 +30,7 @@ describe("createAutomaticUpdateInstaller", () => {
       order.push("stop");
       finishStopping = resolve;
     }));
-    const install = createAutomaticUpdateInstaller(updates, prepareToQuit);
+    const install = createUpdateInstaller(updates, prepareToQuit);
     const downloaded: DesktopUpdateStatus = {
       ...available,
       state: "downloaded",
@@ -39,6 +39,7 @@ describe("createAutomaticUpdateInstaller", () => {
 
     const first = install(downloaded);
     const duplicate = install(downloaded);
+    await Promise.resolve();
     expect(order).toEqual(["stop"]);
     expect(prepareToQuit).toHaveBeenCalledOnce();
 
@@ -54,7 +55,7 @@ describe("createAutomaticUpdateInstaller", () => {
     const updates = { quitAndInstall: vi.fn(() => { order.push("install"); }) };
     const prepareToQuit = vi.fn(async () => { order.push("stop"); });
     const beforeInstall = vi.fn(() => { order.push("arm"); });
-    const install = createAutomaticUpdateInstaller(updates, prepareToQuit, beforeInstall);
+    const install = createUpdateInstaller(updates, prepareToQuit, beforeInstall);
     const downloaded: DesktopUpdateStatus = {
       ...available,
       state: "downloaded",

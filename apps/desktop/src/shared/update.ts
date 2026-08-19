@@ -4,6 +4,8 @@ export type DesktopUpdateState =
   | "available"
   | "downloading"
   | "downloaded"
+  | "installing"
+  | "updated"
   | "error";
 
 export interface DesktopUpdateStatus {
@@ -20,5 +22,6 @@ export interface DesktopUpdateStatus {
 export interface DesktopUpdatesApi {
   get(): Promise<DesktopUpdateStatus>;
   download(): Promise<DesktopUpdateStatus>;
+  install(): Promise<DesktopUpdateStatus>;
   onStatus(listener: (status: DesktopUpdateStatus) => void): () => void;
 }

@@ -1,36 +1,16 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
 
-const relaunchScript = String.raw`
-parent_pid="$1"
-app_path="$2"
-target_version="$3"
-
-while kill -0 "$parent_pid" 2>/dev/null; do
-  sleep 1
-done
-
-attempt=0
-while [ "$attempt" -lt 300 ]; do
-  installed_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Contents/Info.plist" 2>/dev/null || true)
-  if [ "$installed_version" = "$target_version" ]; then
-    sleep 1
-    /usr/bin/open "$app_path"
-    exit 0
-  fi
-  attempt=$((attempt + 1))
-  sleep 1
-done
-
-# Do not strand the user if ShipIt fails. Reopen the surviving bundle so the
-# application can report the update again instead of appearing permanently gone.
-/usr/bin/open "$app_path"
-`;
-
-export interface UpdateRelaunchOptions {
+export interface UpdateHelperOptions {
+  helperPath: string;
   appPath: string;
+  statePath: string;
   currentPid: number;
+  sourceVersion: string;
   targetVersion: string;
+  displayName: string;
+  locale: string;
+  skipSecurityVerification?: boolean;
   spawnProcess?: typeof spawn;
 }
 
@@ -38,17 +18,44 @@ export function resolveMacAppPath(executablePath: string): string {
   return path.resolve(path.dirname(executablePath), "../..");
 }
 
-export function armMacUpdateRelaunch({
+export function resolveMacUpdateHelperPath(resourcesPath: string): string {
+  return path.join(resourcesPath, "deepdeck-update-helper");
+}
+
+export function launchMacUpdateHelper({
+  helperPath,
   appPath,
+  statePath,
   currentPid,
+  sourceVersion,
   targetVersion,
+  displayName,
+  locale,
+  skipSecurityVerification = false,
   spawnProcess = spawn,
-}: UpdateRelaunchOptions): ChildProcess {
-  const child = spawnProcess(
-    "/bin/sh",
-    ["-c", relaunchScript, "deepdeck-update-relauncher", String(currentPid), appPath, targetVersion],
-    { detached: true, stdio: "ignore" },
-  );
-  child.unref();
-  return child;
+}: UpdateHelperOptions): Promise<ChildProcess> {
+  const arguments_ = [
+    "--parent-pid", String(currentPid),
+    "--app-path", appPath,
+    "--state-path", statePath,
+    "--source-version", sourceVersion,
+    "--target-version", targetVersion,
+    "--display-name", displayName,
+    "--locale", locale,
+    ...(skipSecurityVerification ? ["--skip-security-verification"] : []),
+  ];
+  const child = spawnProcess(helperPath, arguments_, { detached: true, stdio: "ignore" });
+  return new Promise((resolve, reject) => {
+    const onError = (error: Error): void => {
+      child.removeListener("spawn", onSpawn);
+      reject(error);
+    };
+    const onSpawn = (): void => {
+      child.removeListener("error", onError);
+      child.unref();
+      resolve(child);
+    };
+    child.once("error", onError);
+    child.once("spawn", onSpawn);
+  });
 }

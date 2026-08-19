@@ -1,6 +1,7 @@
 import { app, BaseWindow, nativeTheme } from "electron";
 import { channels } from "../preload/channels.js";
 import type { HarnessRuntimeStatus } from "../shared/runtime.js";
+import type { DesktopUpdateStatus } from "../shared/update.js";
 import { publicBranding, type LoadedBranding } from "./branding.js";
 import { createDesktopUpdateService } from "./auto-update.js";
 import { HarnessProcess, resolveHarnessHome } from "./harness/harness-process.js";
@@ -8,10 +9,22 @@ import { registerIpc } from "./ipc.js";
 import { configureNativeApplicationIdentity } from "./native-identity.js";
 import type { DesktopRuntimePaths } from "./runtime-paths.js";
 import { readThemeSource } from "./theme-preference.js";
-import { createAutomaticUpdateInstaller } from "./update-installer.js";
-import { runtimeStatusDuringUpdate } from "./update-installation-status.js";
+import { createUpdateInstaller } from "./update-installer.js";
 import { shouldForceExitForUpdate } from "./update-quit-policy.js";
-import { armMacUpdateRelaunch, resolveMacAppPath } from "./update-relauncher.js";
+import {
+  launchMacUpdateHelper,
+  resolveMacAppPath,
+  resolveMacUpdateHelperPath,
+} from "./update-relauncher.js";
+import {
+  classifyUpdateStartup,
+  clearUpdateTransaction,
+  isProcessAlive,
+  readUpdateTransaction,
+  updateTransactionPath,
+  writeUpdateTransaction,
+  type UpdateTransaction,
+} from "./update-transaction.js";
 import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
 
 export async function bootstrapDesktop(
@@ -21,6 +34,44 @@ export async function bootstrapDesktop(
   if (!app.requestSingleInstanceLock()) {
     app.quit();
     return;
+  }
+
+  const transactionFilename = updateTransactionPath(app.getPath("userData"));
+  const existingTransaction = process.platform === "darwin"
+    ? await readUpdateTransaction(transactionFilename)
+    : undefined;
+  const updateStartup = classifyUpdateStartup(
+    existingTransaction,
+    app.getVersion(),
+    isProcessAlive,
+  );
+  if (updateStartup.state === "active") {
+    // The standalone helper remains visible and owns the install experience.
+    // Do not launch the old runtime or contend with ShipIt for the app bundle.
+    app.releaseSingleInstanceLock();
+    app.exit(0);
+    return;
+  }
+
+  let initialUpdateStatus: DesktopUpdateStatus | undefined;
+  let shouldCheckForUpdates = true;
+  if (updateStartup.state === "completed") {
+    await clearUpdateTransaction(transactionFilename);
+    initialUpdateStatus = {
+      state: "updated",
+      currentVersion: app.getVersion(),
+      version: app.getVersion(),
+    };
+    shouldCheckForUpdates = false;
+  } else if (updateStartup.state === "failed") {
+    await writeUpdateTransaction(transactionFilename, updateStartup.transaction);
+    initialUpdateStatus = {
+      state: "error",
+      currentVersion: app.getVersion(),
+      version: updateStartup.transaction.targetVersion,
+      message: updateStartup.transaction.message ?? "Update installation did not complete.",
+    };
+    shouldCheckForUpdates = false;
   }
 
   await app.whenReady();
@@ -35,7 +86,7 @@ export async function bootstrapDesktop(
     plugins: runtimePaths.plugins,
     displayName: branding.name,
   });
-  const updates = createDesktopUpdateService();
+  const updates = createDesktopUpdateService(initialUpdateStatus);
   let desktopWindow: DesktopWindow | undefined;
   let removeIpc = (): void => {};
   let removeStatusListener = (): void => {};
@@ -61,47 +112,85 @@ export async function bootstrapDesktop(
     return prepareToQuitPromise;
   };
 
-  const installUpdate = createAutomaticUpdateInstaller(updates, prepareToQuit, (status) => {
+  const installUpdate = createUpdateInstaller(updates, prepareToQuit, async (status) => {
     if (status.state !== "downloaded" || !status.version) return;
     installingUpdateVersion = status.version;
-    const current = desktopWindow;
-    if (current && !current.window.isDestroyed()) {
-      current.send(channels.runtimeStatus, runtimeStatusDuringUpdate(
-        harness.getStatus(),
-        branding.name,
-        installingUpdateVersion,
-      ));
-      current.showSplash();
-    }
     if (process.platform === "darwin") {
-      armMacUpdateRelaunch({
-        appPath: resolveMacAppPath(app.getPath("exe")),
-        currentPid: process.pid,
+      const now = Date.now();
+      const appPath = resolveMacAppPath(app.getPath("exe"));
+      const transaction: UpdateTransaction = {
+        schemaVersion: 1,
+        phase: "preparing",
+        sourceVersion: app.getVersion(),
         targetVersion: status.version,
+        appPath,
+        startedAt: now,
+        updatedAt: now,
+      };
+      await writeUpdateTransaction(transactionFilename, transaction);
+      const helper = await launchMacUpdateHelper({
+        helperPath: resolveMacUpdateHelperPath(process.resourcesPath),
+        appPath,
+        statePath: transactionFilename,
+        currentPid: process.pid,
+        sourceVersion: app.getVersion(),
+        targetVersion: status.version,
+        displayName: branding.name,
+        locale: app.getLocale(),
+      });
+      if (!helper.pid) throw new Error("Unable to start the update helper.");
+      await writeUpdateTransaction(transactionFilename, {
+        ...transaction,
+        phase: "installing",
+        updatedAt: Date.now(),
+        helperPid: helper.pid,
       });
     }
   });
+
+  const requestInstallUpdate = (): DesktopUpdateStatus => {
+    const downloaded = updates.getStatus();
+    if (downloaded.state !== "downloaded" || !downloaded.version) return downloaded;
+    updates.markInstalling();
+    void installUpdate(downloaded).catch((error: unknown) => {
+      console.error("Unable to restart into the downloaded update", error);
+      installingUpdateVersion = undefined;
+      updates.reportInstallFailure(error, downloaded.version);
+      if (process.platform === "darwin") {
+        void readUpdateTransaction(transactionFilename)
+          .then((previous) => previous
+            ? writeUpdateTransaction(transactionFilename, {
+                ...previous,
+                phase: "failed",
+                updatedAt: Date.now(),
+                message: error instanceof Error ? error.message : String(error),
+              })
+            : undefined)
+          .catch((transactionError: unknown) => {
+            console.error("Unable to persist the failed update transaction", transactionError);
+          });
+      }
+    });
+    return updates.getStatus();
+  };
 
   removeIpc = registerIpc(harness, publicBranding(branding), updates, {
     onHarnessClientReady: (senderId) => {
       desktopWindow?.markHarnessClientReady(senderId);
     },
+    onInstallUpdate: requestInstallUpdate,
   });
 
   const showStatus = async (status: HarnessRuntimeStatus): Promise<void> => {
     const current = desktopWindow;
     if (!current || current.window.isDestroyed()) return;
-    const displayedStatus = runtimeStatusDuringUpdate(
-      status,
-      branding.name,
-      installingUpdateVersion,
-    );
+    // Keep the current conversation visible while the native helper opens and
+    // Harness shuts down. The old full-window skeleton made a normal restart
+    // look like the app had hung before disappearing.
     if (installingUpdateVersion) {
-      current.send(channels.runtimeStatus, displayedStatus);
-      current.showSplash();
       return;
     }
-    current.send(channels.runtimeStatus, displayedStatus);
+    current.send(channels.runtimeStatus, status);
     if (status.state === "ready" && status.url) {
       await current.loadHarness(status.url);
     } else {
@@ -126,9 +215,6 @@ export async function bootstrapDesktop(
     if (current && !current.window.isDestroyed()) {
       current.send(channels.updatesStatus, status);
     }
-    void installUpdate(status).catch((error: unknown) => {
-      console.error("Unable to restart into the downloaded update", error);
-    });
   });
 
   app.on("second-instance", () => {
@@ -160,7 +246,9 @@ export async function bootstrapDesktop(
   void harness.start().catch(() => {
     // The status page receives the full process error and offers a retry.
   });
-  updateCheckTimer = setTimeout(() => {
-    void updates.check();
-  }, 2_000);
+  if (shouldCheckForUpdates) {
+    updateCheckTimer = setTimeout(() => {
+      void updates.check();
+    }, 2_000);
+  }
 }

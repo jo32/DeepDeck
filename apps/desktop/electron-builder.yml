@@ -34,6 +34,11 @@ mac:
   hardenedRuntime: true
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  binaries:
+    - Contents/Resources/deepdeck-update-helper
+  extraResources:
+    - from: ../../.deepdeck/update-helper/deepdeck-update-helper
+      to: deepdeck-update-helper
   notarize: true
   extendInfo:
     CFBundleName: DeepDeck

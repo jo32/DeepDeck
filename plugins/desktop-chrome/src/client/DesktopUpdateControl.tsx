@@ -2,7 +2,15 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { DesktopSidebarProps } from './DesktopSidebar.tsx'
 import css from './desktop-chrome.module.css'
 
-type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'
+type UpdateState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'downloaded'
+  | 'installing'
+  | 'updated'
+  | 'error'
 
 interface UpdateStatus {
   state: UpdateState
@@ -18,6 +26,7 @@ interface UpdateStatus {
 interface UpdatesBridge {
   get: () => Promise<UpdateStatus>
   download: () => Promise<UpdateStatus>
+  install: () => Promise<UpdateStatus>
   onStatus: (listener: (status: UpdateStatus) => void) => () => void
 }
 
@@ -33,6 +42,8 @@ function updateIsVisible(status: UpdateStatus | undefined): status is UpdateStat
   return status.state === 'available'
     || status.state === 'downloading'
     || status.state === 'downloaded'
+    || status.state === 'installing'
+    || status.state === 'updated'
     || status.state === 'error'
 }
 
@@ -70,7 +81,14 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
       if (!active) return
       setStatus(next)
       const newlyAvailable = next.state === 'available' && previousState.current !== 'available'
-      if (newlyAvailable || next.state === 'downloading' || next.state === 'downloaded') setOpen(true)
+      if (
+        newlyAvailable
+        || next.state === 'downloading'
+        || next.state === 'downloaded'
+        || next.state === 'installing'
+        || next.state === 'updated'
+        || next.state === 'error'
+      ) setOpen(true)
       previousState.current = next.state
     }
     const remove = api.onStatus(accept)
@@ -86,12 +104,29 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
   const percent = Math.round(Math.min(100, Math.max(0, status.percent ?? 0)))
   const downloading = status.state === 'downloading'
   const downloaded = status.state === 'downloaded'
+  const installing = status.state === 'installing'
+  const updated = status.state === 'updated'
   const failed = status.state === 'error'
+  const heading = updated
+    ? t('update.updated')
+    : installing
+      ? t('update.installing')
+      : downloaded
+        ? t('update.downloaded')
+        : t('update.available')
 
   const download = async () => {
     setOpen(true)
     try {
       setStatus(await api.download())
+    } catch {
+      setStatus({ ...status, state: 'error' })
+    }
+  }
+  const install = async () => {
+    setStatus({ ...status, state: 'installing' })
+    try {
+      setStatus(await api.install())
     } catch {
       setStatus({ ...status, state: 'error' })
     }
@@ -102,10 +137,10 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
         <section id={panelId} className={css.updatePopover} aria-live="polite">
           <div className={css.updatePopoverHeader}>
             <div>
-              <strong>{downloaded ? t('update.downloaded') : t('update.available')}</strong>
+              <strong>{heading}</strong>
               <span>v{status.version}</span>
             </div>
-            {!downloading && !downloaded && (
+            {!downloading && !installing && (
               <button
                 type="button"
                 className={css.updateClose}
@@ -130,15 +165,26 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
           )}
 
           {failed && <p className={css.updateError}>{t('update.failed')}</p>}
-          {downloaded && <p className={css.updateRestarting}>{t('update.restarting')}</p>}
+          {downloaded && <p className={css.updateDescription}>{t('update.readyDescription')}</p>}
+          {installing && <p className={css.updateDescription}>{t('update.installingDescription')}</p>}
+          {updated && <p className={css.updateDescription}>{t('update.updatedDescription')}</p>}
 
-          {!downloading && !downloaded && (
+          {!downloading && !downloaded && !installing && !updated && (
             <button
               type="button"
               className={css.updatePrimaryButton}
               onClick={() => { void download() }}
             >
               {failed ? t('update.retry') : t('update.download')}
+            </button>
+          )}
+          {downloaded && (
+            <button
+              type="button"
+              className={css.updatePrimaryButton}
+              onClick={() => { void install() }}
+            >
+              {t('update.install')}
             </button>
           )}
         </section>
@@ -154,7 +200,7 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
         onClick={() => { setOpen(value => !value) }}
       >
         <span className={css.updateIconGlyph}>
-          <UpdateGlyph downloaded={downloaded} />
+          <UpdateGlyph downloaded={downloaded || installing || updated} />
         </span>
         <span className={css.updateIconLabel}>{t('update.short')}</span>
       </button>

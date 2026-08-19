@@ -101,6 +101,7 @@ for (const required of [
   join(resources, "runtime-manifest.json"),
   join(resources, "runtime", "node", "bin", "node"),
   join(resources, "runtime", "bin", "pnpm"),
+  join(resources, "deepdeck-update-helper"),
   join(resources, "harness", "apps", "cli", "lib", "bin.js"),
 ]) {
   if (!(await pathExists(required))) throw new Error(`Packaged resource is missing: ${required}`);
@@ -128,6 +129,8 @@ for (const required of [
   "/dist/main/native-identity.js",
   "/dist/main/runtime-paths.js",
   "/dist/main/auto-update.js",
+  "/dist/main/update-relauncher.js",
+  "/dist/main/update-transaction.js",
   "/dist/preload/index.js",
   "/dist/renderer/index.html",
   "/node_modules/electron-updater/out/main.js",
@@ -152,6 +155,13 @@ await execFileAsync(
 
 const executableStat = await lstat(join(contents, "MacOS", "DeepDeck"));
 if ((executableStat.mode & 0o111) === 0) throw new Error("DeepDeck executable is not executable");
+const updateHelper = join(resources, "deepdeck-update-helper");
+const updateHelperStat = await lstat(updateHelper);
+if ((updateHelperStat.mode & 0o111) === 0) throw new Error("Update helper is not executable");
+const { stdout: helperSelfCheck } = await execFileAsync(updateHelper, ["--self-check"]);
+assertEqual(helperSelfCheck.trim(), "deepdeck-update-helper ok", "update helper self-check");
+const { stdout: helperBundleIdentity } = await execFileAsync(updateHelper, ["--bundle-identity"]);
+assertEqual(helperBundleIdentity.trim(), "none", "update helper bundle identity");
 console.log(
   `verify-package: DeepDeck ${desktopPackage.version}, macOS ${options.arch}, ${options.production ? "production" : "local"}`,
 );
