@@ -1,5 +1,5 @@
 {
-  "name": "@deepdeck/dsh-market-desktop-bridge",
+  "name": "@deepdeck/dsh-community-market-desktop-bridge",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -25,9 +25,13 @@
       "platform": "web"
     }
   },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  },
   "scripts": {
     "build": "../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json && ../../vendor/deepseek-harness/node_modules/.bin/tsdown --config tsdown.config.ts",
-    "check": "../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json --noEmit"
+    "check": "../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "test": "../../vendor/deepseek-harness/node_modules/.bin/vitest run"
   },
   "files": [
     "lib/index.js",

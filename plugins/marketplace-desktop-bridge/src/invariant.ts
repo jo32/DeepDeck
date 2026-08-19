@@ -1,5 +1,5 @@
-export const name = 'deepdeck-marketplace-desktop-bridge-invariant'
+export const name = 'deepdeck-community-market-desktop-bridge-invariant'
 export const inject: readonly string[] = []
 
-/** The bridge has no persistent state beyond its Cordis-scoped service. */
+/** Host capabilities are scoped to one Cordis generation. */
 export function apply(): void {}

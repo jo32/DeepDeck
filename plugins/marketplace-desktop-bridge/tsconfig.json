@@ -12,8 +12,12 @@
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
+    "types": ["node"],
     "rootDir": "src",
-    "outDir": "lib/types"
+    "outDir": "lib/types",
+    "paths": {
+      "vitest": ["../../apps/desktop/node_modules/vitest"]
+    }
   },
   "include": ["src"]
 }

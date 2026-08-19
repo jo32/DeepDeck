@@ -65,7 +65,7 @@ export function resolveDesktopRuntimePaths(
           path: join(options.resourcesPath, "plugins", "agent-preset-sections"),
         },
         {
-          packageName: "@deepdeck/dsh-market-desktop-bridge",
+          packageName: "@deepdeck/dsh-community-market-desktop-bridge",
           path: join(options.resourcesPath, "plugins", "marketplace-desktop-bridge"),
         },
         {
@@ -78,8 +78,8 @@ export function resolveDesktopRuntimePaths(
           presetBundle: true,
         },
         {
-          packageName: "dshmarket",
-          path: join(options.resourcesPath, "harness", "node_modules", "dshmarket"),
+          packageName: "dsh-community-market",
+          path: join(options.resourcesPath, "harness", "node_modules", "dsh-community-market"),
           presetBundle: true,
         },
       ],
@@ -135,7 +135,7 @@ export function resolveDesktopRuntimePaths(
         ),
       },
       {
-        packageName: "@deepdeck/dsh-market-desktop-bridge",
+        packageName: "@deepdeck/dsh-community-market-desktop-bridge",
         path: environmentValue(
           environment,
           "DEEPDECK_MARKETPLACE_DESKTOP_BRIDGE_PLUGIN",
@@ -160,11 +160,11 @@ export function resolveDesktopRuntimePaths(
         presetBundle: true,
       },
       {
-        packageName: "dshmarket",
+        packageName: "dsh-community-market",
         path: environmentValue(
           environment,
-          "DEEPDECK_PLUGIN_MARKET_PLUGIN",
-          join(workspaceRepository, "vendor", "dsh-market"),
+          "DEEPDECK_COMMUNITY_MARKET_PLUGIN",
+          join(workspaceRepository, "plugins", "community-market"),
         ),
         presetBundle: true,
       },

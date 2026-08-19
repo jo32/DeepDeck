@@ -75,11 +75,12 @@ async function stopChild(child, exitPromise) {
 }
 
 function pluginRoot(runtimeRoot, pluginName) {
-  if (pluginName === "dsh-market") {
-    return join(runtimeRoot, "harness", "node_modules", "dshmarket");
-  }
-  if (pluginName === "dsh-codex-connect") {
-    return join(runtimeRoot, "harness", "node_modules", "dsh-codex-connect");
+  const harnessPackage = {
+    "community-market": "dsh-community-market",
+    "dsh-codex-connect": "dsh-codex-connect",
+  }[pluginName];
+  if (harnessPackage !== undefined) {
+    return join(runtimeRoot, "harness", "node_modules", harnessPackage);
   }
   return join(runtimeRoot, "plugins", pluginName);
 }

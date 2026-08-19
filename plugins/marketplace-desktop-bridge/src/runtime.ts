@@ -1,0 +1,386 @@
+import { spawn, type ChildProcess } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import { access, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
+import type { Readable } from 'node:stream'
+
+const PROFILE_NAME = 'web'
+const RECOVERY_VERSION = 1
+const RECOVERY_FILES = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'] as const
+const MAX_RECOVERY_BYTES = 32 * 1024 * 1024
+
+export interface CommunityMarketProfile {
+  readonly name: string
+  readonly dir: string
+}
+
+export interface CommunityMarketPnpmOutcome {
+  readonly exitCode: number | null
+  readonly signal: NodeJS.Signals | null
+}
+
+export interface CommunityMarketPnpmHandle {
+  readonly stdout: Readable
+  readonly stderr: Readable
+  readonly done: Promise<CommunityMarketPnpmOutcome>
+  cancel(): void
+}
+
+export interface CommunityMarketPnpm {
+  runPlugin(
+    args: readonly string[],
+    invokingDir: string,
+    signal?: AbortSignal,
+  ): CommunityMarketPnpmHandle
+  runPluginInstall(
+    args: readonly string[],
+    invokingDir: string,
+    recovery: {
+      readonly packageName: string
+      readonly packageVersion: string
+      readonly receiptId: string
+    },
+    signal?: AbortSignal,
+  ): Promise<CommunityMarketPnpmHandle>
+  recoveredInstallReceiptIds(): Promise<readonly string[]>
+  acknowledgeRecoveredInstall(receiptId: string): Promise<void>
+  rollbackPluginInstall(receiptId: string): Promise<boolean>
+}
+
+interface RecoveryState {
+  readonly version: 1
+  readonly generationId: string
+  readonly receiptId: string
+  readonly packageName: string
+  readonly packageVersion: string
+  readonly profileDir: string
+  readonly phase: 'prepared' | 'awaiting-restart' | 'rolled-back'
+  readonly before: Readonly<Record<(typeof RECOVERY_FILES)[number], string | null>>
+}
+
+type SpawnProcess = typeof spawn
+
+function errorCode(cause: unknown): string | undefined {
+  return cause !== null && typeof cause === 'object' && 'code' in cause
+    ? String((cause as { code?: unknown }).code)
+    : undefined
+}
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+async function atomicWrite(path: string, contents: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true, mode: 0o700 })
+  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`
+  await writeFile(temporary, contents, { encoding: 'utf8', mode: 0o600 })
+  await rename(temporary, path)
+}
+
+async function removeFile(path: string): Promise<void> {
+  try {
+    await unlink(path)
+  } catch (cause) {
+    if (errorCode(cause) !== 'ENOENT') throw cause
+  }
+}
+
+function parseRecoveryState(value: unknown): RecoveryState {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('DeepDeck community market recovery state is invalid')
+  }
+  const state = value as Record<string, unknown>
+  if (
+    state.version !== RECOVERY_VERSION
+    || typeof state.generationId !== 'string'
+    || typeof state.receiptId !== 'string'
+    || typeof state.packageName !== 'string'
+    || typeof state.packageVersion !== 'string'
+    || typeof state.profileDir !== 'string'
+    || !isAbsolute(state.profileDir)
+    || !['prepared', 'awaiting-restart', 'rolled-back'].includes(String(state.phase))
+    || state.before === null
+    || typeof state.before !== 'object'
+    || Array.isArray(state.before)
+  ) throw new Error('DeepDeck community market recovery state is invalid')
+
+  const before = state.before as Record<string, unknown>
+  for (const filename of RECOVERY_FILES) {
+    if (before[filename] !== null && typeof before[filename] !== 'string') {
+      throw new Error('DeepDeck community market recovery snapshot is invalid')
+    }
+  }
+  return state as unknown as RecoveryState
+}
+
+class InstallRecoveryStore {
+  constructor(
+    private readonly statePath: string,
+    private readonly profileDir: string,
+    private readonly generationId: string,
+  ) {}
+
+  async begin(input: {
+    readonly packageName: string
+    readonly packageVersion: string
+    readonly receiptId: string
+  }): Promise<void> {
+    const existing = await this.read()
+    if (existing !== undefined) {
+      throw new Error('A protected community market install is already pending restart or recovery')
+    }
+    const before = Object.fromEntries(await Promise.all(RECOVERY_FILES.map(async (filename) => {
+      const path = join(this.profileDir, filename)
+      return [filename, await exists(path) ? (await readFile(path)).toString('base64') : null]
+    }))) as RecoveryState['before']
+    await this.write({
+      version: RECOVERY_VERSION,
+      generationId: this.generationId,
+      receiptId: input.receiptId,
+      packageName: input.packageName,
+      packageVersion: input.packageVersion,
+      profileDir: this.profileDir,
+      phase: 'prepared',
+      before,
+    })
+  }
+
+  async markAwaitingRestart(receiptId: string): Promise<void> {
+    const state = await this.readExact(receiptId)
+    await this.write({ ...state, phase: 'awaiting-restart' })
+  }
+
+  async rollback(receiptId: string): Promise<boolean> {
+    const state = await this.read()
+    if (state === undefined || state.receiptId !== receiptId) return false
+    await this.restore(state)
+    await this.write({ ...state, phase: 'rolled-back' })
+    return true
+  }
+
+  async recoveredReceiptIds(): Promise<readonly string[]> {
+    const state = await this.read()
+    if (state === undefined) return []
+    if (state.generationId === this.generationId) {
+      return state.phase === 'rolled-back' ? [state.receiptId] : []
+    }
+    if (state.phase === 'awaiting-restart') {
+      // Reaching the bridge in a new Cordis generation proves that the new
+      // profile booted far enough to expose the Market Host again.
+      await this.clear()
+      return []
+    }
+    if (state.phase === 'prepared') {
+      await this.restore(state)
+      await this.write({ ...state, phase: 'rolled-back' })
+    }
+    return [state.receiptId]
+  }
+
+  async acknowledge(receiptId: string): Promise<void> {
+    const state = await this.read()
+    if (state?.phase === 'rolled-back' && state.receiptId === receiptId) await this.clear()
+  }
+
+  private async readExact(receiptId: string): Promise<RecoveryState> {
+    const state = await this.read()
+    if (state === undefined || state.receiptId !== receiptId) {
+      throw new Error('Community market recovery transaction changed during installation')
+    }
+    return state
+  }
+
+  private async read(): Promise<RecoveryState | undefined> {
+    let contents: Buffer
+    try {
+      contents = await readFile(this.statePath)
+    } catch (cause) {
+      if (errorCode(cause) === 'ENOENT') return undefined
+      throw cause
+    }
+    if (contents.byteLength > MAX_RECOVERY_BYTES) {
+      throw new Error('DeepDeck community market recovery state is too large')
+    }
+    return parseRecoveryState(JSON.parse(contents.toString('utf8')) as unknown)
+  }
+
+  private async write(state: RecoveryState): Promise<void> {
+    await atomicWrite(this.statePath, `${JSON.stringify(state)}\n`)
+  }
+
+  private async restore(state: RecoveryState): Promise<void> {
+    if (resolve(state.profileDir) !== resolve(this.profileDir)) {
+      throw new Error('Community market recovery profile no longer matches the active profile')
+    }
+    for (const filename of RECOVERY_FILES) {
+      const path = join(this.profileDir, filename)
+      const encoded = state.before[filename]
+      if (encoded === null) {
+        await removeFile(path)
+      } else {
+        const temporary = `${path}.${process.pid}.${randomUUID()}.restore`
+        await writeFile(temporary, Buffer.from(encoded, 'base64'), { mode: 0o600 })
+        await rename(temporary, path)
+      }
+    }
+  }
+
+  private async clear(): Promise<void> {
+    await removeFile(this.statePath)
+  }
+}
+
+function validateArgs(args: readonly string[]): string[] {
+  if (args.length === 0 || args.some((argument) => argument.length === 0 || argument.includes('\0'))) {
+    throw new Error('Community market plugin arguments are invalid')
+  }
+  return [...args]
+}
+
+function validateDirectory(path: string): string {
+  if (!isAbsolute(path) || path.includes('\0')) throw new Error('Community market invoking directory is invalid')
+  return resolve(path)
+}
+
+export function resolveDshHome(environment: NodeJS.ProcessEnv = process.env): string {
+  const configured = environment.DSH_HOME?.trim()
+  if (!configured) return join(homedir(), '.dsh')
+  if (configured === '~') return homedir()
+  if (configured.startsWith('~/') || configured.startsWith('~\\')) {
+    return resolve(homedir(), configured.slice(2))
+  }
+  return resolve(configured)
+}
+
+export function resolveCommunityMarketProfile(
+  environment: NodeJS.ProcessEnv = process.env,
+): CommunityMarketProfile {
+  const home = resolveDshHome(environment)
+  return Object.freeze({ name: PROFILE_NAME, dir: join(home, 'profiles', PROFILE_NAME) })
+}
+
+export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
+  private readonly generationId = randomUUID()
+  private readonly recovery: InstallRecoveryStore
+  private active: ChildProcess | undefined
+
+  constructor(
+    private readonly profile: CommunityMarketProfile,
+    private readonly homeDir: string,
+    private readonly nodeBinary: string,
+    private readonly cliPath: string,
+    statePath: string,
+    private readonly spawnProcess: SpawnProcess = spawn,
+  ) {
+    if (!isAbsolute(profile.dir) || !isAbsolute(cliPath)) {
+      throw new Error('DeepDeck community market runtime paths must be absolute')
+    }
+    this.recovery = new InstallRecoveryStore(statePath, profile.dir, this.generationId)
+  }
+
+  runPlugin(
+    args: readonly string[],
+    invokingDir: string,
+    signal?: AbortSignal,
+  ): CommunityMarketPnpmHandle {
+    const resolvedArgs = validateArgs(args)
+    if (resolvedArgs[0] === 'add') {
+      throw new Error('Community market installs must use the protected install boundary')
+    }
+    return this.start(resolvedArgs, invokingDir, signal)
+  }
+
+  async runPluginInstall(
+    args: readonly string[],
+    invokingDir: string,
+    recovery: {
+      readonly packageName: string
+      readonly packageVersion: string
+      readonly receiptId: string
+    },
+    signal?: AbortSignal,
+  ): Promise<CommunityMarketPnpmHandle> {
+    const resolvedArgs = validateArgs(args)
+    if (resolvedArgs[0] !== 'add') {
+      throw new Error('Protected community market installs require the add command')
+    }
+    signal?.throwIfAborted()
+    await this.recovery.begin(recovery)
+    let handle: CommunityMarketPnpmHandle
+    try {
+      handle = this.start(resolvedArgs, invokingDir, signal)
+    } catch (cause) {
+      await this.recovery.rollback(recovery.receiptId)
+      throw cause
+    }
+    const done = handle.done.then(async (outcome) => {
+      if (outcome.exitCode === 0 && outcome.signal === null) {
+        await this.recovery.markAwaitingRestart(recovery.receiptId)
+      } else {
+        await this.recovery.rollback(recovery.receiptId)
+      }
+      return outcome
+    }, async (cause: unknown) => {
+      await this.recovery.rollback(recovery.receiptId)
+      throw cause
+    })
+    return { ...handle, done }
+  }
+
+  recoveredInstallReceiptIds(): Promise<readonly string[]> {
+    return this.recovery.recoveredReceiptIds()
+  }
+
+  acknowledgeRecoveredInstall(receiptId: string): Promise<void> {
+    return this.recovery.acknowledge(receiptId)
+  }
+
+  rollbackPluginInstall(receiptId: string): Promise<boolean> {
+    return this.recovery.rollback(receiptId)
+  }
+
+  private start(
+    args: readonly string[],
+    invokingDir: string,
+    signal?: AbortSignal,
+  ): CommunityMarketPnpmHandle {
+    if (this.active !== undefined) throw new Error('Another community market package operation is running')
+    signal?.throwIfAborted()
+    const child = this.spawnProcess(
+      this.nodeBinary,
+      [this.cliPath, 'plugin', '--profile', this.profile.name, ...args],
+      {
+        cwd: validateDirectory(invokingDir),
+        env: { ...process.env, DSH_HOME: this.homeDir, CI: 'true' },
+        shell: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    )
+    if (child.stdout === null || child.stderr === null) {
+      child.kill('SIGTERM')
+      throw new Error('Community market package process has no output streams')
+    }
+    this.active = child
+    let cancelled = false
+    const cancel = (): void => {
+      if (cancelled || child.exitCode !== null || child.signalCode !== null) return
+      cancelled = true
+      child.kill('SIGTERM')
+    }
+    const abort = (): void => cancel()
+    signal?.addEventListener('abort', abort, { once: true })
+    const done = new Promise<CommunityMarketPnpmOutcome>((resolveDone, rejectDone) => {
+      child.once('error', rejectDone)
+      child.once('exit', (exitCode, exitSignal) => resolveDone({ exitCode, signal: exitSignal }))
+    }).finally(() => {
+      signal?.removeEventListener('abort', abort)
+      if (this.active === child) this.active = undefined
+    })
+    return { stdout: child.stdout, stderr: child.stderr, done, cancel }
+  }
+}

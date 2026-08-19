@@ -23,20 +23,20 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const harnessRoot = join(workspaceRoot, "vendor", "deepseek-harness");
 const generatedRoot = join(workspaceRoot, ".deepdeck");
 const runtimeRoot = join(generatedRoot, "runtime");
-const nodeVersion = "24.18.0";
+const nodeVersion = "24.18.1";
 
 const NODE_ARCHIVES = Object.freeze({
   "darwin-arm64": {
     filename: `node-v${nodeVersion}-darwin-arm64.tar.gz`,
-    sha256: "e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1",
+    sha256: "eb02f7fab96d3d67de40c5ec8566096fcb4c2026728787683ae5a97eb612b941",
   },
   "darwin-x64": {
     filename: `node-v${nodeVersion}-darwin-x64.tar.gz`,
-    sha256: "dfd0dbd3e721503434df7b7205e719f61b3a3a31b2bcf9729b8b91fea240f080",
+    sha256: "6fb20fceacbb157c2f95825b80df4a454a0f6d81cdcd7bb81eeae9147e0e76ec",
   },
   "win32-x64": {
     filename: `node-v${nodeVersion}-win-x64.zip`,
-    sha256: "0ae68406b42d7725661da979b1403ec9926da205c6770827f33aac9d8f26e821",
+    sha256: "ec56b84a7551893ab2324ebdfdc4ab974a63b4781162600b68a1293cc3e53765",
   },
 });
 
@@ -47,12 +47,11 @@ const PLUGINS = Object.freeze([
   "marketplace-desktop-bridge",
   "first-run",
   "dsh-codex-connect",
-  "dsh-market",
+  "community-market",
 ]);
 
 const VENDOR_PLUGIN_PACKAGES = Object.freeze({
   "dsh-codex-connect": "dsh-codex-connect",
-  "dsh-market": "dshmarket",
 });
 
 function pluginSource(pluginName) {
@@ -63,6 +62,9 @@ function pluginSource(pluginName) {
 
 function pluginDestination(pluginName, destinationRoot) {
   const packageName = VENDOR_PLUGIN_PACKAGES[pluginName];
+  if (pluginName === "community-market") {
+    return join(destinationRoot, "harness", "node_modules", "dsh-community-market");
+  }
   return packageName !== undefined
     ? join(destinationRoot, "harness", "node_modules", packageName)
     : join(destinationRoot, "plugins", pluginName);
@@ -450,6 +452,24 @@ async function copyPluginDependencies(source, destination, dependencies) {
 async function copyPlugin(pluginName, destinationRoot) {
   const source = pluginSource(pluginName);
   const destination = pluginDestination(pluginName, destinationRoot);
+  if (pluginName === "community-market") {
+    const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+    await mkdir(dirname(destination), { recursive: true });
+    await run(
+      pnpm,
+      [
+        "--filter",
+        "dsh-community-market",
+        "deploy",
+        "--prod",
+        "--config.inject-workspace-packages=true",
+        "--config.node-linker=hoisted",
+        destination,
+      ],
+      { env: { CI: "true" } },
+    );
+    return;
+  }
   const manifest = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
   const clientExport = manifest.exports?.["./client"];
   const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
@@ -549,6 +569,7 @@ async function prepare() {
     if (!(await pathExists(baseBundle))) throw new Error("Harness materialization removed the required dsh-base bundle");
 
     for (const plugin of PLUGINS) await copyPlugin(plugin, temporaryRoot);
+    await materializeSymlinks(deployNodeModules);
     await cp(join(workspaceRoot, "branding"), join(temporaryRoot, "branding"), { recursive: true });
     await cp(
       join(workspaceRoot, "plugins", "desktop-chrome", "cordis.patch.yml"),

@@ -52,14 +52,14 @@ describe("resolveDesktopRuntimePaths", () => {
       "/Applications/DeepDeck.app/Contents/Resources/plugins/marketplace-desktop-bridge",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/first-run",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-codex-connect",
-      "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dshmarket",
+      "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-community-market",
     ]);
     expect(paths.plugins.slice(-2).map((plugin) => ({
       packageName: plugin.packageName,
       presetBundle: plugin.presetBundle,
     }))).toEqual([
       { packageName: "dsh-codex-connect", presetBundle: true },
-      { packageName: "dshmarket", presetBundle: true },
+      { packageName: "dsh-community-market", presetBundle: true },
     ]);
   });
 

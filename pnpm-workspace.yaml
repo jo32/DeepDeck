@@ -6,3 +6,9 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   esbuild: true
+  sharp: true
+
+packageExtensions:
+  '@deepseek-ai/dsh-client-ui-primitives@0.1.0-rc.7':
+    dependencies:
+      '@types/react': 18.3.31

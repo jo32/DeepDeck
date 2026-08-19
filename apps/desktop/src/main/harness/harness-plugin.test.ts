@@ -4,13 +4,41 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST,
+  COMMUNITY_MARKET_RESTART_REQUEST,
   ensureHarnessPluginLink,
+  isCommunityMarketOpenTerminalRequest,
+  isMarketplaceRestartRequest,
+  resolveCommunityMarketTerminalLaunch,
   resolveHarnessHome,
   resolveHarnessPluginLink,
   restoreHarnessPluginLink,
 } from "./harness-process.js";
 
 describe("Harness plugin resolution", () => {
+  it("recognizes Community Market desktop requests and resolves native terminals safely", () => {
+    expect(isMarketplaceRestartRequest({ type: COMMUNITY_MARKET_RESTART_REQUEST })).toBe(true);
+    expect(isCommunityMarketOpenTerminalRequest({
+      type: COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST,
+    })).toBe(true);
+    expect(isCommunityMarketOpenTerminalRequest({
+      type: COMMUNITY_MARKET_RESTART_REQUEST,
+    })).toBe(false);
+    expect(resolveCommunityMarketTerminalLaunch("darwin", "/tmp/dsh profile")).toEqual({
+      command: "/usr/bin/open",
+      args: ["-a", "Terminal", "/tmp/dsh profile"],
+    });
+    expect(resolveCommunityMarketTerminalLaunch("win32", "C:\\Users\\DeepDeck\\.dsh")).toEqual({
+      command: "powershell.exe",
+      args: [
+        "-NoExit",
+        "-Command",
+        "Set-Location -LiteralPath $args[0]",
+        "C:\\Users\\DeepDeck\\.dsh",
+      ],
+    });
+  });
+
   it("matches Harness home precedence and expands a home-relative override", () => {
     expect(resolveHarnessHome({})).toBe(join(homedir(), ".dsh"));
     expect(resolveHarnessHome({ DSH_HOME: "  " })).toBe(join(homedir(), ".dsh"));
@@ -39,9 +67,9 @@ describe("Harness plugin resolution", () => {
     );
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",
-      "@deepdeck/dsh-market-desktop-bridge",
+      "@deepdeck/dsh-community-market-desktop-bridge",
     )).toBe(
-      "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-market-desktop-bridge",
+      "/tmp/dsh-home/profiles/web/node_modules/@deepdeck/dsh-community-market-desktop-bridge",
     );
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",
@@ -51,9 +79,9 @@ describe("Harness plugin resolution", () => {
     );
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",
-      "dshmarket",
+      "dsh-community-market",
     )).toBe(
-      "/tmp/dsh-home/profiles/web/node_modules/dshmarket",
+      "/tmp/dsh-home/profiles/web/node_modules/dsh-community-market",
     );
     expect(resolveHarnessPluginLink(
       "/tmp/dsh-home",

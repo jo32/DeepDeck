@@ -18,12 +18,58 @@ const START_TIMEOUT_MS = 90_000;
 const STOP_TIMEOUT_MS = 5_000;
 const MAX_LOG_LINES = 80;
 export const MARKETPLACE_RESTART_REQUEST = "dsh-market:restart";
+export const COMMUNITY_MARKET_RESTART_REQUEST = "dsh-community-market:restart";
+export const COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST = "dsh-community-market:open-terminal";
+const LEGACY_PRESET_BUNDLES = ["dshmarket"] as const;
 
 type StatusListener = (status: HarnessRuntimeStatus) => void;
 
 export function isMarketplaceRestartRequest(message: unknown): boolean {
   if (typeof message !== "object" || message === null) return false;
-  return (message as { type?: unknown }).type === MARKETPLACE_RESTART_REQUEST;
+  const type = (message as { type?: unknown }).type;
+  return type === MARKETPLACE_RESTART_REQUEST || type === COMMUNITY_MARKET_RESTART_REQUEST;
+}
+
+export function isCommunityMarketOpenTerminalRequest(message: unknown): boolean {
+  if (typeof message !== "object" || message === null) return false;
+  return (message as { type?: unknown }).type === COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST;
+}
+
+export interface TerminalLaunch {
+  command: string;
+  args: readonly string[];
+}
+
+export function resolveCommunityMarketTerminalLaunch(
+  platform: NodeJS.Platform,
+  profileDir: string,
+): TerminalLaunch {
+  if (platform === "darwin") {
+    return { command: "/usr/bin/open", args: ["-a", "Terminal", profileDir] };
+  }
+  if (platform === "win32") {
+    return {
+      command: "powershell.exe",
+      args: ["-NoExit", "-Command", "Set-Location -LiteralPath $args[0]", profileDir],
+    };
+  }
+  return { command: "x-terminal-emulator", args: ["--working-directory", profileDir] };
+}
+
+export function openCommunityMarketTerminal(
+  profileDir: string,
+  platform: NodeJS.Platform = process.platform,
+): void {
+  const launch = resolveCommunityMarketTerminalLaunch(platform, profileDir);
+  const terminal = spawn(launch.command, launch.args, {
+    detached: true,
+    shell: false,
+    stdio: "ignore",
+  });
+  terminal.once("error", (error) => {
+    console.error("Unable to open a terminal for Community Market", error);
+  });
+  terminal.unref();
 }
 
 export interface HarnessClientPlugin {
@@ -198,7 +244,10 @@ export class HarnessProcess {
       const dshHome = resolveHarnessHome(environment);
       migratePresetBundles(
         dshHome,
-        this.options.plugins.filter((plugin) => plugin.presetBundle).map((plugin) => plugin.packageName),
+        [
+          ...this.options.plugins.filter((plugin) => plugin.presetBundle).map((plugin) => plugin.packageName),
+          ...LEGACY_PRESET_BUNDLES,
+        ],
       );
       this.preparePluginLinks(environment);
     } catch (error) {
@@ -271,11 +320,17 @@ export class HarnessProcess {
       child.stdout?.on("data", (chunk: Buffer) => consume(chunk, "stdout"));
       child.stderr?.on("data", (chunk: Buffer) => consume(chunk, "stderr"));
       child.on("message", (message: unknown) => {
-        if (!isMarketplaceRestartRequest(message) || this.child !== child) return;
-        void this.restart().catch((error: unknown) => {
-          const detail = errorMessage(error);
-          this.publish({ state: "error", message: `无法重启 ${this.options.displayName}：${detail}` });
-        });
+        if (this.child !== child) return;
+        if (isMarketplaceRestartRequest(message)) {
+          void this.restart().catch((error: unknown) => {
+            const detail = errorMessage(error);
+            this.publish({ state: "error", message: `无法重启 ${this.options.displayName}：${detail}` });
+          });
+          return;
+        }
+        if (isCommunityMarketOpenTerminalRequest(message)) {
+          openCommunityMarketTerminal(join(resolveHarnessHome(environment), "profiles", "web"));
+        }
       });
       child.once("error", (error) => {
         this.cleanupPluginLinks();

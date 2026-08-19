@@ -26,8 +26,8 @@
     - id: deepdeck-agent-preset-sections
       name: '@deepdeck/dsh-client-ui-agent-preset-sections'
 
-    - id: deepdeck-marketplace-desktop-bridge
-      name: '@deepdeck/dsh-market-desktop-bridge'
+    - id: deepdeck-community-market-desktop-bridge
+      name: '@deepdeck/dsh-community-market-desktop-bridge'
 
     - id: deepdeck-first-run
       name: '@deepdeck/dsh-first-run'
@@ -38,5 +38,5 @@
         enableSearch: false
         enableImageTool: false
 
-    - id: dsh-market
-      name: 'dshmarket'
+    - id: community-market
+      name: 'dsh-community-market'
