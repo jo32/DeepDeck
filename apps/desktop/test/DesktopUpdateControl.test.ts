@@ -39,10 +39,53 @@ afterEach(async () => {
   container?.remove();
   root = undefined;
   container = undefined;
+  window.sessionStorage.clear();
   Reflect.deleteProperty(window, "deepseekDesktop");
 });
 
 describe("DesktopUpdateControl", () => {
+  it("removes a completed update indicator when its prompt is dismissed", async () => {
+    const updated: UpdateStatus = {
+      state: "updated",
+      currentVersion: "1.0.12",
+      version: "1.0.12",
+    };
+    Object.defineProperty(window, "deepseekDesktop", {
+      configurable: true,
+      value: {
+        updates: {
+          get: vi.fn(async () => updated),
+          download: vi.fn(async () => updated),
+          install: vi.fn(async () => updated),
+          onStatus: vi.fn(() => () => {}),
+        },
+      },
+    });
+
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(createElement(DesktopUpdateControl, { t }));
+    });
+
+    expect(container.textContent).toContain("已完成更新");
+    const closeButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="关闭更新提示"]',
+    );
+    expect(closeButton).not.toBeNull();
+
+    await act(async () => { closeButton?.click(); });
+    expect(container.textContent).toBe("");
+
+    await act(async () => { root?.unmount(); });
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(createElement(DesktopUpdateControl, { t }));
+    });
+    expect(container.textContent).toBe("");
+  });
+
   it("downloads an available update and installs only after explicit confirmation", async () => {
     let statusListener: ((status: UpdateStatus) => void) | undefined;
     const available: UpdateStatus = {

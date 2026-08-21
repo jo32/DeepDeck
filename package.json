@@ -19,11 +19,13 @@
     "market:check": "pnpm market:prepare && pnpm --filter dsh-community-market run typecheck",
     "market:test": "pnpm market:prepare && pnpm --filter dsh-community-market run test",
     "market:build": "pnpm market:prepare && pnpm --filter dsh-community-market run build",
-    "codex-connect:install": "CI=1 pnpm --dir vendor/dsh-codex-connect install --frozen-lockfile",
-    "codex-connect:build": "pnpm --dir vendor/dsh-codex-connect run build",
+    "codex-connect:install": "pnpm install --frozen-lockfile && pnpm codex-connect:check",
+    "codex-connect:check": "node scripts/verify-codex-connect-patch.mjs && pnpm --dir vendor/dsh-codex-connect run typecheck",
+    "codex-connect:test": "pnpm codex-connect:check && pnpm --dir vendor/dsh-codex-connect run test",
+    "codex-connect:build": "pnpm codex-connect:check",
     "build": "pnpm market:build && pnpm codex-connect:build && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run build && pnpm --filter @deepdeck/dsh-first-run run build && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run build && pnpm --filter @deepdeck/dsh-client-ui-home-hero run build && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run build && pnpm --filter @deepseek-harness/desktop run build",
-    "check": "pnpm market:check && pnpm --dir vendor/dsh-codex-connect run typecheck && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check",
-    "test": "pnpm market:test && pnpm --dir vendor/dsh-codex-connect run test && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepseek-harness/desktop run test",
+    "check": "pnpm market:check && pnpm codex-connect:check && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check",
+    "test": "pnpm market:test && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepseek-harness/desktop run test",
     "runtime:prepare": "node scripts/prepare-runtime.mjs",
     "runtime:verify": "node scripts/verify-runtime.mjs",
     "package:local": "pnpm build && pnpm runtime:prepare && node scripts/build-desktop-package.mjs --local && node scripts/verify-desktop-package.mjs --local",
@@ -32,6 +34,9 @@
     "start": "pnpm build && node scripts/run-desktop.mjs",
     "start:raw": "pnpm build && node scripts/run-desktop.mjs",
     "start:packaged": "pnpm package:local && node scripts/run-packaged-desktop.mjs"
+  },
+  "dependencies": {
+    "dsh-codex-connect": "0.1.0-alpha.4.10"
   },
   "devDependencies": {
     "pnpm": "11.7.0"

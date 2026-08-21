@@ -50,18 +50,19 @@ const PLUGINS = Object.freeze([
   "community-market",
 ]);
 
-const VENDOR_PLUGIN_PACKAGES = Object.freeze({
+const HARNESS_PLUGIN_PACKAGES = Object.freeze({
   "dsh-codex-connect": "dsh-codex-connect",
 });
 
 function pluginSource(pluginName) {
-  return Object.hasOwn(VENDOR_PLUGIN_PACKAGES, pluginName)
-    ? join(workspaceRoot, "vendor", pluginName)
-    : join(workspaceRoot, "plugins", pluginName);
+  if (Object.hasOwn(HARNESS_PLUGIN_PACKAGES, pluginName)) {
+    return join(workspaceRoot, "node_modules", HARNESS_PLUGIN_PACKAGES[pluginName]);
+  }
+  return join(workspaceRoot, "plugins", pluginName);
 }
 
 function pluginDestination(pluginName, destinationRoot) {
-  const packageName = VENDOR_PLUGIN_PACKAGES[pluginName];
+  const packageName = HARNESS_PLUGIN_PACKAGES[pluginName];
   if (pluginName === "community-market") {
     return join(destinationRoot, "harness", "node_modules", "dsh-community-market");
   }
@@ -489,7 +490,7 @@ async function copyPlugin(pluginName, destinationRoot) {
       await cp(join(source, optionalDirectory), join(destination, optionalDirectory), { recursive: true });
     }
   }
-  for (const optional of ["LICENSE", "README.md", "README.zh.md"]) {
+  for (const optional of ["LICENSE", "README.md", "README.zh.md", "compatibility.json"]) {
     if (await pathExists(join(source, optional))) await cp(join(source, optional), join(destination, optional));
   }
   await copyPluginDependencies(source, destination, manifest.dependencies);

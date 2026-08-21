@@ -30,6 +30,24 @@ interface UpdatesBridge {
   onStatus: (listener: (status: UpdateStatus) => void) => () => void
 }
 
+const DISMISSED_UPDATED_VERSION_KEY = 'deepdeck.desktop.dismissed-updated-version'
+
+function readDismissedUpdatedVersion(): string | undefined {
+  try {
+    return window.sessionStorage.getItem(DISMISSED_UPDATED_VERSION_KEY) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+function rememberDismissedUpdatedVersion(version: string): void {
+  try {
+    window.sessionStorage.setItem(DISMISSED_UPDATED_VERSION_KEY, version)
+  } catch {
+    // The in-memory status is still cleared when session storage is unavailable.
+  }
+}
+
 function bridge(): UpdatesBridge | undefined {
   const desktopWindow = window as Window & {
     deepseekDesktop?: { updates?: UpdatesBridge }
@@ -79,6 +97,12 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
     let active = true
     const accept = (next: UpdateStatus) => {
       if (!active) return
+      if (next.state === 'updated' && next.version === readDismissedUpdatedVersion()) {
+        setStatus(undefined)
+        setOpen(false)
+        previousState.current = next.state
+        return
+      }
       setStatus(next)
       const newlyAvailable = next.state === 'available' && previousState.current !== 'available'
       if (
@@ -115,6 +139,14 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
         ? t('update.downloaded')
         : t('update.available')
 
+  const close = () => {
+    if (updated) {
+      rememberDismissedUpdatedVersion(status.version)
+      setStatus(undefined)
+    }
+    setOpen(false)
+  }
+
   const download = async () => {
     setOpen(true)
     try {
@@ -145,7 +177,7 @@ export function DesktopUpdateControl({ t }: DesktopUpdateControlProps) {
                 type="button"
                 className={css.updateClose}
                 aria-label={t('update.close')}
-                onClick={() => { setOpen(false) }}
+                onClick={close}
               >
                 ×
               </button>

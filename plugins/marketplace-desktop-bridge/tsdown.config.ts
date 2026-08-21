@@ -1,6 +1,6 @@
-import { clientBundle } from '../../vendor/deepseek-harness/packages/client/tsdown.client.ts'
+import { deepdeckClientBundle } from '../../scripts/deepdeck-client-bundle.ts'
 
-export default clientBundle(
+export default deepdeckClientBundle(
   '@deepdeck/dsh-community-market-desktop-bridge',
   ['lib/types/index.js', 'lib/types/invariant.js'],
 )

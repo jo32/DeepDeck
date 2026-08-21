@@ -5,6 +5,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.10";
+const DSH_PLUGIN_API_VERSION = "0.1.0-rc.8";
+const REACT_PEER_RANGE = "^19.1.1";
 
 function runtimeRootFromArguments(arguments_) {
   for (let index = 0; index < arguments_.length; index += 1) {
@@ -83,6 +86,24 @@ function pluginRoot(runtimeRoot, pluginName) {
     return join(runtimeRoot, "harness", "node_modules", harnessPackage);
   }
   return join(runtimeRoot, "plugins", pluginName);
+}
+
+async function verifyCodexConnectContract(root, manifest) {
+  if (manifest.version !== CODEX_CONNECT_VERSION) {
+    throw new Error(`Bundled Codex Connect version is ${manifest.version ?? "missing"}`);
+  }
+  const dshPeers = Object.entries(manifest.peerDependencies ?? {})
+    .filter(([name]) => name.startsWith("@deepseek-ai/dsh-"));
+  if (dshPeers.length === 0 || dshPeers.some(([, version]) => version !== DSH_PLUGIN_API_VERSION)) {
+    throw new Error("Bundled Codex Connect does not declare an rc.8-only DSH peer contract");
+  }
+  if (manifest.peerDependencies?.react !== REACT_PEER_RANGE) {
+    throw new Error("Bundled Codex Connect does not declare its React 19 peer contract");
+  }
+  const compatibility = JSON.parse(await readFile(join(root, "compatibility.json"), "utf8"));
+  if (compatibility.dshPluginApi?.version !== DSH_PLUGIN_API_VERSION) {
+    throw new Error("Bundled Codex Connect compatibility.json does not report Harness rc.8");
+  }
 }
 
 async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
@@ -175,6 +196,7 @@ for (const plugin of manifest.plugins) {
   requiredRuntimePaths.push(pluginManifestPath);
   if (await pathExists(pluginManifestPath)) {
     const pluginManifest = JSON.parse(await readFile(pluginManifestPath, "utf8"));
+    if (plugin === "dsh-codex-connect") await verifyCodexConnectContract(root, pluginManifest);
     const clientExport = pluginManifest.exports?.["./client"];
     const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
     requiredRuntimePaths.push(join(root, pluginManifest.main ?? "lib/index.js"));

@@ -155,7 +155,7 @@ export function resolveDesktopRuntimePaths(
         path: environmentValue(
           environment,
           "DEEPDECK_CODEX_CONNECT_PLUGIN",
-          join(workspaceRepository, "vendor", "dsh-codex-connect"),
+          join(workspaceRepository, "node_modules", "dsh-codex-connect"),
         ),
         presetBundle: true,
       },

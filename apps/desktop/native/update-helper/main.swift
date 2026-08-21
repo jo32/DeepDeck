@@ -10,6 +10,7 @@ private struct HelperOptions {
     let targetVersion: String
     let displayName: String
     let locale: String
+    let preview: Bool
     let skipSecurityVerification: Bool
 
     static func parse(_ arguments: [String]) throws -> HelperOptions {
@@ -18,7 +19,7 @@ private struct HelperOptions {
         var index = 0
         while index < arguments.count {
             let key = arguments[index]
-            if key == "--skip-security-verification" {
+            if key == "--preview" || key == "--skip-security-verification" {
                 flags.insert(key)
                 index += 1
                 continue
@@ -55,35 +56,48 @@ private struct HelperOptions {
             targetVersion: try required("--target-version"),
             displayName: try required("--display-name"),
             locale: try required("--locale"),
+            preview: flags.contains("--preview"),
             skipSecurityVerification: flags.contains("--skip-security-verification")
         )
     }
 }
 
 private struct Copy {
+    let windowTitle: String
     let title: String
     let preparing: String
     let installing: String
     let verifying: String
     let launching: String
+    let footnote: String
+    let versionTransition: String
+    let failedTitle: String
     let failed: String
     let openApp: String
 
     init(options: HelperOptions) {
         if options.locale.lowercased().hasPrefix("zh") {
-            title = "正在更新 \(options.displayName)"
-            preparing = "正在准备安装 v\(options.targetVersion)…"
+            windowTitle = "\(options.displayName) 更新"
+            title = "正在安装更新"
+            preparing = "正在准备 \(options.displayName) v\(options.targetVersion)…"
             installing = "正在替换应用，请不要关闭此窗口…"
             verifying = "正在验证新版本的完整性与签名…"
             launching = "更新完成，正在重新打开 \(options.displayName)…"
+            footnote = "完成后，\(options.displayName) 将自动重新打开"
+            versionTransition = "v\(options.sourceVersion)  →  v\(options.targetVersion)"
+            failedTitle = "未能完成更新"
             failed = "更新没有完成。你可以重新打开原版本后再试一次。"
             openApp = "打开 \(options.displayName)"
         } else {
-            title = "Updating \(options.displayName)"
-            preparing = "Preparing to install v\(options.targetVersion)…"
+            windowTitle = "\(options.displayName) Update"
+            title = "Installing update"
+            preparing = "Preparing \(options.displayName) v\(options.targetVersion)…"
             installing = "Replacing the application. Keep this window open…"
             verifying = "Verifying the new version and its signature…"
             launching = "Update complete. Reopening \(options.displayName)…"
+            footnote = "\(options.displayName) will reopen automatically when ready"
+            versionTransition = "v\(options.sourceVersion)  →  v\(options.targetVersion)"
+            failedTitle = "Update couldn’t be completed"
             failed = "The update did not finish. Reopen the previous version and try again."
             openApp = "Open \(options.displayName)"
         }
@@ -145,9 +159,12 @@ private final class UpdateController: NSObject, NSWindowDelegate {
     private var timer: Timer?
 
     private let window: NSWindow
-    private let spinner = NSProgressIndicator()
+    private let appIcon = NSImageView()
+    private let progress = NSProgressIndicator()
     private let titleLabel = NSTextField(labelWithString: "")
     private let detailLabel = NSTextField(wrappingLabelWithString: "")
+    private let versionLabel = NSTextField(labelWithString: "")
+    private let footnoteLabel = NSTextField(labelWithString: "")
     private let recoveryButton = NSButton()
 
     init(options: HelperOptions) {
@@ -155,7 +172,7 @@ private final class UpdateController: NSObject, NSWindowDelegate {
         self.copy = Copy(options: options)
         self.initialInode = inode(at: options.appPath)
         self.window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 184),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 174),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -165,64 +182,100 @@ private final class UpdateController: NSObject, NSWindowDelegate {
     }
 
     func start() {
-        updateTransaction(phase: "installing", message: nil)
+        if !options.preview {
+            updateTransaction(phase: "installing", message: nil)
+        }
         NSApp.setActivationPolicy(.accessory)
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        spinner.startAnimation(nil)
+        progress.startAnimation(nil)
         show(copy.preparing)
+        if options.preview { return }
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.poll()
         }
     }
 
     private func configureWindow() {
-        window.title = copy.title
+        window.title = copy.windowTitle
+        window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
+        window.backgroundColor = .windowBackgroundColor
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
         window.delegate = self
 
         guard let content = window.contentView else { return }
-        spinner.style = .spinning
-        spinner.controlSize = .regular
-        spinner.translatesAutoresizingMaskIntoConstraints = false
+
+        appIcon.image = NSWorkspace.shared.icon(forFile: options.appPath)
+        appIcon.imageScaling = .scaleProportionallyUpOrDown
+        appIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        progress.style = .bar
+        progress.controlSize = .small
+        progress.isIndeterminate = true
+        progress.translatesAutoresizingMaskIntoConstraints = false
 
         titleLabel.stringValue = copy.title
-        titleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleLabel.textColor = .labelColor
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         detailLabel.textColor = .secondaryLabelColor
-        detailLabel.font = .systemFont(ofSize: 13)
+        detailLabel.font = .systemFont(ofSize: 13.5)
         detailLabel.maximumNumberOfLines = 3
+        detailLabel.setContentHuggingPriority(.required, for: .vertical)
+        detailLabel.setContentCompressionResistancePriority(.required, for: .vertical)
         detailLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        versionLabel.stringValue = copy.versionTransition
+        versionLabel.font = .monospacedDigitSystemFont(ofSize: 11.5, weight: .medium)
+        versionLabel.textColor = .secondaryLabelColor.withAlphaComponent(0.72)
+        versionLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        footnoteLabel.stringValue = copy.footnote
+        footnoteLabel.font = .systemFont(ofSize: 11.5)
+        footnoteLabel.textColor = .secondaryLabelColor.withAlphaComponent(0.72)
+        footnoteLabel.alignment = .right
+        footnoteLabel.translatesAutoresizingMaskIntoConstraints = false
 
         recoveryButton.title = copy.openApp
         recoveryButton.bezelStyle = .rounded
+        recoveryButton.controlSize = .regular
         recoveryButton.target = self
         recoveryButton.action = #selector(openExistingApp)
         recoveryButton.isHidden = true
         recoveryButton.translatesAutoresizingMaskIntoConstraints = false
 
-        for view in [spinner, titleLabel, detailLabel, recoveryButton] {
+        for view in [appIcon, titleLabel, detailLabel, progress, versionLabel, footnoteLabel, recoveryButton] {
             content.addSubview(view)
         }
         NSLayoutConstraint.activate([
-            spinner.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 28),
-            spinner.topAnchor.constraint(equalTo: content.topAnchor, constant: 61),
-            spinner.widthAnchor.constraint(equalToConstant: 24),
-            spinner.heightAnchor.constraint(equalToConstant: 24),
-            titleLabel.leadingAnchor.constraint(equalTo: spinner.trailingAnchor, constant: 16),
+            appIcon.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 28),
+            appIcon.topAnchor.constraint(equalTo: titleLabel.topAnchor, constant: -4),
+            appIcon.widthAnchor.constraint(equalToConstant: 52),
+            appIcon.heightAnchor.constraint(equalToConstant: 52),
+            titleLabel.leadingAnchor.constraint(equalTo: appIcon.trailingAnchor, constant: 18),
             titleLabel.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -28),
-            titleLabel.topAnchor.constraint(equalTo: content.topAnchor, constant: 48),
+            titleLabel.topAnchor.constraint(equalTo: content.topAnchor, constant: 40),
             detailLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             detailLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
-            detailLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 7),
+            detailLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 5),
+            progress.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            progress.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+            progress.topAnchor.constraint(equalTo: detailLabel.bottomAnchor, constant: 13),
+            progress.heightAnchor.constraint(equalToConstant: 4),
+            versionLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            versionLabel.topAnchor.constraint(equalTo: progress.bottomAnchor, constant: 20),
+            versionLabel.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -17),
+            footnoteLabel.leadingAnchor.constraint(greaterThanOrEqualTo: versionLabel.trailingAnchor, constant: 16),
+            footnoteLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+            footnoteLabel.firstBaselineAnchor.constraint(equalTo: versionLabel.firstBaselineAnchor),
             recoveryButton.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -28),
-            recoveryButton.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -20),
+            recoveryButton.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -18),
         ])
     }
 
@@ -309,9 +362,14 @@ private final class UpdateController: NSObject, NSWindowDelegate {
     private func fail(_ diagnostic: String) {
         failed = true
         timer?.invalidate()
-        spinner.stopAnimation(nil)
-        spinner.isHidden = true
+        window.setContentSize(NSSize(width: 440, height: 216))
+        progress.stopAnimation(nil)
+        progress.isHidden = true
+        titleLabel.stringValue = copy.failedTitle
         detailLabel.stringValue = "\(copy.failed)\n\(diagnostic)"
+        detailLabel.font = .systemFont(ofSize: 12.5)
+        versionLabel.isHidden = true
+        footnoteLabel.isHidden = true
         recoveryButton.isHidden = false
         window.standardWindowButton(.closeButton)?.isHidden = false
         updateTransaction(phase: "failed", message: diagnostic)

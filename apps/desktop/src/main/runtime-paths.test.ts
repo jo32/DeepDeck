@@ -21,6 +21,7 @@ describe("resolveDesktopRuntimePaths", () => {
     expect(paths.nodeBinary).toBe("/toolchain/node");
     expect(paths.workspaceRoot).toBe("/repo/workspace");
     expect(paths.plugins[1]?.path).toBe("/custom/home-hero");
+    expect(paths.plugins[5]?.path).toBe("/repo/node_modules/dsh-codex-connect");
   });
 
   it("pins program resources inside the packaged bundle", () => {
