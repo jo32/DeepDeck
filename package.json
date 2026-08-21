@@ -19,7 +19,7 @@
     "market:check": "pnpm market:prepare && pnpm --filter dsh-community-market run typecheck",
     "market:test": "pnpm market:prepare && pnpm --filter dsh-community-market run test",
     "market:build": "pnpm market:prepare && pnpm --filter dsh-community-market run build",
-    "codex-connect:install": "pnpm install --frozen-lockfile && pnpm codex-connect:check",
+    "codex-connect:install": "pnpm install --frozen-lockfile && pnpm --dir vendor/dsh-codex-connect install --frozen-lockfile && pnpm codex-connect:check",
     "codex-connect:check": "node scripts/verify-codex-connect-patch.mjs && pnpm --dir vendor/dsh-codex-connect run typecheck",
     "codex-connect:test": "pnpm codex-connect:check && pnpm --dir vendor/dsh-codex-connect run test",
     "codex-connect:build": "pnpm codex-connect:check",
