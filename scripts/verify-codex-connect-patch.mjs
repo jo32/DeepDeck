@@ -5,10 +5,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const expectedPackageVersion = "0.1.0-alpha.4.10";
-const expectedDshVersion = "0.1.0-rc.8";
+const expectedPackageVersion = "0.1.0-alpha.4.14";
+const expectedDshVersion = "0.1.1-rc.1";
 const expectedReactRange = "^19.1.1";
 const expectedPiAiVersion = "0.82.1";
+const staleDshVersions = ["0.1.0-rc.7", "0.1.0-rc.8"];
 const textExtensions = new Set([".d.ts", ".js", ".json", ".md", ".yaml", ".yml"]);
 
 function fail(message) {
@@ -60,22 +61,31 @@ if (manifest.peerDependencies?.["@earendil-works/pi-ai"] !== expectedPiAiVersion
   fail("pi-ai peer contract drifted");
 }
 if (compatibility.dshPluginApi?.version !== expectedDshVersion) {
-  fail("compatibility.json does not declare Harness rc.8");
+  fail("compatibility.json does not declare Harness 0.1.1-rc.1");
 }
 
 const textFiles = await collectTextFiles(packageRoot);
+let claimsConfigurableProvider = false;
 for (const path of textFiles) {
-  if ((await readFile(path, "utf8")).includes("0.1.0-rc.7")) {
-    fail(`stale rc.7 contract remains in ${relative(packageRoot, path)}`);
+  const text = await readFile(path, "utf8");
+  if (/registerConfigurableProviders\(\[\{\s*provider:\s*OPENAI_CODEX_PROVIDER/u.test(text)) {
+    claimsConfigurableProvider = true;
   }
+  const staleVersion = staleDshVersions.find((version) => text.includes(version));
+  if (staleVersion !== undefined) {
+    fail(`stale ${staleVersion} contract remains in ${relative(packageRoot, path)}`);
+  }
+}
+if (claimsConfigurableProvider) {
+  fail("compiled bundle still duplicates Harness 0.1.1's catalog-owned openai-codex directory entry");
 }
 
 const plugin = await import(pathToFileURL(join(packageRoot, manifest.main ?? "lib/index.js")).href);
 if (plugin.SUPPORTED_DSH_PLUGIN_API_VERSION !== expectedDshVersion) {
-  fail("compiled doctor contract does not report Harness rc.8");
+  fail("compiled doctor contract does not report Harness 0.1.1-rc.1");
 }
 if (plugin.COMPATIBILITY_CONTRACT?.dshPluginApi?.version !== expectedDshVersion) {
-  fail("compiled compatibility contract does not report Harness rc.8");
+  fail("compiled compatibility contract does not report Harness 0.1.1-rc.1");
 }
 
 const report = plugin.evaluateCompatibility({
@@ -90,7 +100,7 @@ if (report.status !== "compatible") fail(`compiled compatibility evaluation retu
 
 const installedReport = await plugin.detectCompatibility();
 if (installedReport.status !== "compatible") {
-  fail(`installed rc.8 dependency detection returned ${installedReport.status}`);
+  fail(`installed 0.1.1-rc.1 dependency detection returned ${installedReport.status}`);
 }
 
 console.log(

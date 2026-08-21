@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const marketRoot = join(workspaceRoot, "plugins", "community-market");
 const expectedFileCount = 101;
-const expectedSha256 = "1a354c504957276013ef8aba598fd25e0e418ad1a56613347a5491dceb2964ca";
+const expectedSha256 = "ebee10441333916f60790e34235bae56b5197de2f866e846cb3bcf77c5698caa";
 const excludedFiles = new Set(["UPSTREAM.md", "cordis.patch.yml"]);
 
 async function collectFiles(directory) {

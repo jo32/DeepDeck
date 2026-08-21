@@ -1,5 +1,5 @@
 /**
- * rc.8-compatible client bundle preset for DeepDeck plugins that live outside
+ * 0.1.1-rc.1-compatible client bundle preset for DeepDeck plugins that live outside
  * the Harness repository's two-level package workspace layout.
  */
 import { existsSync, globSync, readFileSync } from 'node:fs'
@@ -17,7 +17,10 @@ import {
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const CSS_VIRTUAL_PREFIX = '\0deepdeck-css:'
+const GLOBAL_CSS_VIRTUAL_PREFIX = '\0deepdeck-global-css:'
+const INLINE_CSS_VIRTUAL_PREFIX = '\0deepdeck-inline-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
+const INLINE_CSS_QUERY = '?inline'
 const TYPES_MARKER = `${sep}lib${sep}types${sep}`
 
 const INLINE_SAFE = /^@deepseek-ai\/dsh-(host-apiproxy|file-reference|session|llm|tools|brand)(\/|$)/
@@ -71,11 +74,15 @@ function escapeSpecifier(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function styleModule(id: string, file: string, css: string, classes: Readonly<Record<string, string>>): string {
-  const tagId = `${id}/${basename(file)}`
-  return [
+function styleModule(
+  id: string,
+  file: string,
+  css: string,
+  classes?: Readonly<Record<string, string>>,
+): string {
+  const source = [
     `const css = ${JSON.stringify(css)};`,
-    `const tagId = ${JSON.stringify(tagId)};`,
+    `const tagId = ${JSON.stringify(`${id}/${basename(file)}`)};`,
     'if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {',
     '  const tag = document.createElement("style");',
     `  tag.dataset.plugin = ${JSON.stringify(id)};`,
@@ -83,8 +90,9 @@ function styleModule(id: string, file: string, css: string, classes: Readonly<Re
     '  tag.textContent = css;',
     '  document.head.appendChild(tag);',
     '}',
-    `export default ${JSON.stringify(classes)};`,
-  ].join('\n')
+  ]
+  source.push(classes === undefined ? 'export {};' : `export default ${JSON.stringify(classes)};`)
+  return source.join('\n')
 }
 
 function sourceAssetPath(source: string, importer: string): string {
@@ -180,6 +188,37 @@ function clientConfig(id: string): UserConfig {
         }
         return styleModule(id, file, result.code.toString(), classes)
       },
+    }, {
+      name: 'deepdeck-css-text-inline',
+      resolveId(source: string, importer: string | undefined) {
+        if (!source.endsWith(`.css${INLINE_CSS_QUERY}`)) return null
+        const stylesheet = source.slice(0, -INLINE_CSS_QUERY.length)
+        const file = importer === undefined ? stylesheet : sourceAssetPath(stylesheet, importer)
+        return `${INLINE_CSS_VIRTUAL_PREFIX}${file}${CSS_VIRTUAL_SUFFIX}`
+      },
+      async load(virtualId: string) {
+        if (!virtualId.startsWith(INLINE_CSS_VIRTUAL_PREFIX)) return null
+        const file = virtualId.slice(INLINE_CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+        this.addWatchFile(file)
+        const source = await readFile(file)
+        const result = transform({ filename: file, code: source, minify: true })
+        return `export default ${JSON.stringify(result.code.toString())};`
+      },
+    }, {
+      name: 'deepdeck-css-global-inline',
+      resolveId(source: string, importer: string | undefined) {
+        if (!source.endsWith('.css') || source.endsWith('.module.css')) return null
+        const file = importer === undefined ? source : sourceAssetPath(source, importer)
+        return `${GLOBAL_CSS_VIRTUAL_PREFIX}${file}${CSS_VIRTUAL_SUFFIX}`
+      },
+      async load(virtualId: string) {
+        if (!virtualId.startsWith(GLOBAL_CSS_VIRTUAL_PREFIX)) return null
+        const file = virtualId.slice(GLOBAL_CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+        this.addWatchFile(file)
+        const source = await readFile(file)
+        const result = transform({ filename: file, code: source, minify: true })
+        return styleModule(id, file, result.code.toString())
+      },
     }],
     outputOptions: {
       entryFileNames: 'client.js',
@@ -191,7 +230,7 @@ function clientConfig(id: string): UserConfig {
   }
 }
 
-/** Build one external DeepDeck plugin using the rc.8 dynamic-client contract. */
+/** Build one external DeepDeck plugin using the 0.1.1-rc.1 dynamic-client contract. */
 export function deepdeckClientBundle(id: string, libEntries: readonly string[]): UserConfig[] {
   return [libraryConfig(id, libEntries), clientConfig(id)]
 }

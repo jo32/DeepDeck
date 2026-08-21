@@ -5,8 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.10";
-const DSH_PLUGIN_API_VERSION = "0.1.0-rc.8";
+const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.14";
+const DSH_PLUGIN_API_VERSION = "0.1.1-rc.1";
 const REACT_PEER_RANGE = "^19.1.1";
 
 function runtimeRootFromArguments(arguments_) {
@@ -95,14 +95,14 @@ async function verifyCodexConnectContract(root, manifest) {
   const dshPeers = Object.entries(manifest.peerDependencies ?? {})
     .filter(([name]) => name.startsWith("@deepseek-ai/dsh-"));
   if (dshPeers.length === 0 || dshPeers.some(([, version]) => version !== DSH_PLUGIN_API_VERSION)) {
-    throw new Error("Bundled Codex Connect does not declare an rc.8-only DSH peer contract");
+    throw new Error("Bundled Codex Connect does not declare a 0.1.1-rc.1-only DSH peer contract");
   }
   if (manifest.peerDependencies?.react !== REACT_PEER_RANGE) {
     throw new Error("Bundled Codex Connect does not declare its React 19 peer contract");
   }
   const compatibility = JSON.parse(await readFile(join(root, "compatibility.json"), "utf8"));
   if (compatibility.dshPluginApi?.version !== DSH_PLUGIN_API_VERSION) {
-    throw new Error("Bundled Codex Connect compatibility.json does not report Harness rc.8");
+    throw new Error("Bundled Codex Connect compatibility.json does not report Harness 0.1.1-rc.1");
   }
 }
 

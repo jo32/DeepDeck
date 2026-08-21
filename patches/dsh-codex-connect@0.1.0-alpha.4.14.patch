@@ -1,5 +1,5 @@
 diff --git a/INSTALL.md b/INSTALL.md
-index b4d4d2acded9db65a35542d0a27e665100b675d9..81d85e92c9a9affdae5c2bf2a2d13ca9ec319566 100644
+index 1496d52d5eb14573ebd33272a8811bfe2dd00900..65bf8de4fa4ba05f020df5c8e7bf46edc9edd27b 100644
 --- a/INSTALL.md
 +++ b/INSTALL.md
 @@ -12,7 +12,7 @@ Install `dsh-codex-connect` into one requested DeepSeek Harness profile without
@@ -7,25 +7,25 @@ index b4d4d2acded9db65a35542d0a27e665100b675d9..81d85e92c9a9affdae5c2bf2a2d13ca9
  ## Install and validate
  
 -The only verified combination is DSH plugin API packages `0.1.0-rc.7`, `@earendil-works/pi-ai` `0.82.1`, and Node.js `^22.19.0 || >=24.0.0`. Alpha 4.10 uses the rc.7 keyed Plugin configuration slot; DSH rc.6 users should remain on Alpha 4.9. Upgrade the DSH API packages and pi-ai together, then rerun `dsh-codex-connect doctor --json` and `pnpm --silent run check:compatibility`; the contract does not make claims about future versions.
-+The only verified combination is DSH plugin API packages `0.1.0-rc.8`, `@earendil-works/pi-ai` `0.82.1`, and Node.js `^22.19.0 || >=24.0.0`. This DeepDeck patch adapts Alpha 4.10 to the rc.8 plugin contract; DSH rc.6 users should remain on Alpha 4.9. Upgrade the DSH API packages and pi-ai together, then rerun `dsh-codex-connect doctor --json` and `pnpm --silent run check:compatibility`; the contract does not make claims about future versions.
++The only verified combination is DSH plugin API packages `0.1.1-rc.1`, `@earendil-works/pi-ai` `0.82.1`, and Node.js `^22.19.0 || >=24.0.0`. This DeepDeck patch adapts Alpha 4.14 to the `0.1.1-rc.1` plugin contract and reuses Harness's catalog-owned configurable-provider directory. Upgrade the DSH API packages and pi-ai together, then rerun `dsh-codex-connect doctor --json` and `pnpm --silent run check:compatibility`; the contract does not make claims about future versions.
  
  1. Check `dsh --version` or `dsh --help`. From a Harness checkout use `pnpm dsh`.
  2. Install the package:
 diff --git a/README.md b/README.md
-index da8c5cecf4e52d383079ad1ff8487cbc14900506..c10149a8e0da39fa96a5c112b0c40eb8f2f863c4 100644
+index c496db682e79e0cd36471a2c592de4284819b450..94e53fdf12306ce4f1a1e49a246d7c58c14832bb 100644
 --- a/README.md
 +++ b/README.md
-@@ -163,7 +163,7 @@ Selecting Codex as the profile's global search route is another explicit change:
+@@ -180,7 +180,7 @@ Selecting Codex as the profile's global search route is another explicit change:
  
  ## Compatibility and security boundary
  
 -- The only verified compatibility combination is DSH plugin API packages `0.1.0-rc.7`, `@earendil-works/pi-ai` `0.82.1`, and Node.js `^22.19.0 || >=24.0.0`; see [compatibility.json](compatibility.json). Alpha 4.10 uses the rc.7 keyed Plugin configuration slot; DSH rc.6 users should remain on Alpha 4.9.
-+- The only verified compatibility combination is DSH plugin API packages `0.1.0-rc.8`, `@earendil-works/pi-ai` `0.82.1`, and Node.js `^22.19.0 || >=24.0.0`; see [compatibility.json](compatibility.json). This DeepDeck patch adapts Alpha 4.10 to the rc.8 plugin contract; DSH rc.6 users should remain on Alpha 4.9.
++- The only verified compatibility combination is DSH plugin API packages `0.1.1-rc.1`, `@earendil-works/pi-ai` `0.82.1`, and Node.js `^22.19.0 || >=24.0.0`; see [compatibility.json](compatibility.json). This DeepDeck patch adapts Alpha 4.14 to the `0.1.1-rc.1` plugin contract and reuses Harness's catalog-owned configurable-provider directory.
  - Upgrade the DSH plugin API packages and `@earendil-works/pi-ai` as one group, then run `dsh-codex-connect doctor --json` and the compatibility check again. This contract does not make claims about future versions.
  - ChatGPT plan eligibility, model access, quotas, and backend behavior are controlled by OpenAI and may change.
  - The Codex endpoint does not enforce the ordinary Responses `max_output_tokens` field. Harness compaction still works, but that summary cap cannot be imposed server-side on this route.
 diff --git a/compatibility.json b/compatibility.json
-index 77afbc5a3a8f6a229a6eef34323892b56345f0c3..d055aac067abbd0d6440e47d55b876ef958535b4 100644
+index 77afbc5a3a8f6a229a6eef34323892b56345f0c3..43714e390473f744f5c2a561ac6384270c5471fb 100644
 --- a/compatibility.json
 +++ b/compatibility.json
 @@ -4,7 +4,7 @@
@@ -33,25 +33,25 @@ index 77afbc5a3a8f6a229a6eef34323892b56345f0c3..d055aac067abbd0d6440e47d55b876ef
    },
    "dshPluginApi": {
 -    "version": "0.1.0-rc.7",
-+    "version": "0.1.0-rc.8",
++    "version": "0.1.1-rc.1",
      "packages": [
        "@deepseek-ai/dsh-agent",
        "@deepseek-ai/dsh-atomic-write",
 diff --git a/docs/README.zh.md b/docs/README.zh.md
-index 953a1d03faab2ce49a85f709cfe0f8ccda979f62..b4c587eeefb0ef9b3d31a1abe915e47a2b304405 100644
+index 718224bb667a95a9b20fabf59f3d5d5732923790..1d887c9632249784f5c3b4040c3589f9c10a181d 100644
 --- a/docs/README.zh.md
 +++ b/docs/README.zh.md
-@@ -163,7 +163,7 @@ dsh plugin --profile web exec dsh-codex-connect doctor --json
+@@ -180,7 +180,7 @@ dsh plugin --profile web exec dsh-codex-connect doctor --json
  
  ## 兼容性与安全边界
  
 -- 当前唯一已验证的兼容组合是 DSH 插件 API packages `0.1.0-rc.7`、`@earendil-works/pi-ai` `0.82.1` 和 Node.js `^22.19.0 || >=24.0.0`；详见 [compatibility.json](../compatibility.json)。Alpha 4.10 使用 rc.7 的 keyed 插件配置 slot；DSH rc.6 用户应继续使用 Alpha 4.9。
-+- 当前唯一已验证的兼容组合是 DSH 插件 API packages `0.1.0-rc.8`、`@earendil-works/pi-ai` `0.82.1` 和 Node.js `^22.19.0 || >=24.0.0`；详见 [compatibility.json](../compatibility.json)。此 DeepDeck patch 将 Alpha 4.10 适配至 rc.8 插件契约；DSH rc.6 用户应继续使用 Alpha 4.9。
++- 当前唯一已验证的兼容组合是 DSH 插件 API packages `0.1.1-rc.1`、`@earendil-works/pi-ai` `0.82.1` 和 Node.js `^22.19.0 || >=24.0.0`；详见 [compatibility.json](../compatibility.json)。此 DeepDeck patch 将 Alpha 4.14 适配至 `0.1.1-rc.1` 插件契约，并复用 Harness 目录拥有的 configurable-provider 条目。
  - 升级时请将 DSH 插件 API packages 与 `@earendil-works/pi-ai` 作为一组升级，再运行 `dsh-codex-connect doctor --json` 和兼容性检查。本契约不对未来版本作判断。
  - ChatGPT 套餐资格、模型权限、额度和后端行为由 OpenAI 控制，可能变化。
  - Codex 端点不会强制普通 Responses 的 `max_output_tokens` 字段。Harness 压缩仍可工作，但这个摘要上限不能由服务端在该路由上强制。
 diff --git a/docs/design.md b/docs/design.md
-index 5abc0b51a9faace9841cdd06df01fac51e5faba2..199936ccfdbdb3f5f06e29029c8acd31e0330fea 100644
+index 14b9fb68d0ba92593d38ec9dd893addffd4bda75..ec838f325b50e68a016939189b6c7691a40fc199 100644
 --- a/docs/design.md
 +++ b/docs/design.md
 @@ -26,4 +26,4 @@ Before registration the plugin checks current provider ids. An existing `openai-
@@ -59,9 +59,9 @@ index 5abc0b51a9faace9841cdd06df01fac51e5faba2..199936ccfdbdb3f5f06e29029c8acd31
  ## Compatibility boundary
  
 -The Alpha pins Harness `0.1.0-rc.7` development dependencies and uses its keyed `settings.plugin.item` contract; supported Node.js is `^22.19.0 || >=24.0.0`. It pins `@earendil-works/pi-ai` `0.82.1`. Backend eligibility, quotas, models, and protocol details remain controlled upstream. Tests use temporary OAuth documents and mocked network responses; CI does not perform real authentication.
-+The Alpha pins Harness `0.1.0-rc.8` development dependencies and uses its keyed `settings.plugin.item` contract; supported Node.js is `^22.19.0 || >=24.0.0`. It pins `@earendil-works/pi-ai` `0.82.1`. Backend eligibility, quotas, models, and protocol details remain controlled upstream. Tests use temporary OAuth documents and mocked network responses; CI does not perform real authentication.
++This DeepDeck patch pins Harness `0.1.1-rc.1` development dependencies and uses its keyed `settings.plugin.item` contract; supported Node.js is `^22.19.0 || >=24.0.0`. It pins `@earendil-works/pi-ai` `0.82.1`. Backend eligibility, quotas, models, and protocol details remain controlled upstream. Tests use temporary OAuth documents and mocked network responses; CI does not perform real authentication.
 diff --git a/docs/design.zh.md b/docs/design.zh.md
-index fd365e56608a79b912749ac036b23e2d13b22660..6bbd5ca1521d25c849e32befd93f6c165d5ce192 100644
+index fd365e56608a79b912749ac036b23e2d13b22660..e2d4395d174ff98816c1a249e69a4f53ae94e648 100644
 --- a/docs/design.zh.md
 +++ b/docs/design.zh.md
 @@ -22,4 +22,4 @@ Host 将 `llm-openai-codex` 注册为插件自有 settings namespace，并在 LL
@@ -69,53 +69,64 @@ index fd365e56608a79b912749ac036b23e2d13b22660..6bbd5ca1521d25c849e32befd93f6c16
  注册前检查现有 provider id；发现 `openai-codex` 已被占用时，给出旧 bundle 或手动 provider 配置的定向迁移提示。boot-free CLI doctor 只报告包/运行时版本、OAuth 路径元数据、能力默认值和安全提示。
  
 -Alpha 固定使用 Harness `0.1.0-rc.7` 开发依赖，并采用其 keyed `settings.plugin.item` 契约；Node.js 支持 `^22.19.0 || >=24.0.0`。`@earendil-works/pi-ai` 固定为 `0.82.1`。资格、额度、模型和后端协议仍由上游控制。测试仅使用临时 OAuth 文档和模拟网络响应，CI 不执行真实认证。
-+Alpha 固定使用 Harness `0.1.0-rc.8` 开发依赖，并采用其 keyed `settings.plugin.item` 契约；Node.js 支持 `^22.19.0 || >=24.0.0`。`@earendil-works/pi-ai` 固定为 `0.82.1`。资格、额度、模型和后端协议仍由上游控制。测试仅使用临时 OAuth 文档和模拟网络响应，CI 不执行真实认证。
++此 DeepDeck patch 固定使用 Harness `0.1.1-rc.1` 开发依赖，并采用其 keyed `settings.plugin.item` 契约；Node.js 支持 `^22.19.0 || >=24.0.0`。`@earendil-works/pi-ai` 固定为 `0.82.1`。资格、额度、模型和后端协议仍由上游控制。测试仅使用临时 OAuth 文档和模拟网络响应，CI 不执行真实认证。
 diff --git a/lib/index.d.ts b/lib/index.d.ts
-index 999a91884d5388fb00904d1a72933690db420d28..e8da302620cf12a1cff5bb07fef91368315300cf 100644
+index c5590b0866fa1507b8bd47ce6e40b630f3cf626c..b9361a7fc042eca4823b7ef2c86fcb9a62015d44 100644
 --- a/lib/index.d.ts
 +++ b/lib/index.d.ts
-@@ -10,7 +10,7 @@ declare const VIEW_IMAGE_TOOL_NAME = "view_image";
+@@ -125,7 +125,7 @@ declare const IMAGE_GENERATE_TOOL_NAME = "codex_connect_image_generate";
  //#region src/compatibility.d.ts
  declare const COMPATIBILITY_SCHEMA_VERSION: 1;
  declare const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
 -declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.0-rc.7";
-+declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.0-rc.8";
++declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.1-rc.1";
  declare const SUPPORTED_PI_AI_VERSION = "0.82.1";
  declare const PI_AI_PACKAGE = "@earendil-works/pi-ai";
  declare const DSH_PLUGIN_API_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-invariants", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-web"];
-@@ -54,7 +54,7 @@ declare const COMPATIBILITY_CONTRACT: {
+@@ -169,7 +169,7 @@ declare const COMPATIBILITY_CONTRACT: {
      readonly node: "^22.19.0 || >=24.0.0";
    };
    readonly dshPluginApi: {
 -    readonly version: "0.1.0-rc.7";
-+    readonly version: "0.1.0-rc.8";
++    readonly version: "0.1.1-rc.1";
      readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-invariants", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-web"];
    };
    readonly piAi: {
-diff --git a/lib/src-DLX8Rs0k.js b/lib/src-DLX8Rs0k.js
-index f7a90dbf7ef66a268d12dd4d79bcaaae267d8df3..14efb5b10ea512da93406a25a9ef4f2b57e03418 100644
---- a/lib/src-DLX8Rs0k.js
-+++ b/lib/src-DLX8Rs0k.js
-@@ -1073,7 +1073,7 @@ function registerOpenAICodexAuthRoutes(ctx, store, trustedOriginsOverride, fastM
+diff --git a/lib/src-15cHQKm5.js b/lib/src-15cHQKm5.js
+index b895dc01a1bf7109a06242cc6ba2f31db8ce9f4e..56c2ea84d46ab20c05e45f53714c4fc042c3d08a 100644
+--- a/lib/src-15cHQKm5.js
++++ b/lib/src-15cHQKm5.js
+@@ -1075,7 +1075,7 @@ function registerOpenAICodexAuthRoutes(ctx, store, trustedOriginsOverride, fastM
  //#region src/compatibility.ts
  const COMPATIBILITY_SCHEMA_VERSION = 1;
  const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
 -const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.0-rc.7";
-+const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.0-rc.8";
++const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.1-rc.1";
  const SUPPORTED_PI_AI_VERSION = "0.82.1";
  const PI_AI_PACKAGE = "@earendil-works/pi-ai";
  const DSH_PLUGIN_API_PACKAGES = [
+@@ -2776,7 +2776,0 @@
+-	ctx.llm.registerConfigurableProviders([{
+-		provider: OPENAI_CODEX_PROVIDER,
+-		displayName: "OpenAI Codex",
+-		settingsNs: OPENAI_CODEX_SETTINGS_NS,
+-		settingsPath: [],
+-		declared: false
+-	}]);
 diff --git a/package.json b/package.json
-index e679816c252331827be931034ada15969dc4f2ea..41bf4ecbc74d5789375df783ff7e9761ff3cc424 100644
+index 54ffdbe20d95617e8945438cef2b1431c566eadd..8fc323a110699a423072d375defbb7109120b1b5 100644
 --- a/package.json
 +++ b/package.json
-@@ -94,52 +94,52 @@
+@@ -96,66 +96,66 @@
    "peerDependencies": {
      "@earendil-works/pi-ai": "0.82.1",
      "@deepseek-ai/cordis": "^4.0.1-rc.1",
 -    "@deepseek-ai/dsh-agent": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-atomic-write": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-attachment": "0.1.0-rc.7",
+-    "@deepseek-ai/dsh-client-ui-attachment": "0.1.0-rc.7",
+-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.7",
+-    "@deepseek-ai/dsh-client-ui-tool": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-home-paths": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-host-webserver": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-invariants": "0.1.0-rc.7",
@@ -126,19 +137,22 @@ index e679816c252331827be931034ada15969dc4f2ea..41bf4ecbc74d5789375df783ff7e9761
 -    "@deepseek-ai/dsh-settings": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-tools": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-web": "0.1.0-rc.7",
-+    "@deepseek-ai/dsh-agent": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-atomic-write": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-attachment": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-home-paths": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-host-webserver": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-llm": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-llm-pi-ai": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-fs": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-session": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-settings": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-tools": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-web": "0.1.0-rc.8",
++    "@deepseek-ai/dsh-agent": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-atomic-write": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-attachment": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-attachment": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-primitives": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-tool": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-home-paths": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-host-webserver": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-invariants": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-llm": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-llm-pi-ai": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-fs": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-session": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-settings": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-tools": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-web": "0.1.1-rc.1",
      "@deepseek-ai/schemastery": "^3.18.1-rc.1",
 -    "react": "^18.2.0"
 +    "react": "^19.1.1"
@@ -157,10 +171,13 @@ index e679816c252331827be931034ada15969dc4f2ea..41bf4ecbc74d5789375df783ff7e9761
 -    "@deepseek-ai/dsh-client-connection": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.7",
+-    "@deepseek-ai/dsh-client-ui-attachment": "0.1.0-rc.7",
+-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-client-ui-settings": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.7",
+-    "@deepseek-ai/dsh-client-ui-tool": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-fs": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-fs-local": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-home-paths": "0.1.0-rc.7",
@@ -173,31 +190,44 @@ index e679816c252331827be931034ada15969dc4f2ea..41bf4ecbc74d5789375df783ff7e9761
 -    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-tools": "0.1.0-rc.7",
 -    "@deepseek-ai/dsh-web": "0.1.0-rc.7",
-+    "@deepseek-ai/dsh-agent": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-api-remotes": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-atomic-write": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-attachment": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-attachment-local": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-locale": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-connection": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-ui-settings": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-fs": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-fs-local": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-home-paths": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-host-webserver": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-llm": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-llm-pi-ai": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-session": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-settings": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-tools": "0.1.0-rc.8",
-+    "@deepseek-ai/dsh-web": "0.1.0-rc.8",
++    "@deepseek-ai/dsh-agent": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-api-remotes": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-atomic-write": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-attachment": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-attachment-local": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-locale": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-connection": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-runtime": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-conversation": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-attachment": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-primitives": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-settings": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-slots": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-client-ui-tool": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-fs": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-fs-local": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-home-paths": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-host-webserver": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-invariants": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-llm": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-llm-pi-ai": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-session": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-settings": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-system-prompt": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-tools": "0.1.1-rc.1",
++    "@deepseek-ai/dsh-web": "0.1.1-rc.1",
      "@deepseek-ai/schemastery": "3.18.1",
      "@testing-library/react": "^16.3.2",
      "@types/node": "^22.20.0",
+     "@types/react": "~18.3.1",
+     "@types/react-dom": "~18.3.1",
+     "jsdom": "29.1.1",
+-    "react": "^18.2.0",
+-    "react-dom": "^18.2.0",
++    "react": "^19.1.1",
++    "react-dom": "^19.1.1",
+     "tsdown": "^0.22.2",
+     "typescript": "^5.9.3",
+     "vitest": "^4.1.8"
