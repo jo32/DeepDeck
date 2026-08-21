@@ -90,6 +90,13 @@ export interface HarnessProcessOptions {
   displayName: string;
 }
 
+export function resolveHarnessWebArguments(cliPath: string, patchPath: string): string[] {
+  // The launcher stops parsing its own flags at the first Web-app argument.
+  // Keep --patch before --no-open/--port so it is composed by the launcher
+  // instead of being forwarded to the Web app as an unknown option.
+  return [cliPath, "web", "--patch", patchPath, "--no-open", "--port", "0"];
+}
+
 export interface OwnedPluginLink {
   pluginRoot: string;
   previousTarget?: string;
@@ -260,7 +267,7 @@ export class HarnessProcess {
     try {
       child = spawn(
         this.options.nodeBinary,
-        [cliPath, "web", "--patch", this.options.patchPath, "--port", "0"],
+        resolveHarnessWebArguments(cliPath, this.options.patchPath),
         {
           cwd: this.options.workspaceRoot,
           env: environment,

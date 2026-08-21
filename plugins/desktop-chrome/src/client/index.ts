@@ -23,8 +23,9 @@ import {
   sessionMetricsEn,
   sessionMetricsZh,
 } from './SessionMetricsPopover.tsx'
+import { installArchiveSessionContinuity } from './archive-session-continuity.ts'
 
-export const inject = ['slots', 'theme', 'workspaces', 'locale']
+export const inject = ['slots', 'theme', 'workspaces', 'sessions', 'locale']
 
 const HOME_HERO_ENTRY_ID = 'deepdeck-home-hero'
 
@@ -39,6 +40,10 @@ function chatStoreFromHeader(entries: readonly StoredEntry[]): ChatStore {
 /** Install the branded desktop shell through declared Cordis lifecycle and Slot APIs. */
 export function apply(ctx: ClientContext): void {
   installBranding(ctx)
+  ctx.effect(
+    () => installArchiveSessionContinuity(ctx),
+    'deepdeck desktop: archived session continuity',
+  )
 
   const layout = new DesktopLayoutController()
   const brandComposition: BrandCompositionLedger = {

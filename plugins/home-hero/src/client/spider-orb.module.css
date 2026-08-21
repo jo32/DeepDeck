@@ -35,12 +35,24 @@
   touch-action: none;
 }
 
+.stage[data-interactive-enabled='false'] .interactionSurface {
+  pointer-events: none;
+}
+
 .stage[data-dragging='true'] .interactionSurface {
   cursor: grabbing;
 }
 
 .stage[data-ready='true'] .canvas {
   animation: reveal 680ms cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+/* A remounted session waits offscreen for Three's first rendered frame. Once
+   ready, show it immediately so the parent return FLIP owns the only motion. */
+.stage[data-ready='true'][data-instant-reveal='true'] .canvas {
+  animation: none;
+  opacity: 1;
+  transform: none;
 }
 
 .fallback {

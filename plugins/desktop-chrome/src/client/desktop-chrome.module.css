@@ -444,21 +444,32 @@
   padding-top: 7px;
   padding-bottom: 5px;
   box-sizing: border-box;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
-.frame .centerCol :global(header button) {
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
-}
-
-.frame .centerCol :global(header a),
-.frame .centerCol :global(header input),
-.frame .centerCol :global(header select),
-.frame .centerCol :global(header textarea),
-.frame .centerCol :global(header [role='button']),
-.frame .centerCol :global(header [role='tab']) {
+/* Static chrome inherits the header's native drag behavior. Actual controls
+   opt out at their semantic boundary, so clicks never compete with a separate
+   transparent drag overlay and new read-only labels remain draggable by
+   default. Disabled controls likewise behave as ordinary titlebar chrome. */
+.frame .centerCol :global(header button:not(:disabled)),
+.frame .centerCol :global(header a[href]),
+.frame .centerCol :global(header input:not(:disabled)),
+.frame .centerCol :global(header select:not(:disabled)),
+.frame .centerCol :global(header textarea:not(:disabled)),
+.frame .centerCol :global(header [contenteditable]:not([contenteditable='false'])),
+.frame .centerCol :global(header [draggable='true']),
+.frame .centerCol :global(header [role='button']:not([aria-disabled='true'])),
+.frame .centerCol :global(header [role='tab']:not([aria-disabled='true'])),
+.frame .centerCol :global(header [role='menu']),
+.frame .centerCol :global(header [role='menuitem']:not([aria-disabled='true'])),
+.frame .centerCol :global(header [role='listbox']),
+.frame .centerCol :global(header [role='option']:not([aria-disabled='true'])),
+.frame .centerCol :global(header [role='tree']),
+.frame .centerCol :global(header [role='treeitem']:not([aria-disabled='true'])),
+.frame .centerCol :global(header [role='dialog']),
+.frame .centerCol :global(header [tabindex]:not([tabindex='-1'])),
+.frame .centerCol :global(header [data-window-interactive]) {
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
@@ -501,10 +512,9 @@
   pointer-events: none;
 }
 
-/* Keep native dragging on a dedicated blank strip instead of marking a parent
-   containing interactive controls as draggable. On macOS, overlapping drag
-   ancestors can swallow mouse events before descendant no-drag regions are
-   considered when the Harness is hosted in a WebContentsView. */
+/* The sidebar has no upstream header of its own, and a blank Session has no
+   conversation header at all. Give those otherwise empty areas a dedicated
+   native drag strip; populated center headers own their own hit testing. */
 .dragRegion {
   position: absolute;
   top: 0;
@@ -518,22 +528,6 @@
 
 .dragRegion[data-has-conversation] { right: auto; }
 
-/* Existing sessions keep their interactive upstream header entirely out of
-   the native hit-test region. This separate lane occupies only the flexible
-   blank space between the title/action cluster and the right-side utility. */
-.conversationDragRegion {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  pointer-events: auto;
-  -webkit-app-region: drag;
-  app-region: drag;
-}
-
-/* A blank session has no conversation header to provide the center/right drag
-   surface. Extend the native drag region only until a real conversation is
-   present; populated sessions keep the compact overlay so header actions stay
-   clickable. */
 .controls {
   position: absolute;
   top: 11px;

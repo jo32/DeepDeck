@@ -6,14 +6,11 @@ interface DesktopChromeProps {
   sidebarCollapsed: boolean
   hasConversation: boolean
   sidebarWidth: number
-  detailsWidth: number
   actions: PanelActions
   startSession: () => void
 }
 
 const SIDEBAR_DRAG_START = 114
-const CONVERSATION_TITLE_GUARD = 420
-const CONVERSATION_UTILITY_GUARD = 72
 
 function SidebarIcon(): React.JSX.Element {
   return (
@@ -29,7 +26,6 @@ export function DesktopChrome({
   sidebarCollapsed,
   hasConversation,
   sidebarWidth,
-  detailsWidth,
   actions,
   startSession,
 }: DesktopChromeProps) {
@@ -47,16 +43,6 @@ export function DesktopChrome({
           : undefined}
         aria-hidden="true"
       />
-      {hasConversation && (
-        <div
-          className={css.conversationDragRegion}
-          style={{
-            left: sidebarWidth + CONVERSATION_TITLE_GUARD,
-            right: detailsWidth + CONVERSATION_UTILITY_GUARD,
-          }}
-          aria-hidden="true"
-        />
-      )}
       <div
         className={css.controls}
         data-has-conversation={hasConversation || undefined}

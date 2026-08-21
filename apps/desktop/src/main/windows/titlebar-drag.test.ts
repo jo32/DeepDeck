@@ -56,27 +56,42 @@ describe("desktop titlebar hit testing", () => {
     expect(dragRegion).toContain("-webkit-app-region: drag");
   });
 
-  it("sizes the existing-session drag lanes around interactive controls", () => {
-    const conversationDragRegion = rule(".conversationDragRegion");
-    expect(conversationDragRegion).toContain("pointer-events: auto");
-    expect(conversationDragRegion).toContain("app-region: drag");
+  it("does not place a transparent drag overlay across an existing header", () => {
     expect(desktopChromeSource).toContain("sidebarWidth - SIDEBAR_DRAG_START");
-    expect(desktopChromeSource).toContain("sidebarWidth + CONVERSATION_TITLE_GUARD");
-    expect(desktopChromeSource).toContain("detailsWidth + CONVERSATION_UTILITY_GUARD");
+    expect(desktopChromeSource).not.toContain("conversationDragRegion");
+    expect(desktopChromeStyles).not.toContain(".conversationDragRegion");
   });
 
-  it("keeps the conversation header and its controls outside drag regions", () => {
-    expect(rule(".frame .centerCol :global(header)")).toContain(
-      "app-region: no-drag",
+  it("lets static header chrome inherit one native drag region", () => {
+    const header = rule(".frame .centerCol :global(header)");
+    expect(header).toContain("app-region: drag");
+    expect(header).toContain("-webkit-app-region: drag");
+  });
+
+  it("restores hit testing only for semantic header controls", () => {
+    const interactiveControls = rule(
+      ".frame .centerCol :global(header [data-window-interactive])",
     );
-    expect(rule(".frame .centerCol :global(header)")).toContain(
-      "-webkit-app-region: no-drag",
+    expect(interactiveControls).toContain("app-region: no-drag");
+    expect(interactiveControls).toContain("-webkit-app-region: no-drag");
+
+    expect(desktopChromeStyles).toContain(
+      ":global(header button:not(:disabled))",
     );
-    expect(rule(".frame .centerCol :global(header button)")).toContain(
-      "app-region: no-drag",
+    expect(desktopChromeStyles).toContain(
+      ":global(header [contenteditable]:not([contenteditable='false']))",
     );
-    expect(rule(".frame .centerCol :global(header button)")).toContain(
-      "-webkit-app-region: no-drag",
+    expect(desktopChromeStyles).toContain(
+      ":global(header [draggable='true'])",
+    );
+    expect(desktopChromeStyles).toContain(
+      ":global(header [role='treeitem']:not([aria-disabled='true']))",
+    );
+    expect(desktopChromeStyles).toContain(
+      ":global(header [data-window-interactive])",
+    );
+    expect(desktopChromeStyles).not.toContain(
+      ".frame .centerCol :global(header button) {",
     );
   });
 

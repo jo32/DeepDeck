@@ -25,6 +25,7 @@ import {
   HemisphereLight,
   MathUtils,
   Mesh,
+  MeshBasicMaterial,
   MeshPhysicalMaterial,
   PerspectiveCamera,
   Quaternion,
@@ -43,9 +44,16 @@ type Side = -1 | 1;
 type Point = readonly [number, number];
 type OrbAppearance = "spider" | "whale" | "alien";
 
+export type OrbActionMode = "face" | "send" | "doing" | "stop";
+
 const BASE_CAMERA_DISTANCE = 6.4;
 const LIQUID_CAMERA_DISTANCE = 1.6;
+const COMPACT_CAMERA_DISTANCE = 4.2;
+const COMPACT_LIQUID_CAMERA_DISTANCE = 1.05;
 const CHARACTER_HITBOX_WIDTH_RATIO = 152 / 184;
+const FULL_TURN = Math.PI * 2;
+const ACTION_SETTLE_MS = 480;
+const ACTION_LOOP_MS = 4_200;
 
 type CubicSegment = {
   p0: Point;
@@ -674,6 +682,88 @@ function updateEyePatch(patch: EyePatch, pose: EyePose) {
   );
 }
 
+function insideBackGlyph(kind: "send" | "stop", x: number, y: number) {
+  if (kind === "send") {
+    const insideStem = Math.abs(x) <= 0.18 && y >= -0.78 && y <= 0.1;
+    const insideHead =
+      y >= -0.08 &&
+      y <= 0.82 &&
+      Math.abs(x) <= (0.82 - y) * 0.82 + 0.03;
+    return insideStem || insideHead;
+  }
+
+  const edge = 0.69;
+  const radius = 0.17;
+  const dx = Math.max(Math.abs(x) - (edge - radius), 0);
+  const dy = Math.max(Math.abs(y) - (edge - radius), 0);
+  return (
+    Math.abs(x) <= edge &&
+    Math.abs(y) <= edge &&
+    dx * dx + dy * dy <= radius * radius
+  );
+}
+
+/** Tessellate the action mark directly against the orb's rear surface. */
+function createBackGlyphGeometry(kind: "send" | "stop") {
+  const geometry = new BufferGeometry();
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  const segments = 96;
+  const halfSpan = 0.58;
+  const surfaceRadius = 1.014;
+
+  for (let row = 0; row <= segments; row += 1) {
+    const v = row / segments;
+    const y = (v - 0.5) * halfSpan * 2;
+    for (let column = 0; column <= segments; column += 1) {
+      const u = column / segments;
+      const x = (u - 0.5) * halfSpan * 2;
+      const z = -Math.sqrt(Math.max(0.001, 1 - x * x - y * y));
+      const normal = new Vector3(x, y, z).normalize();
+      positions.push(
+        normal.x * surfaceRadius,
+        normal.y * surfaceRadius,
+        normal.z * surfaceRadius,
+      );
+      normals.push(normal.x, normal.y, normal.z);
+    }
+  }
+
+  const stride = segments + 1;
+  for (let row = 0; row < segments; row += 1) {
+    for (let column = 0; column < segments; column += 1) {
+      const x = ((column + 0.5) / segments - 0.5) * 2;
+      const y = ((row + 0.5) / segments - 0.5) * 2;
+      if (!insideBackGlyph(kind, x, y)) continue;
+      const topLeft = row * stride + column;
+      const topRight = topLeft + 1;
+      const bottomLeft = topLeft + stride;
+      const bottomRight = bottomLeft + 1;
+      indices.push(
+        topLeft,
+        bottomLeft,
+        topRight,
+        topRight,
+        bottomLeft,
+        bottomRight,
+      );
+    }
+  }
+
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+  geometry.setIndex(indices);
+  return geometry;
+}
+
+function createBackGlyph(kind: "send" | "stop", material: Material) {
+  const glyph = new Mesh(createBackGlyphGeometry(kind), material);
+  glyph.renderOrder = 4;
+  glyph.frustumCulled = false;
+  return glyph;
+}
+
 const liquidPosition = new Vector3();
 const liquidTrailPosition = new Vector3();
 const liquidDirection = new Vector3();
@@ -681,6 +771,25 @@ const liquidDirection = new Vector3();
 function smootherStep(value: number) {
   const clamped = MathUtils.clamp(value, 0, 1);
   return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
+}
+
+function nextForwardFacing(reference: number, facing: number) {
+  return (
+    facing +
+    Math.ceil((reference - facing - 0.0001) / FULL_TURN) * FULL_TURN
+  );
+}
+
+function loopTurnAt(progress: number) {
+  if (progress < 0.34) return 0;
+  if (progress < 0.47) {
+    return Math.PI * smootherStep((progress - 0.34) / 0.13);
+  }
+  if (progress < 0.68) return Math.PI;
+  if (progress < 0.81) {
+    return Math.PI + Math.PI * smootherStep((progress - 0.68) / 0.13);
+  }
+  return FULL_TURN;
 }
 
 function liquidNode(
@@ -1059,6 +1168,12 @@ type SpiderOrbThreeProps = {
   expressionEpoch: number;
   repositionSignal: number;
   appearance?: OrbAppearance;
+  actionMode?: OrbActionMode;
+  actionEpoch?: number;
+  compact?: boolean;
+  interactive?: boolean;
+  instantReveal?: boolean;
+  onReady?: () => void;
 };
 
 export default function SpiderOrbThree({
@@ -1066,11 +1181,22 @@ export default function SpiderOrbThree({
   expressionEpoch,
   repositionSignal,
   appearance = "spider",
+  actionMode = "face",
+  actionEpoch = 0,
+  compact = false,
+  interactive = true,
+  instantReveal = false,
+  onReady,
 }: SpiderOrbThreeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const expressionUpdaterRef = useRef<
     ((next: Expression, epoch: number) => void) | null
   >(null);
+  const actionUpdaterRef = useRef<
+    ((next: OrbActionMode, epoch: number) => void) | null
+  >(null);
+  const framingUpdaterRef = useRef<((next: boolean) => void) | null>(null);
+  const interactionUpdaterRef = useRef<((next: boolean) => void) | null>(null);
   const repositionRef = useRef<(() => void) | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [hasWebGlError, setHasWebGlError] = useState(false);
@@ -1105,7 +1231,11 @@ export default function SpiderOrbThree({
 
     const scene = new Scene();
     const camera = new PerspectiveCamera(34, 1, 0.1, 100);
-    camera.position.set(0, 0.015, BASE_CAMERA_DISTANCE);
+    camera.position.set(
+      0,
+      0.015,
+      compact ? COMPACT_CAMERA_DISTANCE : BASE_CAMERA_DISTANCE,
+    );
 
     const dragRoot = new Group();
     const head = new Group();
@@ -1157,6 +1287,14 @@ export default function SpiderOrbThree({
       clearcoat: isAlien ? 0.6 : 0.42,
       clearcoatRoughness: isAlien ? 0.35 : 0.34,
     });
+    const actionMaterial = new MeshBasicMaterial({
+      color: 0xffffff,
+      polygonOffset: true,
+      polygonOffsetFactor: -3,
+      polygonOffsetUnits: -3,
+      side: DoubleSide,
+      toneMapped: false,
+    });
 
     const sphere = new Mesh(
       new SphereGeometry(1, 96, 64),
@@ -1181,10 +1319,14 @@ export default function SpiderOrbThree({
       doing: createDoingGlyph(liquidMaterial),
       surprised: createSurprisedGlyph(liquidMaterial),
     };
+    const sendGlyph = createBackGlyph("send", actionMaterial);
+    const stopGlyph = createBackGlyph("stop", actionMaterial);
     head.add(
       sphere,
       leftEye.group,
       rightEye.group,
+      sendGlyph,
+      stopGlyph,
       liquidGlyphs.thinking.effect,
       liquidGlyphs.thinking.terminal,
       liquidGlyphs.doing.effect,
@@ -1227,9 +1369,18 @@ export default function SpiderOrbThree({
       scene.add(rimLight);
     }
 
+    const mountedAt = performance.now();
     let activeExpression: Expression = "neutral";
-    let expressionStartedAt = performance.now();
+    let expressionStartedAt = mountedAt;
     let hasSyncedExpression = false;
+    let activeActionMode = actionMode;
+    let actionStartedAt = actionEpoch > 0 ? actionEpoch : mountedAt;
+    let actionYaw =
+      actionMode === "face" || actionMode === "doing" ? 0 : Math.PI;
+    let actionFromYaw = actionYaw;
+    let actionTargetYaw = actionYaw;
+    let compactFraming = compact;
+    let interactionEnabled = interactive;
     let currentPose = clonePose(POSES.neutral);
     let animationFrame = 0;
     let lastFrameTime = 0;
@@ -1265,6 +1416,33 @@ export default function SpiderOrbThree({
     const shouldAnimate = () =>
       !reducedMotion && isIntersecting && isDocumentVisible;
 
+    const configureAction = (next: OrbActionMode, epoch: number) => {
+      activeActionMode = next;
+      actionFromYaw = actionYaw;
+      actionStartedAt = epoch > 0 ? epoch : performance.now();
+      const facing = next === "face" || next === "doing" ? 0 : Math.PI;
+      actionTargetYaw = nextForwardFacing(actionYaw, facing);
+      sendGlyph.visible = next === "send";
+      stopGlyph.visible = next === "stop" || next === "doing";
+    };
+
+    const resolveActionYaw = (time: number) => {
+      const elapsed = Math.max(0, time - actionStartedAt);
+      if (reducedMotion && activeActionMode === "doing") {
+        return actionTargetYaw + Math.PI;
+      }
+      const settle = smootherStep(elapsed / ACTION_SETTLE_MS);
+      if (settle < 1 || activeActionMode !== "doing") {
+        return MathUtils.lerp(actionFromYaw, actionTargetYaw, settle);
+      }
+      const loopElapsed = elapsed - ACTION_SETTLE_MS;
+      const loopIndex = Math.floor(loopElapsed / ACTION_LOOP_MS);
+      const loopProgress = (loopElapsed % ACTION_LOOP_MS) / ACTION_LOOP_MS;
+      return actionTargetYaw + loopIndex * FULL_TURN + loopTurnAt(loopProgress);
+    };
+
+    configureAction(activeActionMode, actionStartedAt);
+
     const applyPose = (time: number, snap = false) => {
       const elapsed = Math.max(0, time - expressionStartedAt);
       const target = dynamicTarget(activeExpression, elapsed);
@@ -1284,7 +1462,8 @@ export default function SpiderOrbThree({
         : { x: 0, y: 0 };
       const eyeFollowAmount = snap ? 1 : 1 - Math.exp(-delta * 15);
       const headFollowAmount = snap ? 1 : 1 - Math.exp(-delta * 5.2);
-      const gazeBlendTarget = drag.active || !gazeTarget.available ? 0 : 1;
+      const gazeBlendTarget =
+        interactionEnabled && !drag.active && gazeTarget.available ? 1 : 0;
       const gazeBlendAmount = snap ? 1 : 1 - Math.exp(-delta * 8);
       eyeGaze.x += (gazeDestination.x - eyeGaze.x) * eyeFollowAmount;
       eyeGaze.y += (gazeDestination.y - eyeGaze.y) * eyeFollowAmount;
@@ -1329,9 +1508,15 @@ export default function SpiderOrbThree({
         ),
       );
       const framingAmount = snap ? 1 : 1 - Math.exp(-delta * 5.8);
+      const cameraDistance = compactFraming
+        ? COMPACT_CAMERA_DISTANCE
+        : BASE_CAMERA_DISTANCE;
+      const liquidCameraDistance = compactFraming
+        ? COMPACT_LIQUID_CAMERA_DISTANCE
+        : LIQUID_CAMERA_DISTANCE;
       camera.position.z +=
-        (BASE_CAMERA_DISTANCE +
-          liquidPresence * LIQUID_CAMERA_DISTANCE -
+        (cameraDistance +
+          liquidPresence * liquidCameraDistance -
           camera.position.z) *
         framingAmount;
       camera.position.y +=
@@ -1347,7 +1532,14 @@ export default function SpiderOrbThree({
         targetQuaternion,
         snap || reducedMotion ? 1 : 1 - Math.exp(-delta * 18),
       );
+      actionYaw = resolveActionYaw(time);
+      container.dataset.rotationDegrees = String(
+        Math.round(
+          (MathUtils.euclideanModulo(actionYaw, FULL_TURN) * 180) / Math.PI,
+        ),
+      );
       head.rotation.y =
+        actionYaw +
         currentPose.headYaw +
         headTracking.headYaw * gazeBlend +
         Math.sin(time * 0.00062) * 0.012 * motion;
@@ -1399,8 +1591,28 @@ export default function SpiderOrbThree({
       requestAnimation();
     };
 
+    actionUpdaterRef.current = (next, epoch) => {
+      configureAction(next, epoch);
+      lastFrameTime = 0;
+      applyPose(performance.now(), reducedMotion);
+      renderScene();
+      requestAnimation();
+    };
+
+    framingUpdaterRef.current = (next) => {
+      compactFraming = next;
+      lastFrameTime = 0;
+      applyPose(performance.now(), reducedMotion);
+      renderScene();
+      requestAnimation();
+    };
+
     const resize = () => {
-      const { width, height } = container.getBoundingClientRect();
+      // CSS FLIP scales the parent during travel. Measure the untransformed
+      // layout box so a returning 184 × 232 orb is rendered at destination
+      // resolution instead of stretching a transformed 48 × 60 framebuffer.
+      const width = container.clientWidth;
+      const height = container.clientHeight;
       if (width < 1 || height < 1) return;
 
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -1421,6 +1633,45 @@ export default function SpiderOrbThree({
       }
 
       renderScene();
+    };
+
+    const prewarmScene = () => {
+      const sendWasVisible = sendGlyph.visible;
+      const stopWasVisible = stopGlyph.visible;
+      sendGlyph.visible = true;
+      stopGlyph.visible = true;
+
+      // Bake each liquid field once and expose every action surface while the
+      // canvas is still hidden. compile + render warms shaders, buffers, and
+      // the MarchingCubes path before the first send/return transition.
+      Object.values(liquidGlyphs).forEach((glyph) => {
+        glyph.weight = 0.5;
+        glyph.velocity = 0;
+        updateLiquidGlyph(glyph, true, 0, mountedAt, false);
+        glyph.terminal.visible = true;
+        glyph.terminalPieces.forEach((piece) => {
+          piece.mesh.visible = true;
+          piece.mesh.scale.setScalar(1);
+        });
+      });
+
+      try {
+        renderer.compile(scene, camera);
+        renderScene();
+      } finally {
+        sendGlyph.visible = sendWasVisible;
+        stopGlyph.visible = stopWasVisible;
+        Object.values(liquidGlyphs).forEach((glyph) => {
+          glyph.weight = 0;
+          glyph.velocity = 0;
+          glyph.effect.visible = false;
+          glyph.terminal.visible = false;
+          glyph.terminalPieces.forEach((piece) => {
+            piece.mesh.visible = false;
+            piece.mesh.scale.setScalar(0.001);
+          });
+        });
+      }
     };
 
     const commitRotation = () => {
@@ -1460,6 +1711,7 @@ export default function SpiderOrbThree({
     };
 
     const updateGazeTarget = (clientX: number, clientY: number) => {
+      if (!interactionEnabled) return;
       const normalized = normalizeGazePoint(
         clientX,
         clientY,
@@ -1500,7 +1752,7 @@ export default function SpiderOrbThree({
       drag.active = false;
       drag.pointerId = -1;
       delete container.dataset.dragging;
-      container.dataset.interaction = "gaze";
+      container.dataset.interaction = interactionEnabled ? "gaze" : "fixed";
 
       if (container.hasPointerCapture(capturedPointerId)) {
         container.releasePointerCapture(capturedPointerId);
@@ -1510,6 +1762,7 @@ export default function SpiderOrbThree({
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      if (!interactionEnabled) return;
       if (event.pointerType === "mouse" && event.button !== 0) return;
       updateGazeTarget(event.clientX, event.clientY);
       drag.active = true;
@@ -1539,6 +1792,7 @@ export default function SpiderOrbThree({
     };
 
     const handleWindowPointerMove = (event: PointerEvent) => {
+      if (!interactionEnabled) return;
       if (event.pointerType !== "touch") {
         updateGazeTarget(event.clientX, event.clientY);
       }
@@ -1568,6 +1822,7 @@ export default function SpiderOrbThree({
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!interactionEnabled) return;
       const step = 0.18;
 
       if (event.key === "ArrowLeft") {
@@ -1585,6 +1840,29 @@ export default function SpiderOrbThree({
       }
 
       event.preventDefault();
+    };
+
+    interactionUpdaterRef.current = (next) => {
+      if (interactionEnabled === next) return;
+      interactionEnabled = next;
+      container.dataset.interaction = next ? "gaze" : "fixed";
+
+      if (!next) {
+        finishPointerDrag();
+        gazeTarget.x = 0;
+        gazeTarget.y = 0;
+        gazeTarget.available = false;
+        eyeGaze.x = 0;
+        eyeGaze.y = 0;
+        headGaze.x = 0;
+        headGaze.y = 0;
+        gazeBlend = 0;
+        lastFrameTime = 0;
+        applyPose(performance.now(), true);
+        renderScene();
+      }
+
+      requestAnimation();
     };
 
     const handleVisibility = () => {
@@ -1629,6 +1907,7 @@ export default function SpiderOrbThree({
 
     applyPose(expressionStartedAt, true);
     resize();
+    prewarmScene();
     renderScene();
     const readyFrame = window.requestAnimationFrame(() => setIsReady(true));
     requestAnimation();
@@ -1636,6 +1915,9 @@ export default function SpiderOrbThree({
     return () => {
       window.cancelAnimationFrame(readyFrame);
       expressionUpdaterRef.current = null;
+      actionUpdaterRef.current = null;
+      framingUpdaterRef.current = null;
+      interactionUpdaterRef.current = null;
       repositionRef.current = null;
       if (animationFrame !== 0) {
         window.cancelAnimationFrame(animationFrame);
@@ -1678,8 +1960,24 @@ export default function SpiderOrbThree({
   }, [expression, expressionEpoch]);
 
   useEffect(() => {
+    actionUpdaterRef.current?.(actionMode, actionEpoch);
+  }, [actionEpoch, actionMode]);
+
+  useEffect(() => {
+    framingUpdaterRef.current?.(compact);
+  }, [compact]);
+
+  useEffect(() => {
+    interactionUpdaterRef.current?.(interactive);
+  }, [interactive]);
+
+  useEffect(() => {
     if (repositionSignal > 0) repositionRef.current?.();
   }, [repositionSignal]);
+
+  useEffect(() => {
+    if (isReady || hasWebGlError) onReady?.();
+  }, [hasWebGlError, isReady, onReady]);
 
   return (
     <div
@@ -1689,11 +1987,15 @@ export default function SpiderOrbThree({
       data-character={appearance}
       data-ready={isReady && !hasWebGlError ? "true" : "false"}
       data-expression={expression}
-      data-interaction="gaze"
+      data-action-mode={actionMode}
+      data-compact={compact ? "true" : "false"}
+      data-interactive-enabled={interactive ? "true" : "false"}
+      data-instant-reveal={instantReveal ? "true" : "false"}
+      data-interaction={interactive ? "gaze" : "fixed"}
       role="img"
       tabIndex={-1}
-      title="眼睛会跟随鼠标；拖动可 360° 旋转，离开角色后恢复凝视"
-      aria-label={`Three.js 版本，可 360 度旋转的${appearance === "whale" ? "蓝色圆球鲸鱼" : appearance === "alien" ? "高光黑色外星人圆球" : "极简黑色蜘蛛侠头部"}，当前表情：${activeLabel}。眼睛会跟随鼠标，拖动角色旋转，指针离开角色后恢复凝视。`}
+      title="同一颗 Three.js 球体：正面是角色，背面是 Send / Stop"
+      aria-label={`同一颗可 360 度旋转的${appearance === "whale" ? "蓝色圆球鲸鱼" : appearance === "alien" ? "高光黑色外星人圆球" : "极简黑色蜘蛛侠头部"}，当前操作状态：${actionMode}，当前表情：${activeLabel}。白色 Send 与 Stop 是球体背面的三维标记。`}
     >
       <div
         className={[

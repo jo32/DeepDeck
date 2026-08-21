@@ -1,13 +1,14 @@
 import { useState } from "react";
+import ActionOrbPage from "./ActionOrbPage";
 import SpiderOrbThree from "./SpiderOrbThree";
 import {
   EXPRESSION_OPTIONS,
   type OrbExpression,
 } from "./orb-expressions";
 
-type Appearance = "spider" | "whale";
+type Appearance = "spider" | "whale" | "alien";
 
-export default function App() {
+function OriginalOrbPlayground() {
   const [appearance, setAppearance] = useState<Appearance>("whale");
   const [expression, setExpression] = useState<OrbExpression>("auto");
   const [expressionEpoch, setExpressionEpoch] = useState(0);
@@ -44,6 +45,13 @@ export default function App() {
           >
             Blue Orb
           </button>
+          <button
+            type="button"
+            aria-pressed={appearance === "alien"}
+            onClick={() => setAppearance("alien")}
+          >
+            Alien Orb
+          </button>
         </div>
 
         <button
@@ -69,4 +77,10 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+export default function App() {
+  return window.location.pathname === "/action-orb"
+    ? <ActionOrbPage />
+    : <OriginalOrbPlayground />;
 }

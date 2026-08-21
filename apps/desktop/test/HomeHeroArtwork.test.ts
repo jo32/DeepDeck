@@ -16,11 +16,16 @@ const copy: Record<HomeHeroKey, string> = {
 const t = ((key: HomeHeroKey) => copy[key]) as TranslateNS<"homeHero">;
 
 function session(composerPhase: ConversationSnapshot["composerPhase"]): ConversationSnapshot {
-  return { composerPhase } as unknown as ConversationSnapshot;
+  return {
+    composerPhase,
+    running: false,
+    subagent: null,
+    removed: false,
+  } as unknown as ConversationSnapshot;
 }
 
 function input(draftRev = 0): HomeHeroArtworkProps["input"] {
-  return { draftRev };
+  return { draft: "", imageIds: [], draftRev, phase: "plain" };
 }
 
 describe("HomeHeroArtwork", () => {
@@ -33,6 +38,9 @@ describe("HomeHeroArtwork", () => {
 
     expect(html).toContain("data-deepdeck-home-hero")
     expect(html).toContain('data-character="alien"')
+    expect(html).toContain('data-deepdeck-home-hero-native-cover=""')
+    expect(html).toContain('data-interactive-enabled="true"')
+    expect(html).toContain('data-interaction="gaze"')
     expect(html).toContain('data-expression="auto"')
     expect(html).not.toContain('data-renderer="baked-svg"')
     expect(html).toContain("高光黑色外星人圆球")
@@ -40,13 +48,22 @@ describe("HomeHeroArtwork", () => {
     expect(html).not.toContain("预览版")
   });
 
-  it("does not render after the session leaves the blank composer phase", () => {
+  it("keeps the same alien renderer mounted in its compact Send posture", () => {
     const html = renderToStaticMarkup(createElement(HomeHeroArtwork, {
       session: session("active"),
-      input: input(),
+      input: { ...input(), draft: "next message" },
       t,
     }));
 
-    expect(html).toBe("")
+    expect(html).toContain("data-deepdeck-home-hero")
+    expect(html).toContain('data-motion="docked"')
+    expect(html).toContain('data-action="send"')
+    expect(html).toContain('data-action-mode="send"')
+    expect(html).toContain('data-compact="true"')
+    expect(html).toContain('data-character="alien"')
+    expect(html).toContain('data-deepdeck-home-hero-native-cover=""')
+    expect(html).toContain('data-interactive-enabled="false"')
+    expect(html).toContain('data-interaction="fixed"')
+    expect(html).not.toContain('data-renderer="baked-svg"')
   });
 });

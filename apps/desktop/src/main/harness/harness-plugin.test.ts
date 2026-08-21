@@ -12,10 +12,23 @@ import {
   resolveCommunityMarketTerminalLaunch,
   resolveHarnessHome,
   resolveHarnessPluginLink,
+  resolveHarnessWebArguments,
   restoreHarnessPluginLink,
 } from "./harness-process.js";
 
 describe("Harness plugin resolution", () => {
+  it("places launcher patches before pass-through Web arguments", () => {
+    expect(resolveHarnessWebArguments("/runtime/bin.js", "/runtime/cordis.patch.yml")).toEqual([
+      "/runtime/bin.js",
+      "web",
+      "--patch",
+      "/runtime/cordis.patch.yml",
+      "--no-open",
+      "--port",
+      "0",
+    ]);
+  });
+
   it("recognizes Community Market desktop requests and resolves native terminals safely", () => {
     expect(isMarketplaceRestartRequest({ type: COMMUNITY_MARKET_RESTART_REQUEST })).toBe(true);
     expect(isCommunityMarketOpenTerminalRequest({

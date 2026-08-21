@@ -21,7 +21,7 @@ const en: Record<HomeHeroKey, string> = {
 
 export const inject = ['slots', 'locale']
 
-/** Install the blank-session character through the declared input dock slot. */
+/** Install one traveling-and-docked 3D Alien through the session dock slot. */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'deepdeck home hero: dictionaries')
 

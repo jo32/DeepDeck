@@ -5,6 +5,7 @@ import {
   EXPRESSION_OPTIONS,
   type OrbExpression,
 } from "./orb-expressions";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { MarchingCubes } from "three/addons/objects/MarchingCubes.js";
 import {
   ACESFilmicToneMapping,
@@ -15,11 +16,14 @@ import {
   DoubleSide,
   Float32BufferAttribute,
   Group,
+  HemisphereLight,
   MathUtils,
   Mesh,
+  MeshBasicMaterial,
   MeshPhysicalMaterial,
   PerspectiveCamera,
   Quaternion,
+  RectAreaLight,
   Scene,
   SphereGeometry,
   SRGBColorSpace,
@@ -32,7 +36,13 @@ type Expression = OrbExpression;
 type PoseExpression = Exclude<Expression, "auto">;
 type Side = -1 | 1;
 type Point = readonly [number, number];
-type OrbAppearance = "spider" | "whale";
+type OrbAppearance = "spider" | "whale" | "alien";
+
+export type OrbActionMode = "face" | "send" | "doing" | "stop";
+
+const FULL_TURN = Math.PI * 2;
+const ACTION_SETTLE_MS = 480;
+const ACTION_LOOP_MS = 4_200;
 
 type CubicSegment = {
   p0: Point;
@@ -70,6 +80,13 @@ type EyePatch = {
   baseOutline: readonly { x: number; y: number }[];
   roundOutline: readonly { x: number; y: number }[];
   circular: boolean;
+  centerX: number;
+  centerY: number;
+  lensBulge: number;
+  rimBulge: number;
+  rimScale: number;
+  lensSurfaceOffset: number;
+  rimSurfaceOffset: number;
 };
 
 type LiquidNode = {
@@ -152,8 +169,62 @@ const ROUND_PATH: readonly CubicSegment[] = [
   },
 ];
 
-const EYE_RINGS = 5;
-const EYE_STEPS_PER_SEGMENT = 12;
+const ALIEN_PATH: readonly CubicSegment[] = [
+  {
+    p0: [-0.25, -0.3],
+    c1: [-0.25, -0.18],
+    c2: [0.07, 0.35],
+    p1: [0.17, 0.35],
+  },
+  {
+    p0: [0.17, 0.35],
+    c1: [0.25, 0.35],
+    c2: [0.3, 0.14],
+    p1: [0.3, -0.04],
+  },
+  {
+    p0: [0.3, -0.04],
+    c1: [0.3, -0.22],
+    c2: [0.15, -0.38],
+    p1: [0.03, -0.38],
+  },
+  {
+    p0: [0.03, -0.38],
+    c1: [-0.1, -0.38],
+    c2: [-0.25, -0.42],
+    p1: [-0.25, -0.3],
+  },
+];
+
+const ALIEN_ROUND_PATH: readonly CubicSegment[] = [
+  {
+    p0: [-0.23, -0.27],
+    c1: [-0.23, -0.13],
+    c2: [0.05, 0.34],
+    p1: [0.15, 0.34],
+  },
+  {
+    p0: [0.15, 0.34],
+    c1: [0.24, 0.34],
+    c2: [0.29, 0.15],
+    p1: [0.29, -0.04],
+  },
+  {
+    p0: [0.29, -0.04],
+    c1: [0.29, -0.22],
+    c2: [0.14, -0.37],
+    p1: [0.01, -0.37],
+  },
+  {
+    p0: [0.01, -0.37],
+    c1: [-0.11, -0.37],
+    c2: [-0.23, -0.41],
+    p1: [-0.23, -0.27],
+  },
+];
+
+const EYE_RINGS = 20;
+const EYE_STEPS_PER_SEGMENT = 18;
 const EYE_CENTER_X = 0.35;
 const EYE_CENTER_Y = 0.035;
 
@@ -186,6 +257,8 @@ function samplePath(path: readonly CubicSegment[]) {
 
 const SPIDER_OUTLINE = samplePath(SPIDER_PATH);
 const ROUND_OUTLINE = samplePath(ROUND_PATH);
+const ALIEN_OUTLINE = samplePath(ALIEN_PATH);
+const ALIEN_ROUND_OUTLINE = samplePath(ALIEN_ROUND_PATH);
 
 function sampleCircleOutline(radius: number) {
   return Array.from({ length: SPIDER_OUTLINE.length }, (_, index) => {
@@ -438,25 +511,35 @@ function updateEyeGeometry(
   surfaceOffset: number,
   baseOutline: readonly { x: number; y: number }[],
   roundOutline: readonly { x: number; y: number }[],
+  centerX = EYE_CENTER_X,
+  centerY = EYE_CENTER_Y,
+  bulge = 0,
 ) {
   const positions = geometry.getAttribute("position");
   const outlineCount = baseOutline.length;
   const cosine = Math.cos(pose.rotation);
   const sine = Math.sin(pose.rotation);
 
-  const writePoint = (index: number, u: number, v: number) => {
+  const writePoint = (
+    index: number,
+    u: number,
+    v: number,
+    radialFactor: number,
+  ) => {
     const scaledU = u * pose.width * outlineScale;
     const scaledV = v * pose.open * outlineScale;
     const rotatedU = scaledU * cosine - scaledV * sine;
     const rotatedV = scaledU * sine + scaledV * cosine;
-    const x = side * EYE_CENTER_X + pose.x + side * rotatedU;
-    const y = EYE_CENTER_Y + pose.y + rotatedV;
+    const x = side * centerX + pose.x + side * rotatedU;
+    const y = centerY + pose.y + rotatedV;
     const z = Math.sqrt(Math.max(0.04, 1 - x * x - y * y));
-    const radius = 1 + surfaceOffset;
+    const dome =
+      bulge * Math.pow(Math.max(0, 1 - radialFactor * radialFactor), 1.15);
+    const radius = 1 + surfaceOffset + dome;
     positions.setXYZ(index, x * radius, y * radius, z * radius);
   };
 
-  writePoint(0, 0, 0);
+  writePoint(0, 0, 0, 0);
 
   for (let ring = 1; ring <= EYE_RINGS; ring += 1) {
     const factor = ring / EYE_RINGS;
@@ -467,7 +550,7 @@ function updateEyeGeometry(
       const roundPoint = roundOutline[index];
       const x = MathUtils.lerp(basePoint.x, roundPoint.x, pose.roundness);
       const y = MathUtils.lerp(basePoint.y, roundPoint.y, pose.roundness);
-      writePoint(start + index, x * factor, y * factor);
+      writePoint(start + index, x * factor, y * factor, factor);
     }
   }
 
@@ -482,10 +565,26 @@ function createEyePatch(
   pose: EyePose,
   appearance: OrbAppearance,
 ): EyePatch {
-  const baseOutline = appearance === "whale" ? WHALE_OUTLINE : SPIDER_OUTLINE;
+  const baseOutline =
+    appearance === "whale"
+      ? WHALE_OUTLINE
+      : appearance === "alien"
+        ? ALIEN_OUTLINE
+        : SPIDER_OUTLINE;
   const roundOutline =
-    appearance === "whale" ? WHALE_ROUND_OUTLINE : ROUND_OUTLINE;
+    appearance === "whale"
+      ? WHALE_ROUND_OUTLINE
+      : appearance === "alien"
+        ? ALIEN_ROUND_OUTLINE
+        : ROUND_OUTLINE;
   const circular = appearance === "whale";
+  const centerX = appearance === "alien" ? 0.4 : EYE_CENTER_X;
+  const centerY = appearance === "alien" ? -0.025 : EYE_CENTER_Y;
+  const lensBulge = appearance === "alien" ? 0.04 : 0;
+  const rimBulge = appearance === "alien" ? 0.016 : 0;
+  const rimScale = appearance === "alien" ? 1.15 : 1.11;
+  const lensSurfaceOffset = appearance === "alien" ? 0.017 : 0.015;
+  const rimSurfaceOffset = appearance === "alien" ? 0.008 : 0.006;
   const displayPose = circular ? circularEyePose(pose) : pose;
   const lensGeometry = createPatchGeometry(baseOutline.length);
   const rimGeometry = createPatchGeometry(baseOutline.length);
@@ -507,24 +606,37 @@ function createEyePatch(
     baseOutline,
     roundOutline,
     circular,
+    centerX,
+    centerY,
+    lensBulge,
+    rimBulge,
+    rimScale,
+    lensSurfaceOffset,
+    rimSurfaceOffset,
   };
   updateEyeGeometry(
     rimGeometry,
     side,
     displayPose,
-    1.11,
-    0.006,
+    rimScale,
+    rimSurfaceOffset,
     baseOutline,
     roundOutline,
+    centerX,
+    centerY,
+    rimBulge,
   );
   updateEyeGeometry(
     lensGeometry,
     side,
     displayPose,
     1,
-    0.015,
+    lensSurfaceOffset,
     baseOutline,
     roundOutline,
+    centerX,
+    centerY,
+    lensBulge,
   );
   return patch;
 }
@@ -535,20 +647,98 @@ function updateEyePatch(patch: EyePatch, pose: EyePose) {
     patch.rimGeometry,
     patch.side,
     displayPose,
-    1.11,
-    0.006,
+    patch.rimScale,
+    patch.rimSurfaceOffset,
     patch.baseOutline,
     patch.roundOutline,
+    patch.centerX,
+    patch.centerY,
+    patch.rimBulge,
   );
   updateEyeGeometry(
     patch.lensGeometry,
     patch.side,
     displayPose,
     1,
-    0.015,
+    patch.lensSurfaceOffset,
     patch.baseOutline,
     patch.roundOutline,
+    patch.centerX,
+    patch.centerY,
+    patch.lensBulge,
   );
+}
+
+function insideBackGlyph(kind: "send" | "stop", x: number, y: number) {
+  if (kind === "send") {
+    const insideStem = Math.abs(x) <= 0.18 && y >= -0.78 && y <= 0.1;
+    const insideHead = y >= -0.08
+      && y <= 0.82
+      && Math.abs(x) <= (0.82 - y) * 0.82 + 0.03;
+    return insideStem || insideHead;
+  }
+
+  const edge = 0.69;
+  const radius = 0.17;
+  const dx = Math.max(Math.abs(x) - (edge - radius), 0);
+  const dy = Math.max(Math.abs(y) - (edge - radius), 0);
+  return Math.abs(x) <= edge
+    && Math.abs(y) <= edge
+    && dx * dx + dy * dy <= radius * radius;
+}
+
+/** The glyph itself is tessellated directly on the rear spherical surface. */
+function createBackGlyphGeometry(kind: "send" | "stop") {
+  const geometry = new BufferGeometry();
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  const segments = 96;
+  const halfSpan = 0.58;
+  const surfaceRadius = 1.014;
+
+  for (let row = 0; row <= segments; row += 1) {
+    const v = row / segments;
+    const y = (v - 0.5) * halfSpan * 2;
+    for (let column = 0; column <= segments; column += 1) {
+      const u = column / segments;
+      const x = (u - 0.5) * halfSpan * 2;
+      const z = -Math.sqrt(Math.max(0.001, 1 - x * x - y * y));
+      const normal = new Vector3(x, y, z).normalize();
+      positions.push(
+        normal.x * surfaceRadius,
+        normal.y * surfaceRadius,
+        normal.z * surfaceRadius,
+      );
+      normals.push(normal.x, normal.y, normal.z);
+    }
+  }
+
+  const stride = segments + 1;
+  for (let row = 0; row < segments; row += 1) {
+    for (let column = 0; column < segments; column += 1) {
+      const x = ((column + 0.5) / segments - 0.5) * 2;
+      const y = ((row + 0.5) / segments - 0.5) * 2;
+      if (!insideBackGlyph(kind, x, y)) continue;
+      const topLeft = row * stride + column;
+      const topRight = topLeft + 1;
+      const bottomLeft = topLeft + stride;
+      const bottomRight = bottomLeft + 1;
+      indices.push(topLeft, bottomLeft, topRight, topRight, bottomLeft, bottomRight);
+    }
+  }
+
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+  geometry.setIndex(indices);
+  return geometry;
+}
+
+function createBackGlyph(kind: "send" | "stop", material: Material) {
+  const glyph = new Mesh(createBackGlyphGeometry(kind), material);
+  glyph.renderOrder = 4;
+  glyph.frustumCulled = false;
+  return glyph;
 }
 
 const liquidPosition = new Vector3();
@@ -558,6 +748,22 @@ const liquidDirection = new Vector3();
 function smootherStep(value: number) {
   const clamped = MathUtils.clamp(value, 0, 1);
   return clamped * clamped * clamped * (clamped * (clamped * 6 - 15) + 10);
+}
+
+function nextForwardFacing(reference: number, facing: number) {
+  return facing + Math.ceil((reference - facing - 0.0001) / FULL_TURN) * FULL_TURN;
+}
+
+function loopTurnAt(progress: number) {
+  if (progress < 0.34) return 0;
+  if (progress < 0.47) {
+    return Math.PI * smootherStep((progress - 0.34) / 0.13);
+  }
+  if (progress < 0.68) return Math.PI;
+  if (progress < 0.81) {
+    return Math.PI + Math.PI * smootherStep((progress - 0.68) / 0.13);
+  }
+  return FULL_TURN;
 }
 
 function liquidNode(
@@ -936,6 +1142,8 @@ type SpiderOrbThreeProps = {
   expressionEpoch: number;
   repositionSignal: number;
   appearance?: OrbAppearance;
+  actionMode?: OrbActionMode;
+  actionEpoch?: number;
 };
 
 export default function SpiderOrbThree({
@@ -943,10 +1151,15 @@ export default function SpiderOrbThree({
   expressionEpoch,
   repositionSignal,
   appearance = "spider",
+  actionMode = "face",
+  actionEpoch = 0,
 }: SpiderOrbThreeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const expressionUpdaterRef = useRef<
     ((next: Expression, epoch: number) => void) | null
+  >(null);
+  const actionUpdaterRef = useRef<
+    ((next: OrbActionMode, epoch: number) => void) | null
   >(null);
   const repositionRef = useRef<(() => void) | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -990,34 +1203,57 @@ export default function SpiderOrbThree({
     scene.add(dragRoot);
 
     const isWhale = appearance === "whale";
+    const isAlien = appearance === "alien";
     const sphereMaterial = new MeshPhysicalMaterial({
-      color: isWhale ? 0x4f67ff : 0x030303,
-      roughness: 0.6,
+      color: isWhale ? 0x4f67ff : isAlien ? 0x08090f : 0x030303,
+      roughness: isAlien ? 0.36 : isWhale ? 0.6 : 0.34,
       metalness: 0,
-      clearcoat: 0.08,
-      clearcoatRoughness: 0.72,
+      clearcoat: isAlien ? 0.6 : isWhale ? 0.08 : 0.68,
+      clearcoatRoughness: isAlien ? 0.36 : isWhale ? 0.72 : 0.3,
+      iridescence: 0,
+      iridescenceIOR: 1.32,
+      iridescenceThicknessRange: [180, 320],
     });
     const lensMaterial = new MeshPhysicalMaterial({
-      color: isWhale ? 0x202840 : 0xfafafa,
-      roughness: 0.24,
+      color: isWhale ? 0x202840 : isAlien ? 0xfbfcff : 0xfafafa,
+      roughness: isAlien ? 0.3 : 0.24,
       metalness: 0,
-      clearcoat: 0.16,
-      clearcoatRoughness: 0.5,
+      clearcoat: isAlien ? 0.68 : 0.16,
+      clearcoatRoughness: isAlien ? 0.28 : 0.5,
+      iridescence: isAlien ? 0.16 : 0,
+      iridescenceIOR: 1.3,
+      iridescenceThicknessRange: [130, 360],
+      sheen: 0,
+      sheenColor: isAlien ? 0x93a5ff : 0xffffff,
+      sheenRoughness: 0.68,
+      specularIntensity: 1,
+      specularColor: isAlien ? 0xd7deff : 0xffffff,
+      emissive: isAlien ? 0x49506c : 0x000000,
+      emissiveIntensity: isAlien ? 0.032 : 0,
       side: DoubleSide,
     });
     const rimMaterial = new MeshPhysicalMaterial({
-      color: isWhale ? 0x12182c : 0x010101,
-      roughness: 0.34,
+      color: isWhale ? 0x12182c : isAlien ? 0x03040a : 0x010101,
+      roughness: isAlien ? 0.32 : 0.34,
       metalness: 0,
-      clearcoat: 0.14,
+      clearcoat: isAlien ? 0.62 : 0.14,
+      clearcoatRoughness: isAlien ? 0.31 : 0.3,
       side: DoubleSide,
     });
     const liquidMaterial = new MeshPhysicalMaterial({
-      color: isWhale ? 0x425af0 : 0x020202,
-      roughness: 0.27,
+      color: isWhale ? 0x425af0 : isAlien ? 0x08090f : 0x020202,
+      roughness: isAlien ? 0.35 : 0.27,
       metalness: 0,
-      clearcoat: 0.42,
-      clearcoatRoughness: 0.34,
+      clearcoat: isAlien ? 0.6 : 0.42,
+      clearcoatRoughness: isAlien ? 0.35 : 0.34,
+    });
+    const actionMaterial = new MeshBasicMaterial({
+      color: 0xffffff,
+      polygonOffset: true,
+      polygonOffsetFactor: -3,
+      polygonOffsetUnits: -3,
+      side: DoubleSide,
+      toneMapped: false,
     });
 
     const sphere = new Mesh(
@@ -1043,10 +1279,14 @@ export default function SpiderOrbThree({
       doing: createDoingGlyph(liquidMaterial),
       surprised: createSurprisedGlyph(liquidMaterial),
     };
+    const sendGlyph = createBackGlyph("send", actionMaterial);
+    const stopGlyph = createBackGlyph("stop", actionMaterial);
     head.add(
       sphere,
       leftEye.group,
       rightEye.group,
+      sendGlyph,
+      stopGlyph,
       liquidGlyphs.thinking.effect,
       liquidGlyphs.thinking.terminal,
       liquidGlyphs.doing.effect,
@@ -1055,23 +1295,49 @@ export default function SpiderOrbThree({
       liquidGlyphs.surprised.terminal,
     );
 
-    scene.add(new AmbientLight(0xffffff, 0.42));
+    if (isAlien) {
+      RectAreaLightUniformsLib.init();
+      scene.add(new AmbientLight(0xf0f2ff, 0.12));
+      scene.add(new HemisphereLight(0x9eafff, 0x050509, 0.26));
 
-    const keyLight = new DirectionalLight(0xffffff, 2.7);
-    keyLight.position.set(-3.8, 4.2, 5.5);
-    scene.add(keyLight);
+      const softKey = new RectAreaLight(0xfffbf8, 2.05, 9.2, 8.2);
+      softKey.position.set(-8.2, 8.4, 7.2);
+      softKey.lookAt(-0.38, 0.32, 0);
+      scene.add(softKey);
 
-    const fillLight = new DirectionalLight(0xdde6f1, 0.62);
-    fillLight.position.set(4.5, -0.8, 3.2);
-    scene.add(fillLight);
+      const blueWrap = new RectAreaLight(0x7183ff, 0.82, 8.5, 8.5);
+      blueWrap.position.set(4.8, 3.2, -4.2);
+      blueWrap.lookAt(0.2, 0.05, 0);
+      scene.add(blueWrap);
 
-    const rimLight = new DirectionalLight(0xffffff, 0.36);
-    rimLight.position.set(1.5, 4.5, -3.5);
-    scene.add(rimLight);
+      const edgeLight = new DirectionalLight(0x8394ff, 0.11);
+      edgeLight.position.set(3.2, 2.5, -4.5);
+      scene.add(edgeLight);
+    } else {
+      scene.add(new AmbientLight(0xffffff, 0.42));
 
+      const keyLight = new DirectionalLight(0xffffff, 2.7);
+      keyLight.position.set(-3.8, 4.2, 5.5);
+      scene.add(keyLight);
+
+      const fillLight = new DirectionalLight(0xdde6f1, 0.62);
+      fillLight.position.set(4.5, -0.8, 3.2);
+      scene.add(fillLight);
+
+      const rimLight = new DirectionalLight(0xffffff, 0.36);
+      rimLight.position.set(1.5, 4.5, -3.5);
+      scene.add(rimLight);
+    }
+
+    const mountedAt = performance.now();
     let activeExpression: Expression = "neutral";
-    let expressionStartedAt = performance.now();
+    let expressionStartedAt = mountedAt;
     let hasSyncedExpression = false;
+    let activeActionMode = actionMode;
+    let actionStartedAt = actionEpoch > 0 ? actionEpoch : mountedAt;
+    let actionYaw = actionMode === "face" || actionMode === "doing" ? 0 : Math.PI;
+    let actionFromYaw = actionYaw;
+    let actionTargetYaw = actionYaw;
     let currentPose = clonePose(POSES.neutral);
     let animationFrame = 0;
     let lastFrameTime = 0;
@@ -1096,6 +1362,32 @@ export default function SpiderOrbThree({
 
     const shouldAnimate = () =>
       !reducedMotion && isIntersecting && isDocumentVisible;
+
+    const configureAction = (next: OrbActionMode, epoch: number) => {
+      activeActionMode = next;
+      actionFromYaw = actionYaw;
+      actionStartedAt = epoch > 0 ? epoch : performance.now();
+      const facing = next === "face" || next === "doing" ? 0 : Math.PI;
+      actionTargetYaw = nextForwardFacing(actionYaw, facing);
+      sendGlyph.visible = next === "send";
+      stopGlyph.visible = next === "stop" || next === "doing";
+    };
+
+    const resolveActionYaw = (time: number) => {
+      const elapsed = Math.max(0, time - actionStartedAt);
+      const settle = smootherStep(elapsed / ACTION_SETTLE_MS);
+      if (settle < 1 || activeActionMode !== "doing") {
+        return MathUtils.lerp(actionFromYaw, actionTargetYaw, settle);
+      }
+
+      if (reducedMotion) return actionTargetYaw + Math.PI;
+      const loopElapsed = elapsed - ACTION_SETTLE_MS;
+      const loopIndex = Math.floor(loopElapsed / ACTION_LOOP_MS);
+      const loopProgress = (loopElapsed % ACTION_LOOP_MS) / ACTION_LOOP_MS;
+      return actionTargetYaw + loopIndex * FULL_TURN + loopTurnAt(loopProgress);
+    };
+
+    configureAction(activeActionMode, actionStartedAt);
 
     const applyPose = (time: number, snap = false) => {
       const elapsed = Math.max(0, time - expressionStartedAt);
@@ -1154,7 +1446,12 @@ export default function SpiderOrbThree({
         targetQuaternion,
         snap || reducedMotion ? 1 : 1 - Math.exp(-delta * 18),
       );
+      actionYaw = resolveActionYaw(time);
+      container.dataset.rotationDegrees = String(
+        Math.round(MathUtils.euclideanModulo(actionYaw, FULL_TURN) * 180 / Math.PI),
+      );
       head.rotation.y =
+        actionYaw +
         currentPose.headYaw +
         Math.sin(time * 0.00062) * 0.012 * motion;
       head.rotation.x =
@@ -1197,6 +1494,14 @@ export default function SpiderOrbThree({
         applyPose(performance.now(), true);
         renderScene();
       }
+      requestAnimation();
+    };
+
+    actionUpdaterRef.current = (next, epoch) => {
+      configureAction(next, epoch);
+      lastFrameTime = 0;
+      applyPose(performance.now(), reducedMotion);
+      renderScene();
       requestAnimation();
     };
 
@@ -1339,6 +1644,7 @@ export default function SpiderOrbThree({
     return () => {
       window.cancelAnimationFrame(readyFrame);
       expressionUpdaterRef.current = null;
+      actionUpdaterRef.current = null;
       repositionRef.current = null;
       if (animationFrame !== 0) {
         window.cancelAnimationFrame(animationFrame);
@@ -1378,6 +1684,10 @@ export default function SpiderOrbThree({
   }, [expression, expressionEpoch]);
 
   useEffect(() => {
+    actionUpdaterRef.current?.(actionMode, actionEpoch);
+  }, [actionEpoch, actionMode]);
+
+  useEffect(() => {
     if (repositionSignal > 0) repositionRef.current?.();
   }, [repositionSignal]);
 
@@ -1389,13 +1699,14 @@ export default function SpiderOrbThree({
       data-character={appearance}
       data-ready={isReady && !hasWebGlError ? "true" : "false"}
       data-expression={expression}
+      data-action-mode={actionMode}
       role="img"
       tabIndex={0}
-      title="拖动可 360° 旋转，双击或按 R 复位"
-      aria-label={`Three.js 版本，可 360 度旋转的${appearance === "whale" ? "蓝色圆球鲸鱼" : "极简黑色蜘蛛侠头部"}，当前表情：${activeLabel}。拖动旋转，方向键微调，按 R 复位。`}
+      title="同一颗 Three.js 球体：正面 Doing，背面 Send / Stop"
+      aria-label={`同一颗可 360 度旋转的${appearance === "whale" ? "蓝色圆球" : appearance === "alien" ? "Alien Orb" : "Spider Orb"}，当前状态：${actionMode}，当前表情：${activeLabel}。白色 Send 与 Stop 是球体背面的三维标记。`}
     >
       <div
-        className={`orb-fallback${appearance === "whale" ? " orb-fallback-whale" : ""}`}
+        className={`orb-fallback${appearance === "whale" ? " orb-fallback-whale" : appearance === "alien" ? " orb-fallback-alien" : ""}`}
         aria-hidden="true"
       >
         <span

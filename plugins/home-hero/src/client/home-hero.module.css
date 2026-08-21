@@ -5,6 +5,61 @@
   pointer-events: none;
 }
 
+/* Geometry-only twin of the large hero. It gives the reverse transition a
+   stable destination even while the real canvas stays fixed at the button. */
+.heroTarget {
+  position: absolute;
+  right: -40px;
+  bottom: 68px;
+  width: 184px;
+  height: 232px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The marker mirrors the resident 34px primary button without reaching into
+   Harness DOM. In active layout the card is centered at the shared width cap;
+   16px is its outer clearance, 8px its toolbar inset, and 16px its visual
+   bottom after row padding plus the button's -2px optical adjustment. */
+.sendTargetRail {
+  position: absolute;
+  right: var(--dsh-composer-side-clearance, 16px);
+  bottom: 16px;
+  left: var(--dsh-composer-side-clearance, 16px);
+  width: auto;
+  max-width: var(--dsh-composer-card-max-width, 780px);
+  height: 34px;
+  margin-inline: auto;
+  pointer-events: none;
+}
+
+.sendTarget {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  z-index: 19;
+  width: 34px;
+  height: 34px;
+}
+
+/* Once the orb leaves the hero, erase the resident blue artwork without
+   intercepting its click/keyboard semantics. The orb itself paints above this
+   neutral patch after landing. */
+.nativeActionCover {
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-base));
+  box-shadow: 0 0 0 2px var(--dsw-specific-input-major, var(--dsw-alias-bg-base));
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity 80ms linear;
+}
+
+.artwork[data-motion='resting'] .nativeActionCover {
+  opacity: 0;
+}
+
 .heroTitleMask {
   position: absolute;
   top: -24px;
@@ -20,6 +75,10 @@
   );
 }
 
+.artwork:not([data-motion='resting']) .heroTitleMask {
+  display: none;
+}
+
 .mascot {
   position: absolute;
   right: -40px;
@@ -30,8 +89,226 @@
   filter: drop-shadow(0 16px 22px rgb(16 24 40 / 10%));
 }
 
+.liquidBody {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 72%;
+}
+
+/* Freeze the last hero rect while the parent composer docks. This is the
+   first half of the FLIP transition and prevents a one-frame teleport. */
+.mascot[data-motion='armed'],
+.mascot[data-motion='launch-preparing'],
+.mascot[data-motion='launching'],
+.mascot[data-motion='return-armed'],
+.mascot[data-motion='return-preparing'],
+.mascot[data-motion='returning'] {
+  position: fixed;
+  top: var(--deepdeck-hero-top);
+  left: var(--deepdeck-hero-left);
+  z-index: 20;
+  width: var(--deepdeck-hero-width);
+  height: var(--deepdeck-hero-height);
+  right: auto;
+  bottom: auto;
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: top left;
+  will-change: transform, opacity;
+}
+
+/* Once landed, the very same canvas is resized to the approved 48 × 60 frame
+   and inset from the card edge. The native action remains the sole hit target. */
+.mascot[data-motion='docked'] {
+  position: fixed;
+  top: var(--deepdeck-hero-top, 0);
+  left: var(--deepdeck-hero-left, 0);
+  z-index: 20;
+  width: var(--deepdeck-hero-width, 48px);
+  height: var(--deepdeck-hero-height, 60px);
+  right: auto;
+  bottom: auto;
+  filter: drop-shadow(0 5px 9px rgb(5 8 20 / 26%));
+  opacity: 1;
+  pointer-events: none;
+  transform: none;
+  transition: filter 160ms ease, opacity 160ms ease;
+}
+
+.mascot[data-motion='docked'][data-disabled='true'] {
+  /* Keep the orb opaque so the resident blue button cannot bleed through the
+     WebGL surface; dim the rendered material instead of the whole layer. */
+  filter: brightness(.62) saturate(.72) drop-shadow(0 5px 9px rgb(5 8 20 / 18%));
+}
+
+.mascot[data-motion='docked'][data-positioned='false'] {
+  opacity: 0;
+}
+
+.mascot[data-motion='return-armed'][data-positioned='false'] {
+  opacity: 0;
+}
+
+.mascot[data-motion='return-preparing'] {
+  transform:
+    translate3d(
+      var(--deepdeck-hero-return-x),
+      var(--deepdeck-hero-return-y),
+      0
+    )
+    scale(
+      var(--deepdeck-hero-return-scale-x),
+      var(--deepdeck-hero-return-scale-y)
+    );
+}
+
+.mascot[data-motion='launching'] {
+  animation: hero-launch var(--deepdeck-hero-launch-duration, 540ms)
+    cubic-bezier(.2, .82, .24, 1) both;
+}
+
+.mascot[data-motion='launching'] .liquidBody {
+  animation: liquid-morph var(--deepdeck-hero-launch-duration, 540ms)
+    cubic-bezier(.2, .82, .24, 1) both;
+  will-change: transform;
+}
+
+.mascot[data-motion='returning'] {
+  animation: hero-return var(--deepdeck-hero-return-duration, 620ms)
+    cubic-bezier(.2, .82, .24, 1) both;
+}
+
+.mascot[data-motion='returning'] .liquidBody {
+  animation: liquid-return var(--deepdeck-hero-return-duration, 620ms)
+    cubic-bezier(.2, .82, .24, 1) both;
+  will-change: transform;
+}
+
+/* A short glossy tether makes the squash/stretch read as fluid rather than a
+   generic scale transition. It recedes before the orb reaches the button. */
+.mascot[data-motion='launching'] .liquidBody::before {
+  content: '';
+  position: absolute;
+  top: 38%;
+  left: 36%;
+  z-index: -1;
+  width: 28%;
+  height: 44%;
+  border-radius: 999px 999px 58% 58%;
+  background: radial-gradient(
+    ellipse at 50% 68%,
+    rgb(2 3 8 / 72%) 0 42%,
+    rgb(2 3 8 / 34%) 68%,
+    rgb(4 5 10 / 0%) 100%
+  );
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: liquid-tether var(--deepdeck-hero-launch-duration, 540ms) ease-out both;
+}
+
+@keyframes hero-launch {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  72% {
+    opacity: 1;
+  }
+
+  88% {
+    transform: translate3d(var(--deepdeck-hero-x), var(--deepdeck-hero-y), 0)
+      scale(var(--deepdeck-hero-landing-squash));
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(var(--deepdeck-hero-x), var(--deepdeck-hero-y), 0)
+      scale(var(--deepdeck-hero-scale));
+  }
+}
+
+@keyframes hero-return {
+  0% {
+    opacity: 1;
+    transform:
+      translate3d(
+        var(--deepdeck-hero-return-x),
+        var(--deepdeck-hero-return-y),
+        0
+      )
+      scale(
+        var(--deepdeck-hero-return-scale-x),
+        var(--deepdeck-hero-return-scale-y)
+      );
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes liquid-morph {
+  0%, 100% {
+    transform: skew(0deg) scale(1);
+  }
+
+  18% {
+    transform: skew(-2deg) scale(.84, 1.16);
+  }
+
+  48% {
+    transform: skew(2.5deg) scale(1.2, .72);
+  }
+
+  74% {
+    transform: skew(-1deg) scale(.88, 1.1);
+  }
+
+  90% {
+    transform: skew(0deg) scale(1.08, .94);
+  }
+}
+
+@keyframes liquid-return {
+  0%, 100% {
+    transform: skew(0deg) scale(1);
+  }
+
+  22% {
+    transform: skew(1deg) scale(1.12, .86);
+  }
+
+  52% {
+    transform: skew(-2deg) scale(.78, 1.2);
+  }
+
+  82% {
+    transform: skew(.5deg) scale(1.04, .97);
+  }
+}
+
+@keyframes liquid-tether {
+  0%, 8%, 82%, 100% {
+    opacity: 0;
+    transform: translateY(0) scale(.55, .25);
+  }
+
+  30% {
+    opacity: .7;
+    transform: translateY(-26%) scale(.72, 1.45);
+  }
+
+  58% {
+    opacity: .38;
+    transform: translateY(-12%) scale(.46, .9);
+  }
+}
+
 @media (max-width: 720px) {
-  .mascot {
+  .mascot,
+  .heroTarget {
     right: -12px;
     bottom: 82px;
     width: 140px;
@@ -40,10 +317,27 @@
 }
 
 @media (max-width: 480px) {
-  .mascot {
+  .mascot,
+  .heroTarget {
     right: -2px;
     bottom: 87px;
     width: 116px;
     height: 146px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot[data-motion='launching'] {
+    animation-duration: 1ms;
+  }
+
+  .mascot[data-motion='returning'] {
+    animation-duration: 1ms;
+  }
+
+  .mascot[data-motion='launching'] .liquidBody,
+  .mascot[data-motion='returning'] .liquidBody,
+  .mascot[data-motion='launching'] .liquidBody::before {
+    animation: none;
   }
 }
