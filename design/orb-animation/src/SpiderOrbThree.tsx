@@ -1199,8 +1199,9 @@ export default function SpiderOrbThree({
 
     const dragRoot = new Group();
     const head = new Group();
+    const liquidOverlay = new Group();
     dragRoot.add(head);
-    scene.add(dragRoot);
+    scene.add(dragRoot, liquidOverlay);
 
     const isWhale = appearance === "whale";
     const isAlien = appearance === "alien";
@@ -1287,6 +1288,8 @@ export default function SpiderOrbThree({
       rightEye.group,
       sendGlyph,
       stopGlyph,
+    );
+    liquidOverlay.add(
       liquidGlyphs.thinking.effect,
       liquidGlyphs.thinking.terminal,
       liquidGlyphs.doing.effect,
@@ -1442,6 +1445,8 @@ export default function SpiderOrbThree({
         currentPose.headScaleY,
         currentPose.headScaleZ,
       );
+      // Keep status punctuation facing the viewer while the physical orb turns.
+      liquidOverlay.scale.copy(head.scale);
       dragRoot.quaternion.slerp(
         targetQuaternion,
         snap || reducedMotion ? 1 : 1 - Math.exp(-delta * 18),
@@ -1461,6 +1466,7 @@ export default function SpiderOrbThree({
         currentPose.headRoll + Math.sin(time * 0.00038) * 0.009 * motion;
       head.position.y =
         currentPose.lift + Math.sin(time * 0.00112) * 0.018 * motion;
+      liquidOverlay.position.y = head.position.y;
       lastFrameTime = time;
     };
 
