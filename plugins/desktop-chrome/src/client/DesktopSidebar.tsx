@@ -1,3 +1,4 @@
+import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -11,6 +12,9 @@ export const DESKTOP_SIDEBAR_LOCALE = 'deepdeck.desktop.sidebar' as const
 export const desktopSidebarZh = {
   'session.new': '新会话',
   'session.new.label': '新建会话',
+  'apps.section': '应用',
+  'apps.open': '打开应用列表',
+  'apps.close': '关闭应用列表',
   'update.available': '发现新版本',
   'update.download': '下载更新',
   'update.downloading': '正在下载',
@@ -31,6 +35,9 @@ export const desktopSidebarZh = {
 export const desktopSidebarEn = {
   'session.new': 'New Session',
   'session.new.label': 'New session',
+  'apps.section': 'Apps',
+  'apps.open': 'Open Apps',
+  'apps.close': 'Close Apps',
   'update.available': 'Update available',
   'update.download': 'Download update',
   'update.downloading': 'Downloading',
@@ -49,26 +56,68 @@ export const desktopSidebarEn = {
 } satisfies Record<keyof typeof desktopSidebarZh, string>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    /** Navigation entries contributed by installed desktop app plugins. */
+    'sidebar.apps': { kind: 'list'; scope: 'root'; owner: DesktopAppNavigationOwnerProps }
+  }
+
   interface LocaleNamespaceMap {
     'deepdeck.desktop.sidebar': keyof typeof desktopSidebarZh
   }
 }
 
+/** Sidebar geometry shared with each app navigation entry. */
+export interface DesktopAppNavigationOwnerProps {
+  wide: boolean
+  closeApps: () => void
+}
+
+/** Observable view of the app capability slot used to hide an empty launcher. */
+export interface DesktopAppsLedger {
+  count: () => number
+  subscribe: (listener: () => void) => () => void
+  version: () => number
+}
+
 export interface DesktopSidebarInjected {
   startSession: (workspaceId?: WorkspaceId) => void
+  apps: DesktopAppsLedger
 }
 
 export type DesktopSidebarProps =
   & PropsRuntime<'sidebar'>
-  & PropsRenderSlots<'sidebar.workspaces' | 'sidebar.settings' | 'sidebar.footer.action'>
+  & PropsRenderSlots<
+    'sidebar.workspaces' | 'sidebar.apps' | 'sidebar.settings' | 'sidebar.footer.action'
+  >
   & PropsLocale<typeof DESKTOP_SIDEBAR_LOCALE>
   & DesktopSidebarInjected
+
+function AppsIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="2" y="2" width="4.5" height="4.5" rx="1" />
+      <rect x="9.5" y="2" width="4.5" height="4.5" rx="1" />
+      <rect x="2" y="9.5" width="4.5" height="4.5" rx="1" />
+      <rect x="9.5" y="9.5" width="4.5" height="4.5" rx="1" />
+    </svg>
+  )
+}
 
 /**
  * Wide-only sidebar shell. Folding is owned by AppFrame, so this component is
  * unmounted at 0px and never needs the upstream compact-rail state machine.
  */
-export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarProps) {
+export function DesktopSidebar({ renderSlot, startSession, apps, t }: DesktopSidebarProps) {
+  useSyncExternalStore(apps.subscribe, apps.version, apps.version)
+  const appCount = apps.count()
+  const hasApps = appCount > 0
+  const [appsOpen, setAppsOpen] = useState(false)
+  const appsTitleId = useId()
+
+  useEffect(() => {
+    if (!hasApps) setAppsOpen(false)
+  }, [hasApps])
+
   return (
     <div className={css.desktopSidebar} data-deepdeck-desktop-sidebar>
       <div className={css.sidebarLogoRow}>
@@ -108,6 +157,22 @@ export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarPr
       </div>
 
       <div className={css.sidebarFoot}>
+        {hasApps && (
+          <div className={css.sidebarAppsLauncherRow}>
+            <button
+              type="button"
+              className={css.sidebarAppsLauncher}
+              aria-label={t('apps.open')}
+              aria-haspopup="dialog"
+              aria-expanded={appsOpen}
+              onClick={() => { setAppsOpen(true) }}
+            >
+              <AppsIcon />
+              <span>{t('apps.section')}</span>
+              <span className={css.sidebarAppsCount} aria-hidden="true">{appCount}</span>
+            </button>
+          </div>
+        )}
         <div>{renderSlot('sidebar.footer.action', { wide: true })}</div>
         <div className={css.sidebarSettingsRow}>
           <div className={css.sidebarSettingsSlot}>
@@ -116,6 +181,47 @@ export function DesktopSidebar({ renderSlot, startSession, t }: DesktopSidebarPr
           <DesktopUpdateControl t={t} />
         </div>
       </div>
+
+      {hasApps && appsOpen && (
+        <div
+          className={css.sidebarAppsOverlay}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setAppsOpen(false)
+          }}
+        >
+          <button
+            type="button"
+            className={css.sidebarAppsOverlayMask}
+            aria-label={t('apps.close')}
+            onClick={() => { setAppsOpen(false) }}
+          />
+          <section
+            className={css.sidebarAppsPanel}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={appsTitleId}
+          >
+            <header className={css.sidebarAppsPanelHeader}>
+              <h2 id={appsTitleId}>{t('apps.section')}</h2>
+              <button
+                type="button"
+                className={css.sidebarAppsClose}
+                aria-label={t('apps.close')}
+                autoFocus
+                onClick={() => { setAppsOpen(false) }}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </header>
+            <nav className={css.sidebarAppsList} aria-label={t('apps.section')}>
+              {renderSlot('sidebar.apps', {
+                wide: true,
+                closeApps: () => { setAppsOpen(false) },
+              })}
+            </nav>
+          </section>
+        </div>
+      )}
     </div>
   )
 }

@@ -26,6 +26,8 @@ import {
   type UpdateTransaction,
 } from "./update-transaction.js";
 import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
+import { createAppWindowManager } from "./windows/app-window.js";
+import { isSameOriginHttpUrl } from "./windows/app-window-request.js";
 
 export async function bootstrapDesktop(
   branding: LoadedBranding,
@@ -78,6 +80,7 @@ export async function bootstrapDesktop(
   nativeTheme.themeSource = await readThemeSource(resolveHarnessHome());
   configureNativeApplicationIdentity(branding);
 
+  const appWindows = createAppWindowManager();
   const harness = new HarnessProcess({
     harnessRoot: runtimePaths.harnessRoot,
     nodeBinary: runtimePaths.nodeBinary,
@@ -85,6 +88,13 @@ export async function bootstrapDesktop(
     patchPath: runtimePaths.patchPath,
     plugins: runtimePaths.plugins,
     displayName: branding.name,
+    onAppWindowOpenRequest: (url) => {
+      // The child may only promote pages served by this very Harness server;
+      // everything else is dropped without surfacing a window.
+      const base = harness.getStatus().url;
+      if (!base || !isSameOriginHttpUrl(url, base)) return;
+      appWindows.open(url);
+    },
   });
   const updates = createDesktopUpdateService(initialUpdateStatus);
   let desktopWindow: DesktopWindow | undefined;
@@ -106,6 +116,7 @@ export async function bootstrapDesktop(
         removeStatusListener();
         removeUpdateListener();
         removeIpc();
+        appWindows.dispose();
         updates.dispose();
         quitReady = true;
       });

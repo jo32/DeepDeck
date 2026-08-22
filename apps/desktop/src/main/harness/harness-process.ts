@@ -13,6 +13,7 @@ import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:pa
 import type { HarnessRuntimeStatus } from "../../shared/runtime.js";
 import { parseReadinessUrl } from "./readiness.js";
 import { migratePresetBundles } from "./preset-profile.js";
+import { isAppWindowOpenRequest } from "../windows/app-window-request.js";
 
 const START_TIMEOUT_MS = 90_000;
 const STOP_TIMEOUT_MS = 5_000;
@@ -88,6 +89,8 @@ export interface HarnessProcessOptions {
   patchPath: string;
   plugins: readonly HarnessClientPlugin[];
   displayName: string;
+  /** Receives validated-open candidates; the desktop shell owns origin checks and window creation. */
+  onAppWindowOpenRequest?: (url: string) => void;
 }
 
 export function resolveHarnessWebArguments(cliPath: string, patchPath: string): string[] {
@@ -337,6 +340,10 @@ export class HarnessProcess {
         }
         if (isCommunityMarketOpenTerminalRequest(message)) {
           openCommunityMarketTerminal(join(resolveHarnessHome(environment), "profiles", "web"));
+          return;
+        }
+        if (isAppWindowOpenRequest(message)) {
+          this.options.onAppWindowOpenRequest?.(message.url);
         }
       });
       child.once("error", (error) => {

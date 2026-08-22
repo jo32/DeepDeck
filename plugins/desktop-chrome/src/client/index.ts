@@ -51,6 +51,11 @@ export function apply(ctx: ClientContext): void {
       .some(entry => entry.options.id === HOME_HERO_ENTRY_ID),
     subscribe: listener => ctx.slots.subscribe('conversation.input.dock', listener),
   }
+  const apps = {
+    count: () => ctx.slots.entries('sidebar.apps').length,
+    subscribe: (listener: () => void) => ctx.slots.subscribe('sidebar.apps', listener),
+    version: () => ctx.slots.getVersion('sidebar.apps'),
+  }
   ctx.effect(() => ctx.locale.register(DESKTOP_SIDEBAR_LOCALE, {
     zh: desktopSidebarZh,
     en: desktopSidebarEn,
@@ -90,11 +95,13 @@ export function apply(ctx: ClientContext): void {
     locale: DESKTOP_SIDEBAR_LOCALE,
     children: {
       'sidebar.workspaces': { kind: 'single', scope: 'root' },
+      'sidebar.apps': { kind: 'list', scope: 'root' },
       'sidebar.settings': { kind: 'single', scope: 'root' },
       'sidebar.footer.action': { kind: 'list', scope: 'root' },
     },
     inject: () => ({
       startSession: (workspaceId) => { ctx.workspaces.startSession(workspaceId) },
+      apps,
     }),
   }, DesktopSidebar), 'deepdeck desktop: wide-only sidebar shell')
 
