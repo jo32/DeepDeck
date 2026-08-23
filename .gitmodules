@@ -5,3 +5,6 @@
 [submodule "vendor/dsh-codex-connect"]
 	path = vendor/dsh-codex-connect
 	url = https://github.com/franksong2702/dsh-codex-connect.git
+[submodule "plugins/hackernews-reader"]
+	path = plugins/hackernews-reader
+	url = https://github.com/jo32/dsh-hackernews-reader.git
