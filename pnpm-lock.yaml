@@ -321,39 +321,6 @@ importers:
         specifier: ^18.2.0 || ^19.0.0
         version: 19.1.1
 
-  plugins/hackernews-reader:
-    devDependencies:
-      '@deepseek-ai/dsh-client-runtime':
-        specifier: 0.1.1-rc.1
-        version: 0.1.1-rc.1(0469fe98bb71e10e2f3810c8d4830cf8)
-      '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: 0.1.1-rc.1
-        version: 0.1.1-rc.1(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.1(@deepseek-ai/cordis@4.0.1))
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: 0.1.1-rc.1
-        version: 0.1.1-rc.1(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.1(@deepseek-ai/cordis@4.0.1))
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      '@types/react':
-        specifier: ^19.1.0
-        version: 19.2.18
-      lightningcss:
-        specifier: 1.32.0
-        version: 1.32.0
-      react:
-        specifier: 19.1.1
-        version: 19.1.1
-      tsdown:
-        specifier: 0.22.2
-        version: 0.22.2(typescript@6.0.3)
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-      vitest:
-        specifier: ^3.2.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.3.0))(lightningcss@1.32.0)(yaml@2.9.0)
-
   plugins/home-hero:
     dependencies:
       react:
@@ -8178,6 +8145,7 @@ snapshots:
       lightningcss-linux-x64-musl: 1.32.0
       lightningcss-win32-arm64-msvc: 1.32.0
       lightningcss-win32-x64-msvc: 1.32.0
+    optional: true
 
   lodash.escaperegexp@4.1.2: {}
 

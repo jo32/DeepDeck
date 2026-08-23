@@ -38,9 +38,6 @@
     - id: deepdeck-app-conversations
       name: '@deepdeck/dsh-app-conversations'
 
-    - id: deepdeck-hackernews-reader
-      name: '@deepdeck/dsh-hackernews-reader'
-
     - id: llm-openai-codex
       name: 'dsh-codex-connect'
       config:

@@ -36,7 +36,7 @@ describe("same-origin app window policy", () => {
 
   it("allows same-origin http(s) URLs on any path", () => {
     expect(isSameOriginHttpUrl("http://127.0.0.1:3210/", origin)).toBe(true);
-    expect(isSameOriginHttpUrl("http://127.0.0.1:3210/nga-reader/app", origin)).toBe(true);
+    expect(isSameOriginHttpUrl("http://127.0.0.1:3210/example-app", origin)).toBe(true);
     expect(isSameOriginHttpUrl("https://127.0.0.1:3210/x", origin)).toBe(false);
   });
 

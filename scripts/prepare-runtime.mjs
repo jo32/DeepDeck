@@ -48,7 +48,6 @@ const PLUGINS = Object.freeze([
   "bun-plugin-builder",
   "first-run",
   "app-conversations",
-  "hackernews-reader",
   "dsh-codex-connect",
   "community-market",
 ]);

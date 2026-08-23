@@ -81,10 +81,6 @@ export function resolveDesktopRuntimePaths(
           path: join(options.resourcesPath, "plugins", "app-conversations"),
         },
         {
-          packageName: "@deepdeck/dsh-hackernews-reader",
-          path: join(options.resourcesPath, "plugins", "hackernews-reader"),
-        },
-        {
           packageName: "dsh-codex-connect",
           path: join(options.resourcesPath, "harness", "node_modules", "dsh-codex-connect"),
           presetBundle: true,
@@ -176,14 +172,6 @@ export function resolveDesktopRuntimePaths(
           environment,
           "DEEPDECK_APP_CONVERSATIONS_PLUGIN",
           join(workspaceRepository, "plugins", "app-conversations"),
-        ),
-      },
-      {
-        packageName: "@deepdeck/dsh-hackernews-reader",
-        path: environmentValue(
-          environment,
-          "DEEPDECK_HACKERNEWS_READER_PLUGIN",
-          join(workspaceRepository, "plugins", "hackernews-reader"),
         ),
       },
       {
