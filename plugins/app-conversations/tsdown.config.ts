@@ -5,7 +5,6 @@ export default deepdeckClientBundle(
   [
     'lib/types/index.js',
     'lib/types/contracts.js',
-    'lib/types/app-settings-contract.js',
     'lib/types/invariant.js',
   ],
 )

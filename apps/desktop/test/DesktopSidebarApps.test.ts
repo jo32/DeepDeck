@@ -5,6 +5,10 @@ const sidebar = readFileSync(
   new URL("../../../plugins/desktop-chrome/src/client/DesktopSidebar.tsx", import.meta.url),
   "utf8",
 );
+const sidebarContract = readFileSync(
+  new URL("../../../plugins/desktop-chrome/src/client/sidebar-contract.d.ts", import.meta.url),
+  "utf8",
+);
 const client = readFileSync(
   new URL("../../../plugins/desktop-chrome/src/client/index.ts", import.meta.url),
   "utf8",
@@ -16,7 +20,8 @@ const styles = readFileSync(
 
 describe("DesktopSidebar Apps navigation", () => {
   it("declares a list capability for installed app plugins", () => {
-    expect(sidebar).toContain("'sidebar.apps': { kind: 'list'; scope: 'root'");
+    expect(sidebarContract).toMatch(/'sidebar\.apps':\s*\{[\s\S]*?kind: 'list'[\s\S]*?scope: 'root'/);
+    expect(sidebarContract).toContain("owner: DesktopAppNavigationOwnerProps");
     expect(client).toContain("'sidebar.apps': { kind: 'list', scope: 'root' }");
     expect(client).toContain("ctx.slots.subscribe('sidebar.apps', listener)");
   });

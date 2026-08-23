@@ -2,6 +2,7 @@ import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type { DesktopAppNavigationOwnerProps } from './sidebar-contract.js'
 import { BRAND } from './generated-brand.ts'
 import { NewSessionIcon } from './NewSessionIcon.tsx'
 import { DesktopUpdateControl } from './DesktopUpdateControl.tsx'
@@ -56,20 +57,9 @@ export const desktopSidebarEn = {
 } satisfies Record<keyof typeof desktopSidebarZh, string>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
-  interface SlotMap {
-    /** Navigation entries contributed by installed desktop app plugins. */
-    'sidebar.apps': { kind: 'list'; scope: 'root'; owner: DesktopAppNavigationOwnerProps }
-  }
-
   interface LocaleNamespaceMap {
     'deepdeck.desktop.sidebar': keyof typeof desktopSidebarZh
   }
-}
-
-/** Sidebar geometry shared with each app navigation entry. */
-export interface DesktopAppNavigationOwnerProps {
-  wide: boolean
-  closeApps: () => void
 }
 
 /** Observable view of the app capability slot used to hide an empty launcher. */

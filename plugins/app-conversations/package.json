@@ -16,8 +16,7 @@
       "default": "./lib/contracts.js"
     },
     "./app-settings-contract": {
-      "types": "./lib/types/app-settings-contract.d.ts",
-      "default": "./lib/app-settings-contract.js"
+      "types": "./src/app-settings-contract.d.ts"
     },
     "./client": {
       "types": "./lib/types/client/index.d.ts",
@@ -56,6 +55,7 @@
     "lib/*.js",
     "lib/*.js.map",
     "lib/types/**/*.d.ts",
+    "src/app-settings-contract.d.ts",
     "cordis.patch.yml",
     "README.md"
   ]
