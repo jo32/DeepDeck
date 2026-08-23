@@ -8,6 +8,7 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.14";
 const DSH_PLUGIN_API_VERSION = "0.1.1-rc.1";
 const REACT_PEER_RANGE = "^19.1.1";
+const BUN_VERSION = "1.4.0";
 
 function runtimeRootFromArguments(arguments_) {
   for (let index = 0; index < arguments_.length; index += 1) {
@@ -190,17 +191,27 @@ const requiredRuntimePaths = [
   join(runtimeRoot, "branding", "brand.json"),
   join(runtimeRoot, "cordis.patch.yml"),
 ];
+let bundledBun;
 for (const plugin of manifest.plugins) {
   const root = pluginRoot(runtimeRoot, plugin);
   const pluginManifestPath = join(root, "package.json");
   requiredRuntimePaths.push(pluginManifestPath);
   if (await pathExists(pluginManifestPath)) {
     const pluginManifest = JSON.parse(await readFile(pluginManifestPath, "utf8"));
+    const bundlePatch = pluginManifest.dsh?.bundle?.patch;
+    if (typeof bundlePatch !== "string" || bundlePatch.length === 0) {
+      throw new Error(`Runtime plugin ${plugin} does not declare dsh.bundle.patch`);
+    }
+    requiredRuntimePaths.push(join(root, bundlePatch));
     if (plugin === "dsh-codex-connect") await verifyCodexConnectContract(root, pluginManifest);
     const clientExport = pluginManifest.exports?.["./client"];
     const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
     requiredRuntimePaths.push(join(root, pluginManifest.main ?? "lib/index.js"));
     if (typeof clientEntry === "string") requiredRuntimePaths.push(join(root, clientEntry));
+    if (plugin === "bun-plugin-builder") {
+      bundledBun = join(root, "node_modules", "bun", "bin", "bun.exe");
+      requiredRuntimePaths.push(bundledBun);
+    }
   }
 }
 for (const required of requiredRuntimePaths) {
@@ -214,6 +225,9 @@ const help = await run(nodeBinary, [cli, "--help"]);
 if (!help.includes("Usage: dsh")) throw new Error("Bundled Harness CLI did not return its help output");
 const pnpmVersion = await run(pnpm, ["--version"]);
 if (pnpmVersion.trim() !== "11.7.0") throw new Error(`Bundled pnpm returned ${JSON.stringify(pnpmVersion.trim())}`);
+if (!bundledBun) throw new Error("Runtime manifest omitted the Bun plugin builder");
+const bunVersion = await run(bundledBun, ["--version"]);
+if (bunVersion.trim() !== BUN_VERSION) throw new Error(`Bundled Bun returned ${JSON.stringify(bunVersion.trim())}`);
 await verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli);
 console.log(
   `verify-runtime: DeepDeck ${manifest.applicationVersion}, Node ${manifest.nodeVersion}, ${manifest.platform}-${manifest.architecture}`,

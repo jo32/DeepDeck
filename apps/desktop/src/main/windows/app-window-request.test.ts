@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  APP_MAIN_WINDOW_FOCUS_REQUEST,
   APP_WINDOW_OPEN_REQUEST,
+  isAppMainWindowFocusRequest,
   isAppWindowOpenRequest,
   isSameOriginHttpUrl,
 } from "./app-window-request.js";
+
+describe("main window focus requests", () => {
+  it("accepts only the dedicated request object", () => {
+    expect(isAppMainWindowFocusRequest({ type: APP_MAIN_WINDOW_FOCUS_REQUEST })).toBe(true);
+    expect(isAppMainWindowFocusRequest(APP_MAIN_WINDOW_FOCUS_REQUEST)).toBe(false);
+    expect(isAppMainWindowFocusRequest({ type: APP_WINDOW_OPEN_REQUEST })).toBe(false);
+  });
+});
 
 describe("app window open requests", () => {
   it("accepts well-formed requests", () => {

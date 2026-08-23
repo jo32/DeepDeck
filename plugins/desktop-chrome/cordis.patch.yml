@@ -29,8 +29,17 @@
     - id: deepdeck-community-market-desktop-bridge
       name: '@deepdeck/dsh-community-market-desktop-bridge'
 
+    - id: deepdeck-bun-plugin-builder
+      name: '@deepdeck/dsh-bun-plugin-builder'
+
     - id: deepdeck-first-run
       name: '@deepdeck/dsh-first-run'
+
+    - id: deepdeck-app-conversations
+      name: '@deepdeck/dsh-app-conversations'
+
+    - id: deepdeck-hackernews-reader
+      name: '@deepdeck/dsh-hackernews-reader'
 
     - id: llm-openai-codex
       name: 'dsh-codex-connect'

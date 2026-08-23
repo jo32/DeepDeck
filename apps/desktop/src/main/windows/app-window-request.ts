@@ -8,16 +8,26 @@
  */
 
 export const APP_WINDOW_OPEN_REQUEST = "deepdeck:open-app-window";
+export const APP_MAIN_WINDOW_FOCUS_REQUEST = "deepdeck:focus-main-window";
 
 export interface AppWindowOpenRequest {
   readonly type: typeof APP_WINDOW_OPEN_REQUEST;
   readonly url: string;
 }
 
+export interface AppMainWindowFocusRequest {
+  readonly type: typeof APP_MAIN_WINDOW_FOCUS_REQUEST;
+}
+
 export function isAppWindowOpenRequest(message: unknown): message is AppWindowOpenRequest {
   if (typeof message !== "object" || message === null) return false;
   const candidate = message as { type?: unknown; url?: unknown };
   return candidate.type === APP_WINDOW_OPEN_REQUEST && typeof candidate.url === "string";
+}
+
+export function isAppMainWindowFocusRequest(message: unknown): message is AppMainWindowFocusRequest {
+  if (typeof message !== "object" || message === null) return false;
+  return (message as { type?: unknown }).type === APP_MAIN_WINDOW_FOCUS_REQUEST;
 }
 
 /**

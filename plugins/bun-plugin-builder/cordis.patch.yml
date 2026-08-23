@@ -1,0 +1,3 @@
+- insert:
+    - id: deepdeck-bun-plugin-builder
+      name: '@deepdeck/dsh-bun-plugin-builder'

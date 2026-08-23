@@ -81,6 +81,14 @@ export async function bootstrapDesktop(
   configureNativeApplicationIdentity(branding);
 
   const appWindows = createAppWindowManager();
+  let desktopWindow: DesktopWindow | undefined;
+  const focusMainWindow = (): void => {
+    const window = desktopWindow?.window;
+    if (!window || window.isDestroyed()) return;
+    if (window.isMinimized()) window.restore();
+    window.show();
+    window.focus();
+  };
   const harness = new HarnessProcess({
     harnessRoot: runtimePaths.harnessRoot,
     nodeBinary: runtimePaths.nodeBinary,
@@ -95,9 +103,9 @@ export async function bootstrapDesktop(
       if (!base || !isSameOriginHttpUrl(url, base)) return;
       appWindows.open(url);
     },
+    onMainWindowFocusRequest: focusMainWindow,
   });
   const updates = createDesktopUpdateService(initialUpdateStatus);
-  let desktopWindow: DesktopWindow | undefined;
   let removeIpc = (): void => {};
   let removeStatusListener = (): void => {};
   let removeUpdateListener = (): void => {};
@@ -229,11 +237,7 @@ export async function bootstrapDesktop(
   });
 
   app.on("second-instance", () => {
-    const window = desktopWindow?.window;
-    if (!window || window.isDestroyed()) return;
-    if (window.isMinimized()) window.restore();
-    window.show();
-    window.focus();
+    focusMainWindow();
   });
   app.on("activate", () => {
     if (installingUpdateVersion) return;

@@ -14,6 +14,8 @@ DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://
 
 DeepDeck reuses the official `web` profile and its complete plugin-composed UI. The desktop host starts the Harness process on an OS-assigned loopback port, waits for it to become ready, then opens the local UI in the application window. Closing the app shuts the Harness process down cleanly.
 
+Trusted local plugin source can be compiled from **Settings → Plugins → Bun Builder**. DeepDeck bundles Bun for this flow, creates a private source snapshot, requires an explicit build-plan confirmation, and emits a checksummed `.tgz` without running dependency lifecycle scripts. When the selected source is the exact package mounted by the current Cordis profile, the same plan can instead build in place and hot-replace its Host and Client entries without restarting the desktop App. The selected package's own build script still runs with the user's permissions.
+
 ## First run
 
 Prerequisites: Node.js `^22.19.0` or `>=24.0.0`, Corepack, and Git.

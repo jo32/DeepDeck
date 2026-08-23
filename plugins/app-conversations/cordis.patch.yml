@@ -1,0 +1,3 @@
+- insert:
+    - id: deepdeck-app-conversations
+      name: '@deepdeck/dsh-app-conversations'

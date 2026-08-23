@@ -13,7 +13,10 @@ import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:pa
 import type { HarnessRuntimeStatus } from "../../shared/runtime.js";
 import { parseReadinessUrl } from "./readiness.js";
 import { migratePresetBundles } from "./preset-profile.js";
-import { isAppWindowOpenRequest } from "../windows/app-window-request.js";
+import {
+  isAppMainWindowFocusRequest,
+  isAppWindowOpenRequest,
+} from "../windows/app-window-request.js";
 
 const START_TIMEOUT_MS = 90_000;
 const STOP_TIMEOUT_MS = 5_000;
@@ -91,6 +94,8 @@ export interface HarnessProcessOptions {
   displayName: string;
   /** Receives validated-open candidates; the desktop shell owns origin checks and window creation. */
   onAppWindowOpenRequest?: (url: string) => void;
+  /** Restores the primary window when an app preview navigates to its canonical Session. */
+  onMainWindowFocusRequest?: () => void;
 }
 
 export function resolveHarnessWebArguments(cliPath: string, patchPath: string): string[] {
@@ -344,6 +349,10 @@ export class HarnessProcess {
         }
         if (isAppWindowOpenRequest(message)) {
           this.options.onAppWindowOpenRequest?.(message.url);
+          return;
+        }
+        if (isAppMainWindowFocusRequest(message)) {
+          this.options.onMainWindowFocusRequest?.();
         }
       });
       child.once("error", (error) => {

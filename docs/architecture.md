@@ -31,7 +31,9 @@ Harness composes ordered bundles into a profile, followed by the profile patch, 
 
 The desktop therefore does not add a plugin merely to claim integration. A desktop bundle becomes justified only when there is a concrete native capability that the existing Web bundle cannot provide. At that point it should be an out-of-tree package, for example `@deepseek-harness/desktop-bundle`, installed into a dedicated profile and layered after `dsh-web-app`. Likely responsibilities are narrowly scoped native dialogs, app-menu commands, notifications, or update state. Communication with Electron should use an authenticated local IPC endpoint and a matching Harness service provider/client plugin, while model-visible behavior must remain represented in Harness session events.
 
-Until such a capability exists, the desktop launches the standard `web` profile unchanged. User-installed bundles and `cordis.patch.yml` overrides continue to work through the normal upstream mechanism.
+DeepDeck's own UI and local services are composed as out-of-tree Cordis plugins. User-installed bundles and `cordis.patch.yml` overrides continue to work through the normal upstream mechanism.
+
+The Bun plugin builder is one such local Host/Client bundle. It snapshots an explicitly selected local source tree, previews its package identity and `build` script, then invokes the bundled Bun runtime only after confirmation. Its packaging path disables dependency lifecycle scripts, validates the built Cordis entry points and dry-run pack file list, and retains a checksummed `.tgz`. For a package already mounted from that exact source directory, its development path runs the reviewed build in place, stages fresh Host output under builder-managed state, and transactionally replaces the Loader entry while the existing client-HMR channel swaps the Client bundle. The builder refuses self-replacement; repository discovery, cloning, and installation stay outside the service.
 
 ## Packaging boundary
 
@@ -42,7 +44,7 @@ DeepDeck.app/Contents/Resources/
   ├─ runtime/node/                 # pinned official Node 24 distribution
   ├─ harness/apps/cli/             # built dsh launcher
   ├─ harness/node_modules/         # materialized production dependency closure
-  ├─ plugins/{desktop-chrome,home-hero,agent-preset-sections}/
+  ├─ plugins/{desktop-chrome,home-hero,agent-preset-sections,bun-plugin-builder,...}/
   ├─ branding/
   ├─ cordis.patch.yml
   └─ runtime-manifest.json

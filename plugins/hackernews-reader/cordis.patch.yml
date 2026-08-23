@@ -1,0 +1,3 @@
+- insert:
+    - id: deepdeck-hackernews-reader
+      name: '@deepdeck/dsh-hackernews-reader'

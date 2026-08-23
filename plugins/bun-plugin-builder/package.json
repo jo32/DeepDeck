@@ -1,0 +1,64 @@
+{
+  "name": "@deepdeck/dsh-bun-plugin-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Preview-first Bun build service for DSH plugin source trees",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./builder": {
+      "types": "./lib/types/builder.d.ts",
+      "default": "./lib/builder.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json && ../../vendor/deepseek-harness/node_modules/.bin/tsdown --config tsdown.config.ts",
+    "check": "../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "test": "../../vendor/deepseek-harness/node_modules/.bin/vitest run"
+  },
+  "dependencies": {
+    "bun": "1.4.0"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/builder.js",
+    "lib/routes.js",
+    "lib/api-types.js",
+    "lib/client.js",
+    "lib/client.js.map",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts",
+    "cordis.patch.yml",
+    "README.md"
+  ]
+}

@@ -69,8 +69,20 @@ export function resolveDesktopRuntimePaths(
           path: join(options.resourcesPath, "plugins", "marketplace-desktop-bridge"),
         },
         {
+          packageName: "@deepdeck/dsh-bun-plugin-builder",
+          path: join(options.resourcesPath, "plugins", "bun-plugin-builder"),
+        },
+        {
           packageName: "@deepdeck/dsh-first-run",
           path: join(options.resourcesPath, "plugins", "first-run"),
+        },
+        {
+          packageName: "@deepdeck/dsh-app-conversations",
+          path: join(options.resourcesPath, "plugins", "app-conversations"),
+        },
+        {
+          packageName: "@deepdeck/dsh-hackernews-reader",
+          path: join(options.resourcesPath, "plugins", "hackernews-reader"),
         },
         {
           packageName: "dsh-codex-connect",
@@ -143,11 +155,35 @@ export function resolveDesktopRuntimePaths(
         ),
       },
       {
+        packageName: "@deepdeck/dsh-bun-plugin-builder",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_BUN_PLUGIN_BUILDER_PLUGIN",
+          join(workspaceRepository, "plugins", "bun-plugin-builder"),
+        ),
+      },
+      {
         packageName: "@deepdeck/dsh-first-run",
         path: environmentValue(
           environment,
           "DEEPDECK_FIRST_RUN_PLUGIN",
           join(workspaceRepository, "plugins", "first-run"),
+        ),
+      },
+      {
+        packageName: "@deepdeck/dsh-app-conversations",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_APP_CONVERSATIONS_PLUGIN",
+          join(workspaceRepository, "plugins", "app-conversations"),
+        ),
+      },
+      {
+        packageName: "@deepdeck/dsh-hackernews-reader",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_HACKERNEWS_READER_PLUGIN",
+          join(workspaceRepository, "plugins", "hackernews-reader"),
         ),
       },
       {

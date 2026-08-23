@@ -45,7 +45,10 @@ const PLUGINS = Object.freeze([
   "home-hero",
   "agent-preset-sections",
   "marketplace-desktop-bridge",
+  "bun-plugin-builder",
   "first-run",
+  "app-conversations",
+  "hackernews-reader",
   "dsh-codex-connect",
   "community-market",
 ]);
