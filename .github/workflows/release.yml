@@ -151,7 +151,11 @@ jobs:
           fi
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
-          spctl --assess --type execute --verbose=2 "$app"
+          if command -v syspolicy_check >/dev/null 2>&1; then
+            syspolicy_check distribution "$app"
+          else
+            spctl --assess --type execute --verbose=2 "$app"
+          fi
 
       - name: Upload signed release outputs
         uses: actions/upload-artifact@v7
