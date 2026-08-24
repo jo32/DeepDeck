@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({ Button: () => null }))
 
-import { DefaultAppConversationClientRegistry, openCreatorSession } from '../src/client/index.js'
+import {
+  DefaultAppConversationClientRegistry,
+  dispatchAppUpdateTask,
+  openCreatorSession,
+} from '../src/client/index.js'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -49,6 +53,69 @@ describe('app conversation Client registry', () => {
     expect(select).toHaveBeenCalledWith({ sessionId: 'session-creator', agentPreset: 'cordis' })
     expect(noteAgentPreset).toHaveBeenCalledWith('session-creator', 'cordis')
     expect(open).toHaveBeenCalledWith('session-creator')
+  })
+
+  it('dispatches a dedicated cordis Agent task with source provenance and diff-first instructions', async () => {
+    const prompt = vi.fn(async () => ({ ok: true }))
+    const rename = vi.fn(async () => ({ ok: true }))
+    const open = vi.fn()
+    const select = vi.fn(async () => ({
+      result: { ok: true, value: { agentPreset: 'cordis' } },
+    }))
+    vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { action: string }
+      return new Response(JSON.stringify(request.action === 'resolve-creator-workspace'
+        ? {
+            workspace: {
+              appId: 'reader',
+              path: '/plugins/reader',
+              title: 'Creator · Reader',
+              workspaceId: 'workspace-update',
+            },
+          }
+        : {
+            updateContext: {
+              appId: 'reader',
+              title: 'Reader',
+              packageName: '@fixture/reader',
+              sourceDirectory: '/plugins/reader',
+              sourceKind: 'git-repository',
+              source: 'https://example.com/reader.git',
+            },
+          }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }))
+
+    await dispatchAppUpdateTask({
+      workspaces: {
+        list: { getSnapshot: () => ({ items: [] }) },
+        create: vi.fn(async () => ({ workspaceId: 'workspace-update', path: '/plugins/reader' })),
+        connectWorkspace: vi.fn(async () => 'session-update'),
+      },
+      sessions: {
+        list: { getSnapshot: () => ({
+          byId: {
+            'session-update': {
+              id: 'session-update',
+              blank: true,
+              cwd: '/plugins/reader',
+              agentPreset: 'standard',
+            },
+          },
+        }) },
+        noteAgentPreset: vi.fn(),
+        binding: () => ({ session: { rename, prompt } }),
+        open,
+      },
+    } as never, { api: { agentPresets: { select } } } as never, 'reader')
+
+    expect(rename).toHaveBeenCalledWith('Update Reader')
+    expect(prompt).toHaveBeenCalledWith([
+      expect.objectContaining({
+        type: 'text',
+        text: expect.stringMatching(/https:\/\/example\.com\/reader\.git[\s\S]*Git status[\s\S]*local diff[\s\S]*Never use reset --hard[\s\S]*deepdeck_app_rebuild[\s\S]*deepdeck_app_restart/u),
+      }),
+    ], 'queue')
+    expect(open).toHaveBeenCalledWith('session-update')
   })
 
   it('opens a direct-jump Session after its prompt is accepted', async () => {

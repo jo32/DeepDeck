@@ -9,6 +9,9 @@ const PROFILE_NAME = 'web'
 const RECOVERY_VERSION = 1
 const RECOVERY_FILES = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'] as const
 const MAX_RECOVERY_BYTES = 32 * 1024 * 1024
+const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u
+
+type JsonObject = Record<string, unknown>
 
 export interface CommunityMarketProfile {
   readonly name: string
@@ -65,6 +68,46 @@ function errorCode(cause: unknown): string | undefined {
   return cause !== null && typeof cause === 'object' && 'code' in cause
     ? String((cause as { code?: unknown }).code)
     : undefined
+}
+
+function isObject(value: unknown): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parsedManifest(contents: string): JsonObject {
+  const value: unknown = JSON.parse(contents)
+  if (!isObject(value)) throw new Error('DeepDeck profile manifest is invalid')
+  return value
+}
+
+function manifestBundles(manifest: JsonObject): string[] {
+  const dsh = isObject(manifest.dsh) ? manifest.dsh : undefined
+  const profile = dsh !== undefined && isObject(dsh.profile) ? dsh.profile : undefined
+  const bundles = profile?.bundles
+  if (bundles === undefined) return []
+  if (!Array.isArray(bundles) || bundles.some(value => typeof value !== 'string')) {
+    throw new Error('DeepDeck profile bundle list is invalid')
+  }
+  return [...bundles] as string[]
+}
+
+/** Keep a protected add from activating unrelated stale dependencies. */
+export function restrictAddedProfileBundles(
+  beforeContents: string | null,
+  currentContents: string,
+  targetPackageName: string,
+): string | undefined {
+  if (!PACKAGE_NAME_PATTERN.test(targetPackageName)) throw new Error('DeepDeck target package name is invalid')
+  const before = beforeContents === null ? {} : parsedManifest(beforeContents)
+  const current = parsedManifest(currentContents)
+  const previous = new Set(manifestBundles(before))
+  const bundles = manifestBundles(current)
+  const restricted = bundles.filter(packageName => previous.has(packageName) || packageName === targetPackageName)
+  if (restricted.length === bundles.length) return undefined
+  const dsh = isObject(current.dsh) ? current.dsh : {}
+  const profile = isObject(dsh.profile) ? dsh.profile : {}
+  current.dsh = { ...dsh, profile: { ...profile, bundles: restricted } }
+  return `${JSON.stringify(current, null, 2)}\n`
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -161,6 +204,19 @@ class InstallRecoveryStore {
     await this.restore(state)
     await this.write({ ...state, phase: 'rolled-back' })
     return true
+  }
+
+  async restrictAddedBundles(receiptId: string, packageName: string): Promise<void> {
+    const state = await this.readExact(receiptId)
+    const currentPath = join(this.profileDir, 'package.json')
+    const current = await readFile(currentPath, 'utf8')
+    const beforeEncoded = state.before['package.json']
+    const restricted = restrictAddedProfileBundles(
+      beforeEncoded === null ? null : Buffer.from(beforeEncoded, 'base64').toString('utf8'),
+      current,
+      packageName,
+    )
+    if (restricted !== undefined) await atomicWrite(currentPath, restricted)
   }
 
   async recoveredReceiptIds(): Promise<readonly string[]> {
@@ -320,7 +376,13 @@ export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
     }
     const done = handle.done.then(async (outcome) => {
       if (outcome.exitCode === 0 && outcome.signal === null) {
-        await this.recovery.markAwaitingRestart(recovery.receiptId)
+        try {
+          await this.recovery.restrictAddedBundles(recovery.receiptId, recovery.packageName)
+          await this.recovery.markAwaitingRestart(recovery.receiptId)
+        } catch (cause) {
+          await this.recovery.rollback(recovery.receiptId)
+          throw cause
+        }
       } else {
         await this.recovery.rollback(recovery.receiptId)
       }

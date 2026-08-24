@@ -20,6 +20,145 @@
   line-height: 1.5;
 }
 
+.installArea {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-3);
+}
+
+.installHeading,
+.installForm,
+.installActions,
+.resultActions,
+.appActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.installHeading {
+  justify-content: space-between;
+}
+
+.installHeading h3,
+.installHeading p {
+  margin: 0;
+}
+
+.installHeading h3 {
+  font-size: 14px;
+}
+
+.installHeading p {
+  margin-top: 3px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.installHeading code {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.installForm input {
+  min-width: 0;
+  height: 36px;
+  flex: 1;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  outline: none;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.installForm input:focus {
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+.installForm input::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.installPreview {
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.installPreview dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 16px;
+  margin: 0;
+}
+
+.installPreview dl > div {
+  min-width: 0;
+}
+
+.installPreview dt {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.installPreview dd {
+  overflow-wrap: anywhere;
+  margin: 3px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.installWarning,
+.uninstallWarning {
+  margin: 10px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.installActions,
+.resultActions {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.uninstallWarning {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 30%, var(--dsw-alias-border-l2));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 7%, var(--dsw-alias-bg-layer-3));
+}
+
+.uninstallWarning strong,
+.uninstallWarning span {
+  grid-column: 1;
+}
+
+.uninstallWarning button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.dangerAction {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, var(--dsw-alias-border-l2)) !important;
+  color: var(--dsw-alias-state-error-primary) !important;
+}
+
 .list {
   display: flex;
   flex-direction: column;
@@ -135,6 +274,11 @@
   white-space: pre-wrap;
 }
 
+.success code {
+  overflow-wrap: anywhere;
+  color: inherit;
+}
+
 .rebuildArea {
   display: flex;
   flex-direction: column;
@@ -170,13 +314,33 @@
   line-height: 1.45;
 }
 
+.appActions {
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 @media (max-width: 680px) {
   .rebuildFooter {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .rebuildFooter > button {
+  .appActions {
     align-self: flex-end;
+  }
+
+  .installHeading,
+  .installForm {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .installHeading code {
+    overflow-wrap: anywhere;
+  }
+
+  .installPreview dl {
+    grid-template-columns: 1fr;
   }
 }

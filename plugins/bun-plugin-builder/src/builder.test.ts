@@ -178,6 +178,37 @@ describe('DeepDeckBunPluginBuilder', () => {
     expect(result).not.toHaveProperty('bundlePatch')
   })
 
+  it('installs dependencies and builds a reviewed managed source in place', async () => {
+    const paths = await fixture({ lockfile: true })
+    const calls: Array<{ readonly args: readonly string[]; readonly cwd: string }> = []
+    const builder = new DeepDeckBunPluginBuilder({
+      ...paths,
+      now: () => Date.parse('2026-08-24T02:00:00.000Z'),
+      runProcess: successfulRunner(calls),
+    })
+
+    const preview = await builder.preview({ sourceDirectory: paths.source })
+    const liveSource = await realpath(paths.source)
+    const result = await builder.buildSource({
+      previewId: preview.previewId,
+      confirmation: preview.confirmation,
+    })
+
+    expect(result).toMatchObject({
+      packageName: '@fixture/dsh-demo',
+      version: '1.2.3',
+      packageKind: 'bundle',
+      sourcePackageRoot: liveSource,
+      completedAt: '2026-08-24T02:00:00.000Z',
+      logs: { install: 'installed\n', build: 'built\n' },
+    })
+    expect(calls).toEqual([
+      { args: ['install', '--ignore-scripts', '--linker', 'isolated', '--frozen-lockfile'], cwd: liveSource },
+      { args: ['run', 'build'], cwd: liveSource },
+    ])
+    await expect(readFile(join(liveSource, 'lib', 'index.js'), 'utf8')).resolves.toContain('value = 1')
+  })
+
   it('builds the reviewed active source in place and replaces its Host entry', async () => {
     const paths = await fixture()
     const calls: Array<{ readonly args: readonly string[]; readonly cwd: string }> = []

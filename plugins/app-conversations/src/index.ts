@@ -6,12 +6,20 @@ import type { Context } from '@deepseek-ai/cordis'
 import {
   APP_CONVERSATION_API_PATH,
   type AppRebuildResult,
+  type AppRestartResult,
   type AppConversationHostDefinition,
   type AppConversationHostRegistry,
   type AppConversationWorkspace,
   type AppCreatorContext,
   type AppSettingsDescriptor,
+  type AppUninstallResult,
+  type AppUpdateContext,
 } from './contracts.js'
+import {
+  DeepDeckAppPackageManager,
+  type AppInstallerPnpm,
+  type AppInstallerProfile,
+} from './app-installer.js'
 import { installAppCreatorMode } from './creator-tools.js'
 
 type JsonObject = Record<string, unknown>
@@ -37,6 +45,9 @@ interface AppConversationHostContext {
     provide(name: string, value: unknown): () => void
   }
   readonly bunPluginBuilder: AppBunBuilderService
+  readonly desktopProfiles: { readonly current: AppInstallerProfile }
+  readonly desktopPnpm: AppInstallerPnpm
+  readonly desktopActions: { requestRestart(): Promise<void> }
   readonly agentPresets: {
     composedPreset(agentContext: Context): string | undefined
   }
@@ -46,7 +57,12 @@ interface AppConversationHostContext {
 interface AppBuildPreview {
   readonly previewId: string
   readonly packageName: string
+  readonly version: string
+  readonly packageKind: 'plugin' | 'bundle'
+  readonly buildScript: string
   readonly confirmation: string
+  readonly frozenInstall: boolean
+  readonly warnings: readonly string[]
   readonly hotUpdateAvailable: boolean
   readonly hotUpdateReason?: string
 }
@@ -54,6 +70,16 @@ interface AppBuildPreview {
 interface AppBunBuilderService {
   isStatePath?(path: string): boolean
   preview(input: { readonly sourceDirectory: string }, signal?: AbortSignal): Promise<AppBuildPreview>
+  buildSource(input: {
+    readonly previewId: string
+    readonly confirmation: string
+    readonly signal?: AbortSignal
+  }): Promise<{
+    readonly packageName: string
+    readonly version: string
+    readonly sourcePackageRoot: string
+    readonly logs: { readonly install: string; readonly build: string }
+  }>
   hotUpdate(input: {
     readonly previewId: string
     readonly confirmation: string
@@ -75,6 +101,9 @@ export const inject = [
   'workspaceRegistry',
   'webServer',
   'bunPluginBuilder',
+  'desktopProfiles',
+  'desktopPnpm',
+  'desktopActions',
   'agentPresets',
   'tools',
   'systemPrompt',
@@ -117,6 +146,7 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     private readonly workspaceRegistry: AppConversationHostContext['workspaceRegistry'],
     private readonly home = homedir(),
     private readonly builder?: AppBunBuilderService,
+    private readonly packages?: DeepDeckAppPackageManager,
   ) {}
 
   register(rawDefinition: AppConversationHostDefinition): () => void {
@@ -192,6 +222,23 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     return rows
   }
 
+  async updateContext(appId: string, signal?: AbortSignal): Promise<AppUpdateContext> {
+    signal?.throwIfAborted()
+    if (this.packages === undefined) throw new Error('App package manager is unavailable.')
+    const definition = this.definition(appId)
+    const source = await this.packages.updateSource(
+      definition.id,
+      definition.packageName,
+      definition.sourcePackageRoot,
+    )
+    return {
+      appId: definition.id,
+      title: definition.title,
+      packageName: definition.packageName,
+      ...source,
+    }
+  }
+
   async rebuild(appId: string, signal?: AbortSignal): Promise<AppRebuildResult> {
     const definition = this.definition(appId)
     if (this.builder === undefined) throw new Error('Bun Builder is unavailable.')
@@ -227,6 +274,24 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     return await this.rebuild((await this.definitionForSource(cwd, signal)).id, signal)
   }
 
+  async restartCreator(cwd: string, signal?: AbortSignal): Promise<AppRestartResult> {
+    if (this.packages === undefined) throw new Error('App package manager is unavailable.')
+    const definition = await this.definitionForSource(cwd, signal)
+    signal?.throwIfAborted()
+    await this.packages.requestRestart()
+    return Object.freeze({
+      appId: definition.id,
+      packageName: definition.packageName,
+      restartScheduled: true,
+    })
+  }
+
+  async uninstall(appId: string, signal?: AbortSignal): Promise<AppUninstallResult> {
+    if (this.packages === undefined) throw new Error('App package manager is unavailable.')
+    const definition = this.definition(appId)
+    return await this.packages.uninstall(definition.packageName, definition.sourcePackageRoot, signal)
+  }
+
   private definition(appId: string): AppConversationHostDefinition {
     const definition = this.definitions.get(appId)
     if (definition === undefined) throw new Error(`unknown app conversation '${appId}'`)
@@ -255,13 +320,27 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     signal?: AbortSignal,
   ): Promise<AppSettingsDescriptor> {
     signal?.throwIfAborted()
+    const uninstall = this.packages === undefined
+      ? { available: false, reason: 'App package manager is unavailable.' }
+      : await this.packages.uninstallAvailability(definition.packageName)
+    const update = this.packages === undefined
+      ? { available: false, reason: 'App package manager is unavailable.' }
+      : await this.packages.updateAvailability(
+          definition.id,
+          definition.packageName,
+          definition.sourcePackageRoot,
+        )
     if (this.builder === undefined) {
       return {
         id: definition.id,
         title: definition.title,
         packageName: definition.packageName,
+        updateAvailable: update.available,
+        ...(update.reason === undefined ? {} : { updateReason: update.reason }),
         rebuildAvailable: false,
         rebuildReason: 'Bun Builder is unavailable.',
+        uninstallAvailable: uninstall.available,
+        ...(uninstall.reason === undefined ? {} : { uninstallReason: uninstall.reason }),
       }
     }
     let preview: AppBuildPreview | undefined
@@ -274,7 +353,11 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         id: definition.id,
         title: definition.title,
         packageName: definition.packageName,
+        updateAvailable: update.available,
+        ...(update.reason === undefined ? {} : { updateReason: update.reason }),
         rebuildAvailable: preview.hotUpdateAvailable,
+        uninstallAvailable: uninstall.available,
+        ...(uninstall.reason === undefined ? {} : { uninstallReason: uninstall.reason }),
         ...(preview.hotUpdateAvailable
           ? {}
           : { rebuildReason: preview.hotUpdateReason ?? 'This App cannot be rebuilt in place.' }),
@@ -284,8 +367,12 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         id: definition.id,
         title: definition.title,
         packageName: definition.packageName,
+        updateAvailable: update.available,
+        ...(update.reason === undefined ? {} : { updateReason: update.reason }),
         rebuildAvailable: false,
         rebuildReason: errorMessage(error),
+        uninstallAvailable: uninstall.available,
+        ...(uninstall.reason === undefined ? {} : { uninstallReason: uninstall.reason }),
       }
     } finally {
       if (preview !== undefined) await this.builder.discard(preview.previewId).catch(() => {})
@@ -342,7 +429,22 @@ function isLoopback(request: IncomingMessage): boolean {
 }
 
 export async function apply(ctx: AppConversationHostContext): Promise<void> {
-  const registry = new DefaultAppConversationHostRegistry(ctx.workspaceRegistry, homedir(), ctx.bunPluginBuilder)
+  const packages = new DeepDeckAppPackageManager({
+    builder: ctx.bunPluginBuilder,
+    profile: ctx.desktopProfiles.current,
+    pnpm: ctx.desktopPnpm,
+    requestRestart: async () => await ctx.desktopActions.requestRestart(),
+  })
+  const registry = new DefaultAppConversationHostRegistry(
+    ctx.workspaceRegistry,
+    homedir(),
+    ctx.bunPluginBuilder,
+    packages,
+  )
+  ctx.effect(
+    () => () => { void packages.close() },
+    'deepdeck app conversations: package manager lifecycle',
+  )
   ctx.effect(
     () => ctx.reflect.provide('appConversations', registry),
     'deepdeck app conversations: host registry',
@@ -362,6 +464,11 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
         sendJson(response, 405, { error: 'method not allowed' })
         return
       }
+      const controller = new AbortController()
+      request.once('aborted', () => controller.abort())
+      response.once('close', () => {
+        if (!response.writableEnded) controller.abort()
+      })
       try {
         const body = await readJsonBody(request)
         if (body.action === 'list-apps') {
@@ -373,7 +480,57 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
             sendJson(response, 403, { error: 'same-origin request required' })
             return
           }
-          sendJson(response, 200, { rebuild: await registry.rebuild(body.appId) })
+          sendJson(response, 200, { rebuild: await registry.rebuild(body.appId, controller.signal) })
+          return
+        }
+        if (body.action === 'preview-install' && typeof body.source === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          sendJson(response, 200, { installPreview: await packages.preview(body.source, controller.signal) })
+          return
+        }
+        if (body.action === 'install' && typeof body.previewId === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          sendJson(response, 200, { install: await packages.install(body.previewId, controller.signal) })
+          return
+        }
+        if (body.action === 'discard-install' && typeof body.previewId === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          await packages.discard(body.previewId)
+          sendJson(response, 200, { discarded: true })
+          return
+        }
+        if (body.action === 'uninstall' && typeof body.appId === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          sendJson(response, 200, { uninstall: await registry.uninstall(body.appId, controller.signal) })
+          return
+        }
+        if (body.action === 'resolve-update-context' && typeof body.appId === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          sendJson(response, 200, { updateContext: await registry.updateContext(body.appId, controller.signal) })
+          return
+        }
+        if (body.action === 'restart') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          await packages.requestRestart()
+          sendJson(response, 200, { restarting: true })
           return
         }
         if (body.action === 'resolve-workspace' && typeof body.appId === 'string') {

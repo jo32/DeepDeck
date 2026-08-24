@@ -2,6 +2,7 @@ import type {
   AppConversationHostRegistry,
   AppCreatorContext,
   AppRebuildResult,
+  AppRestartResult,
 } from './contracts.js'
 
 interface CreatorToolExecution {
@@ -96,6 +97,15 @@ function renderRebuild(result: AppRebuildResult): string {
   }, null, 2)
 }
 
+function renderRestart(result: AppRestartResult): string {
+  return JSON.stringify({
+    appId: result.appId,
+    packageName: result.packageName,
+    restartScheduled: result.restartScheduled,
+    message: 'DeepDeck is restarting the Harness runtime. The desktop window will reconnect automatically.',
+  }, null, 2)
+}
+
 /** Creator-only tools. Registration scope, not runtime argument checks, controls visibility. */
 export function appCreatorToolDefinitions(
   registry: AppConversationHostRegistry,
@@ -117,6 +127,15 @@ export function appCreatorToolDefinitions(
       output: STRING_OUTPUT,
       async execute(_args, exec) {
         return renderRebuild(await registry.rebuildCreator(creatorWorkspace(exec), exec.signal))
+      },
+    },
+    {
+      name: 'deepdeck_app_restart',
+      description: 'Restart the DeepDeck Harness runtime so the bound App can load dependency, Cordis patch, entry-point, or runtime-assembly changes that cannot be applied safely by hot reload. Call only as the final action after validation and build complete; the desktop window reconnects automatically.',
+      parameters: EMPTY_PARAMETERS,
+      output: STRING_OUTPUT,
+      async execute(_args, exec) {
+        return renderRestart(await registry.restartCreator(creatorWorkspace(exec), exec.signal))
       },
     },
   ]
@@ -142,6 +161,7 @@ export function installAppCreatorMode(
         'When this Creator session was launched from Settings > Apps, its Workspace is the registered App source package.',
         'Call deepdeck_app_context before App-specific work to verify that binding.',
         'After source edits that should take effect, call deepdeck_app_rebuild. It runs the reviewed Bun build and Cordis hot reload; do not substitute an arbitrary source path.',
+        'If dependencies, cordis.patch.yml, package exports or entry points, or runtime assembly changed, or safe hot reload is unavailable, call deepdeck_app_restart as the final action after checks and build complete. Do not ask the user to restart manually when this tool is available.',
         'A Creator session opened elsewhere may not be bound to an App; in that case these App tools will refuse the operation.',
       ].join(' '),
     }))

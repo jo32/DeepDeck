@@ -1,5 +1,8 @@
 # Desktop app plugins
 
+完整的 App Host/Client 注册、Workspace、页面消息、Settings、Creator mode
+和 Bun Rebuild 协议见 [DeepDeck Apps 协议](apps-protocol.md)。
+
 DeepDeck treats an installed client plugin as an app when the plugin registers
 a navigation entry in the Cordis `sidebar.apps` list slot. This runtime
 capability is the source of truth: no package scan or duplicated Electron state

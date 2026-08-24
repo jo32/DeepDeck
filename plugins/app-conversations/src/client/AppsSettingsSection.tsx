@@ -1,19 +1,34 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   InjectFace,
   PropsRenderSlots,
   PropsRuntime,
 } from '@deepseek-ai/dsh-client-ui-slots'
-import type { AppRebuildResult, AppSettingsDescriptor } from '../contracts.js'
+import type {
+  AppInstallPreview,
+  AppInstallResult,
+  AppRebuildResult,
+  AppSettingsDescriptor,
+  AppUninstallResult,
+} from '../contracts.js'
 import type {} from '../app-settings-contract.js'
-import { listApps, rebuildApp } from './apps-api.js'
+import {
+  discardAppInstall,
+  installApp,
+  listApps,
+  previewAppInstall,
+  rebuildApp,
+  restartForApps,
+  uninstallApp,
+} from './apps-api.js'
 import type { AppSettingsLocaleKey } from './locales.js'
 import css from './AppsSettingsSection.module.css'
 
 export interface AppsSettingsSectionInjected {
   readonly t: (key: AppSettingsLocaleKey) => string
   readonly openCreator: (appId: string) => Promise<void>
+  readonly dispatchUpdate: (appId: string) => Promise<void>
 }
 
 export type AppsSettingsSectionProps = PropsRuntime<'settings.section'>
@@ -31,15 +46,34 @@ interface CreatorState {
   readonly error?: string
 }
 
+type InstallState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'previewing' }
+  | { readonly status: 'ready'; readonly preview: AppInstallPreview }
+  | { readonly status: 'installing'; readonly preview: AppInstallPreview }
+  | { readonly status: 'complete'; readonly result: AppInstallResult }
+  | { readonly status: 'failed'; readonly error: string }
+
+type UninstallState =
+  | { readonly status: 'confirming' }
+  | { readonly status: 'running' }
+  | { readonly status: 'complete'; readonly result: AppUninstallResult }
+  | { readonly status: 'failed'; readonly error: string }
+
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-export function AppsSettingsSection({ close, renderSlot, t, openCreator }: AppsSettingsSectionProps): ReactNode {
+export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatchUpdate }: AppsSettingsSectionProps): ReactNode {
   const [apps, setApps] = useState<readonly AppSettingsDescriptor[]>()
   const [loadError, setLoadError] = useState<string>()
   const [rebuilds, setRebuilds] = useState<Readonly<Record<string, RebuildState>>>({})
   const [creators, setCreators] = useState<Readonly<Record<string, CreatorState>>>({})
+  const [updates, setUpdates] = useState<Readonly<Record<string, CreatorState>>>({})
+  const [installSource, setInstallSource] = useState('')
+  const [installation, setInstallation] = useState<InstallState>({ status: 'idle' })
+  const [uninstalls, setUninstalls] = useState<Readonly<Record<string, UninstallState>>>({})
+  const [restartState, setRestartState] = useState<'idle' | 'running' | 'failed'>('idle')
 
   useEffect(() => {
     let active = true
@@ -59,6 +93,38 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator }: AppsS
   }, [])
 
   if (t === undefined) return null
+
+  const previewInstall = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    if (installSource.trim().length === 0 || installation.status === 'previewing' || installation.status === 'installing') return
+    if (installation.status === 'ready') void discardAppInstall(installation.preview.previewId).catch(() => {})
+    setInstallation({ status: 'previewing' })
+    void previewAppInstall(installSource).then(
+      preview => { setInstallation({ status: 'ready', preview }) },
+      error => { setInstallation({ status: 'failed', error: messageOf(error) }) },
+    )
+  }
+
+  const confirmInstall = (preview: AppInstallPreview): void => {
+    setInstallation({ status: 'installing', preview })
+    void installApp(preview.previewId).then(
+      result => {
+        setInstallation({ status: 'complete', result })
+        void listApps().then(setApps).catch(() => {})
+      },
+      error => { setInstallation({ status: 'failed', error: messageOf(error) }) },
+    )
+  }
+
+  const resetInstall = (): void => {
+    if (installation.status === 'ready') void discardAppInstall(installation.preview.previewId).catch(() => {})
+    setInstallation({ status: 'idle' })
+  }
+
+  const restart = (): void => {
+    setRestartState('running')
+    void restartForApps().catch(() => { setRestartState('failed') })
+  }
 
   const rebuild = (app: AppSettingsDescriptor): void => {
     setRebuilds(previous => ({ ...previous, [app.id]: { status: 'running' } }))
@@ -90,12 +156,111 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator }: AppsS
     )
   }
 
+  const launchUpdate = (app: AppSettingsDescriptor): void => {
+    if (dispatchUpdate === undefined) return
+    setUpdates(previous => ({ ...previous, [app.id]: { status: 'running' } }))
+    void dispatchUpdate(app.id).then(
+      () => { close() },
+      error => {
+        setUpdates(previous => ({
+          ...previous,
+          [app.id]: { status: 'failed', error: messageOf(error) },
+        }))
+      },
+    )
+  }
+
+  const requestUninstall = (app: AppSettingsDescriptor): void => {
+    const state = uninstalls[app.id]
+    if (state?.status !== 'confirming') {
+      setUninstalls(previous => ({ ...previous, [app.id]: { status: 'confirming' } }))
+      return
+    }
+    setUninstalls(previous => ({ ...previous, [app.id]: { status: 'running' } }))
+    void uninstallApp(app.id).then(
+      result => {
+        setUninstalls(previous => ({ ...previous, [app.id]: { status: 'complete', result } }))
+        void listApps().then(setApps).catch(() => {})
+      },
+      error => {
+        setUninstalls(previous => ({
+          ...previous,
+          [app.id]: { status: 'failed', error: messageOf(error) },
+        }))
+      },
+    )
+  }
+
   return (
     <section className={css.surface}>
       <header className={css.heading}>
         <h2>{t('title')}</h2>
         <p>{t('subtitle')}</p>
       </header>
+      <section className={css.installArea} aria-busy={installation.status === 'previewing' || installation.status === 'installing'}>
+        <div className={css.installHeading}>
+          <div>
+            <h3>{t('installTitle')}</h3>
+            <p>{t('installHint')}</p>
+          </div>
+          <code>~/DeepDeck/Plugins</code>
+        </div>
+        <form className={css.installForm} onSubmit={previewInstall}>
+          <input
+            type="text"
+            value={installSource}
+            aria-label={t('installSource')}
+            placeholder={t('installPlaceholder')}
+            disabled={installation.status === 'previewing' || installation.status === 'installing'}
+            onChange={event => { setInstallSource(event.target.value) }}
+          />
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={installSource.trim().length === 0 || installation.status === 'previewing' || installation.status === 'installing'}
+          >{installation.status === 'previewing' ? t('probing') : t('probeInstall')}</Button>
+        </form>
+        {installation.status === 'ready' || installation.status === 'installing' ? (
+          <div className={css.installPreview}>
+            <dl>
+              <div><dt>{t('detectedSource')}</dt><dd>{t(installation.preview.sourceKind)}</dd></div>
+              <div><dt>{t('detectedApp')}</dt><dd>{installation.preview.title}</dd></div>
+              <div><dt>{t('detectedPackage')}</dt><dd><code>{installation.preview.packageName}@{installation.preview.version}</code></dd></div>
+              <div><dt>{t('profileAction')}</dt><dd>{t(installation.preview.profileAction === 'repair' ? 'profileRepair' : 'profileInstall')}</dd></div>
+              <div><dt>{t('pluginDirectory')}</dt><dd><code>{installation.preview.sourceDirectory}</code></dd></div>
+              <div><dt>{t('buildScript')}</dt><dd><code>{installation.preview.buildScript}</code></dd></div>
+            </dl>
+            <p className={css.installWarning}>{t(installation.preview.profileAction === 'repair' ? 'repairWarning' : 'installWarning')}</p>
+            <div className={css.installActions}>
+              <Button variant="ghost" disabled={installation.status === 'installing'} onClick={resetInstall}>{t('cancel')}</Button>
+              <Button
+                variant="primary"
+                disabled={installation.status === 'installing'}
+                onClick={() => { confirmInstall(installation.preview) }}
+              >{installation.status === 'installing'
+                  ? t(installation.preview.profileAction === 'repair' ? 'repairing' : 'installing')
+                  : t(installation.preview.profileAction === 'repair' ? 'confirmRepair' : 'confirmInstall')}</Button>
+            </div>
+          </div>
+        ) : null}
+        {installation.status === 'complete' ? (
+          <div className={css.success} role="status">
+            <strong>{t(installation.result.profileAction === 'repair' ? 'repairComplete' : 'installComplete')} · {installation.result.title}</strong>
+            <span>{t('sourceReady')}: <code>{installation.result.sourceDirectory}</code></span>
+            <span>{t('restartRequired')}</span>
+            <div className={css.resultActions}>
+              <Button variant="outline" onClick={() => { setInstallation({ status: 'idle' }) }}>{t('installAnother')}</Button>
+              <Button variant="primary" disabled={restartState === 'running'} onClick={restart}>
+                {restartState === 'running' ? t('restarting') : t('restartNow')}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        {installation.status === 'failed' ? (
+          <div className={css.error} role="alert"><strong>{t('installFailed')}</strong><br />{installation.error}</div>
+        ) : null}
+        {restartState === 'failed' ? <div className={css.error} role="alert">{t('restartFailed')}</div> : null}
+      </section>
       {apps === undefined ? <p className={css.empty}>{t('loading')}</p> : null}
       {loadError === undefined ? null : (
         <div className={css.error} role="alert"><strong>{t('loadFailed')}</strong><br />{loadError}</div>
@@ -107,6 +272,10 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator }: AppsS
           const running = state?.status === 'running'
           const creator = creators[app.id]
           const openingCreator = creator?.status === 'running'
+          const update = updates[app.id]
+          const dispatchingUpdate = update?.status === 'running'
+          const uninstall = uninstalls[app.id]
+          const uninstalling = uninstall?.status === 'running'
           return (
             <article className={css.card} key={app.id}>
               <header className={css.cardHeader}>
@@ -116,7 +285,7 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator }: AppsS
                 </div>
                 <Button
                   variant="outline"
-                  disabled={openCreator === undefined || openingCreator}
+                  disabled={openCreator === undefined || openingCreator || dispatchingUpdate || running || uninstalling}
                   title={t('vibeCodingHint')}
                   onClick={() => { launchCreator(app) }}
                 >{openingCreator ? t('openingCreator') : t('vibeCoding')}</Button>
@@ -124,6 +293,9 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator }: AppsS
               <div className={css.settings}>
                 {creator?.status === 'failed' ? (
                   <div className={css.error} role="alert"><strong>{t('creatorFailed')}</strong><br />{creator.error}</div>
+                ) : null}
+                {update?.status === 'failed' ? (
+                  <div className={css.error} role="alert"><strong>{t('updateFailed')}</strong><br />{update.error}</div>
                 ) : null}
                 <h4>{t('appSettings')}</h4>
                 {renderSlot('settings.apps.item', { app }, { only: app.id })}
@@ -143,17 +315,65 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator }: AppsS
                   {state?.status === 'failed' ? (
                     <div className={css.error} role="alert"><strong>{t('rebuildFailed')}</strong><br />{state.error}</div>
                   ) : null}
+                  {uninstall?.status === 'confirming' ? (
+                    <div className={css.uninstallWarning} role="status">
+                      <strong>{t('confirmUninstallTitle')}</strong>
+                      <span>{t('confirmUninstallHint')}</span>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setUninstalls(previous => {
+                            const next = { ...previous }
+                            delete next[app.id]
+                            return next
+                          })
+                        }}
+                      >{t('cancel')}</Button>
+                    </div>
+                  ) : null}
+                  {uninstall?.status === 'complete' ? (
+                    <div className={css.success} role="status">
+                      <strong>{t('uninstallComplete')}</strong>
+                      <span>{t('sourceRetained')}: <code>{uninstall.result.sourceDirectory}</code></span>
+                      <span>{t('restartRequired')}</span>
+                      <div className={css.resultActions}>
+                        <Button variant="primary" disabled={restartState === 'running'} onClick={restart}>
+                          {restartState === 'running' ? t('restarting') : t('restartNow')}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {uninstall?.status === 'failed' ? (
+                    <div className={css.error} role="alert"><strong>{t('uninstallFailed')}</strong><br />{uninstall.error}</div>
+                  ) : null}
                   <div className={css.rebuildFooter}>
                     <div className={css.rebuildCopy}>
                       <strong>{t('bunBuilder')}</strong>
                       <span>{t('rebuildHint')}</span>
                     </div>
-                    <Button
-                      variant="outline"
-                      disabled={!app.rebuildAvailable || running}
-                      title={app.rebuildAvailable ? t('rebuildWithBun') : (app.rebuildReason ?? t('rebuildUnavailable'))}
-                      onClick={() => { rebuild(app) }}
-                    >{running ? t('rebuilding') : t('rebuildWithBun')}</Button>
+                    <div className={css.appActions}>
+                      <Button
+                        variant="outline"
+                        disabled={dispatchUpdate === undefined || !app.updateAvailable || openingCreator || dispatchingUpdate || running || uninstalling}
+                        title={app.updateAvailable ? t('updateWithAgentHint') : (app.updateReason ?? t('updateUnavailable'))}
+                        onClick={() => { launchUpdate(app) }}
+                      >{dispatchingUpdate ? t('dispatchingUpdate') : t('updateWithAgent')}</Button>
+                      <Button
+                        variant="outline"
+                        disabled={!app.rebuildAvailable || openingCreator || dispatchingUpdate || running || uninstalling}
+                        title={app.rebuildAvailable ? t('rebuildWithBun') : (app.rebuildReason ?? t('rebuildUnavailable'))}
+                        onClick={() => { rebuild(app) }}
+                      >{running ? t('rebuilding') : t('rebuildWithBun')}</Button>
+                      <Button
+                        className={uninstall?.status === 'confirming' ? css.dangerAction : undefined}
+                        variant="outline"
+                        disabled={!app.uninstallAvailable || openingCreator || dispatchingUpdate || running || uninstalling}
+                        title={app.uninstallAvailable ? t('uninstall') : (app.uninstallReason ?? t('uninstallUnavailable'))}
+                        onClick={() => { requestUninstall(app) }}
+                      >{uninstalling
+                          ? t('uninstalling')
+                          : uninstall?.status === 'confirming' ? t('confirmUninstall') : t('uninstall')}</Button>
+                    </div>
                   </div>
                 </div>
               </div>

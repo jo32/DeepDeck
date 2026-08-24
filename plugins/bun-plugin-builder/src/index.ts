@@ -190,4 +190,5 @@ export type {
   BunBuildResult,
   BunBuilderRuntimeStatus,
   BunHotUpdateResult,
+  BunSourceBuildResult,
 } from './api-types.js'

@@ -27,6 +27,7 @@ import type {
   BunBuildResult,
   BunBuilderRuntimeStatus,
   BunHotUpdateResult,
+  BunSourceBuildResult,
 } from './api-types.js'
 
 const MAX_MANIFEST_BYTES = 1024 * 1024
@@ -76,6 +77,7 @@ export interface BunPluginBuilderService {
   status(signal?: AbortSignal): Promise<BunBuilderRuntimeStatus>
   preview(input: BunBuildPreviewInput, signal?: AbortSignal): Promise<BunBuildPreview>
   build(input: BunBuildRequest): Promise<BunBuildResult>
+  buildSource(input: BunBuildRequest): Promise<BunSourceBuildResult>
   hotUpdate(input: BunBuildRequest): Promise<BunHotUpdateResult>
   discard(previewId: string): Promise<void>
   close(): void
@@ -667,6 +669,80 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
         throw new BunBuildFailure(cause.message, { ...logs, ...cause.logs })
       }
       throw new BunBuildFailure(boundedMessage(cause), logs)
+    } finally {
+      this.activePreviewId = undefined
+      this.activeController = undefined
+    }
+  }
+
+  /**
+   * Install dependencies and build the reviewed source tree itself. Managed
+   * App installation uses this before linking that same tree into the active
+   * profile, keeping one canonical directory for Vibe Coding and Cordis HMR.
+   */
+  async buildSource(input: BunBuildRequest): Promise<BunSourceBuildResult> {
+    this.assertOpen()
+    const previewId = validatePreviewId(input.previewId)
+    const job = this.currentJob(previewId)
+    if (input.confirmation !== job.preview.confirmation) throw new Error('build confirmation does not match the preview')
+    if (job.state !== 'ready') throw new Error('build preview is no longer executable')
+    if (this.activePreviewId !== undefined) throw new Error('another Bun plugin build is already running')
+    input.signal?.throwIfAborted()
+    const controller = new AbortController()
+    const signal = input.signal === undefined
+      ? controller.signal
+      : AbortSignal.any([input.signal, controller.signal])
+    this.activePreviewId = previewId
+    this.activeController = controller
+    job.state = 'building'
+    const logs = { install: '', build: '' }
+    try {
+      await regularFile(this.bunBinary, 'Bun runtime')
+      await this.validateLiveSource(job)
+      const cacheRoot = join(this.stateRoot, 'cache')
+      await mkdir(cacheRoot, { recursive: true, mode: 0o700 })
+      const environment = childEnvironment(this.environment, this.bunBinary, cacheRoot)
+      const liveInstallRoot = resolve(job.sourceRoot, relative(job.snapshotRoot, job.installRoot))
+      if (!isInside(job.sourceRoot, liveInstallRoot)) throw new Error('install directory escaped the reviewed source')
+
+      const installArgs = ['install', '--ignore-scripts', '--linker', 'isolated']
+      if (job.preview.frozenInstall) installArgs.push('--frozen-lockfile')
+      const install = await this.processRunner(this.bunBinary, installArgs, {
+        cwd: liveInstallRoot,
+        environment,
+        timeoutMs: INSTALL_TIMEOUT_MS,
+        signal,
+      })
+      logs.install = install.output
+      if (install.exitCode !== 0 || install.timedOut || install.signal !== null) throw stageFailure('install', install)
+
+      const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
+        cwd: job.sourcePackageRoot,
+        environment,
+        timeoutMs: BUILD_TIMEOUT_MS,
+        signal,
+      })
+      logs.build = build.output
+      if (build.exitCode !== 0 || build.timedOut || build.signal !== null) throw stageFailure('build', build)
+      await this.validatePackageAt(job.sourcePackageRoot, job.plan)
+      job.state = 'complete'
+      return Object.freeze({
+        previewId,
+        packageName: job.plan.packageName,
+        version: job.plan.version,
+        packageKind: job.plan.packageKind,
+        ...(job.plan.bundlePatch === undefined ? {} : { bundlePatch: job.plan.bundlePatch }),
+        sourcePackageRoot: job.sourcePackageRoot,
+        completedAt: new Date(this.now()).toISOString(),
+        logs: Object.freeze({ ...logs }),
+      })
+    } catch (cause) {
+      job.state = 'failed'
+      const completeLogs: BunBuildLogs = { ...logs, pack: '' }
+      if (isBunBuildFailure(cause)) {
+        throw new BunBuildFailure(cause.message, { ...completeLogs, ...cause.logs })
+      }
+      throw new BunBuildFailure(boundedMessage(cause), completeLogs)
     } finally {
       this.activePreviewId = undefined
       this.activeController = undefined

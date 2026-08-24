@@ -22,7 +22,7 @@ describe('App Creator binding', () => {
   it('registers App tools only on agents composed with Creator mode', () => {
     type Agent = { readonly ctx: object }
     const listeners = new Map<string, (payload: { readonly agent: Agent }) => void>()
-    const toolDisposers = [vi.fn(), vi.fn()]
+    const toolDisposers = [vi.fn(), vi.fn(), vi.fn()]
     const promptDisposer = vi.fn()
     const creatorContext = {
       tools: { register: vi.fn((_definition: unknown) => toolDisposers.shift() ?? vi.fn()) },
@@ -52,7 +52,7 @@ describe('App Creator binding', () => {
 
     const creator = { ctx: creatorContext }
     listeners.get('agent/created')?.({ agent: creator })
-    expect(creatorContext.tools.register).toHaveBeenCalledTimes(2)
+    expect(creatorContext.tools.register).toHaveBeenCalledTimes(3)
     expect(creatorContext.systemPrompt.section).toHaveBeenCalledWith(expect.objectContaining({
       name: 'deepdeck:app-creator',
     }))
@@ -61,7 +61,7 @@ describe('App Creator binding', () => {
     expect(promptDisposer).toHaveBeenCalledOnce()
   })
 
-  it('uses only the current Creator Workspace for context and rebuild', async () => {
+  it('uses only the current Creator Workspace for context, rebuild, and restart', async () => {
     const creatorContext = vi.fn(async () => ({
       appId: 'reader',
       title: 'Reader',
@@ -77,17 +77,25 @@ describe('App Creator binding', () => {
       hostReloaded: true,
       buildLog: 'built',
     }))
-    const registry = { creatorContext, rebuildCreator } as unknown as AppConversationHostRegistry
-    const [contextTool, rebuildTool] = appCreatorToolDefinitions(registry)
+    const restartCreator = vi.fn(async () => ({
+      appId: 'reader',
+      packageName: '@deepdeck/reader',
+      restartScheduled: true as const,
+    }))
+    const registry = { creatorContext, rebuildCreator, restartCreator } as unknown as AppConversationHostRegistry
+    const [contextTool, rebuildTool, restartTool] = appCreatorToolDefinitions(registry)
     const signal = new AbortController().signal
     const exec = { agent: { session: { header: { cwd: '/plugins/reader' } } }, signal }
 
     expect(contextTool?.name).toBe('deepdeck_app_context')
     expect(rebuildTool?.name).toBe('deepdeck_app_rebuild')
+    expect(restartTool?.name).toBe('deepdeck_app_restart')
     await expect(contextTool?.execute({}, exec)).resolves.toContain('"appId": "reader"')
     await expect(rebuildTool?.execute({}, exec)).resolves.toContain('"durationMs": 125')
+    await expect(restartTool?.execute({}, exec)).resolves.toContain('"restartScheduled": true')
     expect(creatorContext).toHaveBeenCalledWith('/plugins/reader', signal)
     expect(rebuildCreator).toHaveBeenCalledWith('/plugins/reader', signal)
+    expect(restartCreator).toHaveBeenCalledWith('/plugins/reader', signal)
   })
 
   it('refuses a Creator session without a Workspace before touching the registry', async () => {
@@ -138,5 +146,34 @@ describe('App source registry', () => {
     })
     await expect(registry.creatorContext(join(root, 'elsewhere')))
       .rejects.toThrow('not a registered DeepDeck App source')
+  })
+
+  it('schedules restart only for the App bound to the current Creator Workspace', async () => {
+    const root = await temporaryRoot()
+    const source = join(root, 'reader')
+    await mkdir(source)
+    const requestRestart = vi.fn(async () => {})
+    const registry = new DefaultAppConversationHostRegistry(
+      { create: vi.fn(async path => ({ id: 'workspace', path, title: path })) },
+      root,
+      undefined,
+      { requestRestart } as never,
+    )
+    registry.register({
+      id: 'reader',
+      title: 'Reader',
+      workspaceSlug: 'reader',
+      packageName: '@deepdeck/reader',
+      sourcePackageRoot: source,
+    })
+
+    await expect(registry.restartCreator(source)).resolves.toEqual({
+      appId: 'reader',
+      packageName: '@deepdeck/reader',
+      restartScheduled: true,
+    })
+    await expect(registry.restartCreator(join(root, 'other')))
+      .rejects.toThrow('not a registered DeepDeck App source')
+    expect(requestRestart).toHaveBeenCalledOnce()
   })
 })

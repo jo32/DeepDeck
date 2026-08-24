@@ -73,7 +73,11 @@ describe('app conversation Host registry', () => {
       id: 'reader',
       title: 'Reader',
       packageName: '@fixture/reader',
+      updateAvailable: false,
+      updateReason: 'App package manager is unavailable.',
       rebuildAvailable: true,
+      uninstallAvailable: false,
+      uninstallReason: 'App package manager is unavailable.',
     }])
     const result = await registry.rebuild('reader')
 

@@ -16,8 +16,12 @@ active Host and Client outputs.
 
 Each card also exposes **Vibe Coding**. It opens a blank `cordis` Creator-mode
 Session whose Workspace is the App's registered source root. The Host adds
-`deepdeck_app_context` and `deepdeck_app_rebuild` only to that preset's scoped
-tool layer; ordinary presets never see them. Both tools derive the App from the
-Session cwd and refuse unregistered source paths, so the model cannot choose an
-arbitrary package to build. The rebuild tool delegates to the same Bun Builder
-boundary as the settings button and hot-reloads the running Cordis plugin.
+`deepdeck_app_context`, `deepdeck_app_rebuild`, and `deepdeck_app_restart` only
+to that preset's scoped tool layer; ordinary presets never see them. All three
+tools derive the App from the Session cwd and refuse unregistered source paths,
+so the model cannot choose an arbitrary package to build or restart from an
+unbound Workspace. The rebuild tool delegates to the same Bun Builder boundary
+as the settings button and hot-reloads the running Cordis plugin. When a
+dependency, patch, entry point, or runtime assembly change requires a full
+reload, the restart tool asks the desktop host to restart the Harness runtime;
+the desktop window reconnects automatically.

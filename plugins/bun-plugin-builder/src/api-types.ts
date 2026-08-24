@@ -40,6 +40,18 @@ export interface BunBuildResult {
   readonly logs: BunBuildLogs
 }
 
+/** A reviewed source tree after dependencies and its declared build ran in place. */
+export interface BunSourceBuildResult {
+  readonly previewId: string
+  readonly packageName: string
+  readonly version: string
+  readonly packageKind: 'plugin' | 'bundle'
+  readonly bundlePatch?: string
+  readonly sourcePackageRoot: string
+  readonly completedAt: string
+  readonly logs: Pick<BunBuildLogs, 'install' | 'build'>
+}
+
 export interface BunHotUpdateResult {
   readonly previewId: string
   readonly packageName: string
