@@ -1,11 +1,17 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  Button,
+  IconPlusOutline16,
+  Input,
+  Modal,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   InjectFace,
   PropsRenderSlots,
   PropsRuntime,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
+  AppCreateResult,
   AppInstallPreview,
   AppInstallResult,
   AppRebuildResult,
@@ -14,6 +20,7 @@ import type {
 } from '../contracts.js'
 import type {} from '../app-settings-contract.js'
 import {
+  createApp,
   discardAppInstall,
   installApp,
   listApps,
@@ -60,6 +67,26 @@ type UninstallState =
   | { readonly status: 'complete'; readonly result: AppUninstallResult }
   | { readonly status: 'failed'; readonly error: string }
 
+type CreateState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'running' }
+  | { readonly status: 'complete'; readonly result: AppCreateResult }
+  | { readonly status: 'failed'; readonly error: string }
+
+const APP_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u
+
+function suggestedAppId(title: string): string {
+  const value = title
+    .normalize('NFKD')
+    .replaceAll(/[\u0300-\u036f]/gu, '')
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, '-')
+    .replaceAll(/^-+|-+$/gu, '')
+    .slice(0, 64)
+    .replaceAll(/-+$/gu, '')
+  return value || 'my-app'
+}
+
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -74,6 +101,11 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
   const [installation, setInstallation] = useState<InstallState>({ status: 'idle' })
   const [uninstalls, setUninstalls] = useState<Readonly<Record<string, UninstallState>>>({})
   const [restartState, setRestartState] = useState<'idle' | 'running' | 'failed'>('idle')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createTitle, setCreateTitle] = useState('')
+  const [createId, setCreateId] = useState('')
+  const [createIdEdited, setCreateIdEdited] = useState(false)
+  const [creation, setCreation] = useState<CreateState>({ status: 'idle' })
 
   useEffect(() => {
     let active = true
@@ -91,6 +123,19 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
     )
     return () => { active = false }
   }, [])
+
+  useEffect(() => {
+    if (!createOpen) return
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      // The parent Settings surface also listens on document. Keep one Escape
+      // scoped to this nested dialog instead of closing both layers at once.
+      event.stopImmediatePropagation()
+      if (creation.status !== 'running') setCreateOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => { document.removeEventListener('keydown', onKeyDown, { capture: true }) }
+  }, [createOpen, creation.status])
 
   if (t === undefined) return null
 
@@ -124,6 +169,31 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
   const restart = (): void => {
     setRestartState('running')
     void restartForApps().catch(() => { setRestartState('failed') })
+  }
+
+  const openCreate = (): void => {
+    setCreateTitle('')
+    setCreateId('')
+    setCreateIdEdited(false)
+    setCreation({ status: 'idle' })
+    setRestartState('idle')
+    setCreateOpen(true)
+  }
+
+  const closeCreate = (): void => {
+    if (creation.status !== 'running') setCreateOpen(false)
+  }
+
+  const createNewApp = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    const appId = createId.trim().toLowerCase()
+    const title = createTitle.trim()
+    if (title.length === 0 || !APP_ID_PATTERN.test(appId) || creation.status === 'running') return
+    setCreation({ status: 'running' })
+    void createApp(appId, title).then(
+      result => { setCreation({ status: 'complete', result }) },
+      error => { setCreation({ status: 'failed', error: messageOf(error) }) },
+    )
   }
 
   const rebuild = (app: AppSettingsDescriptor): void => {
@@ -194,9 +264,88 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
   return (
     <section className={css.surface}>
       <header className={css.heading}>
-        <h2>{t('title')}</h2>
-        <p>{t('subtitle')}</p>
+        <div>
+          <h2>{t('title')}</h2>
+          <p>{t('subtitle')}</p>
+        </div>
+        <Button
+          variant="primary"
+          icon={<IconPlusOutline16 size={16} />}
+          onClick={openCreate}
+        >{t('newApp')}</Button>
       </header>
+      <Modal
+        open={createOpen}
+        onClose={closeCreate}
+        title={t('createTitle')}
+        closeLabel={t('cancel')}
+        description={t('createDescription')}
+        footer={creation.status === 'complete' ? (
+          <div className={css.modalActions}>
+            <Button variant="ghost" onClick={closeCreate}>{t('close')}</Button>
+            <Button variant="primary" disabled={restartState === 'running'} onClick={restart}>
+              {restartState === 'running' ? t('restarting') : t('restartNow')}
+            </Button>
+          </div>
+        ) : (
+          <div className={css.modalActions}>
+            <Button variant="ghost" disabled={creation.status === 'running'} onClick={closeCreate}>{t('cancel')}</Button>
+            <Button
+              type="submit"
+              form="deepdeck-create-app-form"
+              variant="primary"
+              disabled={createTitle.trim().length === 0 || !APP_ID_PATTERN.test(createId.trim().toLowerCase()) || creation.status === 'running'}
+            >{creation.status === 'running' ? t('creating') : t('createApp')}</Button>
+          </div>
+        )}
+      >
+        {creation.status === 'complete' ? (
+          <div className={css.createResult} role="status">
+            <strong>{t('createComplete')} · {creation.result.title}</strong>
+            <span>{t('createdSource')}: <code>{creation.result.sourceDirectory}</code></span>
+            <span>{t('restartRequired')}</span>
+            {restartState === 'failed' ? <span className={css.inlineError}>{t('restartFailed')}</span> : null}
+          </div>
+        ) : (
+          <form id="deepdeck-create-app-form" className={css.createForm} onSubmit={createNewApp}>
+            <label htmlFor="deepdeck-create-app-title">{t('appName')}</label>
+            <Input
+              id="deepdeck-create-app-title"
+              autoFocus
+              maxLength={120}
+              value={createTitle}
+              placeholder={t('appNamePlaceholder')}
+              disabled={creation.status === 'running'}
+              onChange={event => {
+                const title = event.currentTarget.value
+                setCreateTitle(title)
+                if (!createIdEdited) setCreateId(title.trim().length === 0 ? '' : suggestedAppId(title))
+                if (creation.status === 'failed') setCreation({ status: 'idle' })
+              }}
+            />
+            <label htmlFor="deepdeck-create-app-id">{t('appId')}</label>
+            <Input
+              id="deepdeck-create-app-id"
+              maxLength={64}
+              value={createId}
+              placeholder="my-app"
+              spellCheck={false}
+              autoCapitalize="none"
+              disabled={creation.status === 'running'}
+              aria-describedby="deepdeck-create-app-id-hint"
+              onChange={event => {
+                setCreateIdEdited(true)
+                setCreateId(event.currentTarget.value.toLowerCase())
+                if (creation.status === 'failed') setCreation({ status: 'idle' })
+              }}
+            />
+            <p id="deepdeck-create-app-id-hint" className={css.fieldHint}>{t('appIdHint')}</p>
+            {creation.status === 'failed' ? (
+              <div className={css.error} role="alert"><strong>{t('createFailed')}</strong><br />{creation.error}</div>
+            ) : null}
+          </form>
+        )}
+      </Modal>
       <section className={css.installArea} aria-busy={installation.status === 'previewing' || installation.status === 'installing'}>
         <div className={css.installHeading}>
           <div>

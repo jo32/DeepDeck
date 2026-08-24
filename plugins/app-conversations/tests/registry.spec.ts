@@ -58,15 +58,17 @@ describe('app conversation Host registry', () => {
       buildLog: 'built reader\n',
     }))
     const discard = vi.fn(async () => {})
+    const reloadAppWindows = vi.fn(async () => 2)
     const registry = new DefaultAppConversationHostRegistry({
       create: vi.fn(async () => ({ id: 'unused', path: '/unused', title: 'unused' })),
-    }, '/tmp/deepdeck-test-home', { preview, hotUpdate, discard })
+    }, '/tmp/deepdeck-test-home', { preview, hotUpdate, discard }, undefined, reloadAppWindows)
     registry.register({
       id: 'reader',
       title: 'Reader',
       workspaceSlug: 'reader',
       packageName: '@fixture/reader',
       sourcePackageRoot: '/tmp/reader',
+      appWindowPath: '/apps/custom-reader',
     })
 
     await expect(registry.list()).resolves.toEqual([{
@@ -86,6 +88,8 @@ describe('app conversation Host registry', () => {
       packageName: '@fixture/reader',
       completedAt: '2026-08-23T03:00:00.000Z',
       hostReloaded: true,
+      clientReload: 'not-observed',
+      appWindowsReloaded: 2,
       buildLog: 'built reader\n',
     })
     expect(result.durationMs).toBeGreaterThanOrEqual(0)
@@ -94,6 +98,7 @@ describe('app conversation Host registry', () => {
       confirmation: '@fixture/reader@1.0.0',
     })
     expect(discard).toHaveBeenCalledTimes(2)
+    expect(reloadAppWindows).toHaveBeenCalledWith('/apps/custom-reader')
   })
 
   it('keeps the original App source after Cordis reloads its Host from Builder staging', async () => {

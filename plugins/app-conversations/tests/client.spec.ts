@@ -112,7 +112,7 @@ describe('app conversation Client registry', () => {
     expect(prompt).toHaveBeenCalledWith([
       expect.objectContaining({
         type: 'text',
-        text: expect.stringMatching(/https:\/\/example\.com\/reader\.git[\s\S]*Git status[\s\S]*local diff[\s\S]*Never use reset --hard[\s\S]*deepdeck_app_rebuild[\s\S]*deepdeck_app_restart/u),
+        text: expect.stringMatching(/https:\/\/example\.com\/reader\.git[\s\S]*Git status[\s\S]*local diff[\s\S]*Never use reset --hard[\s\S]*deepdeck_app_apply[\s\S]*durably saved/u),
       }),
     ], 'queue')
     expect(open).toHaveBeenCalledWith('session-update')

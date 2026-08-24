@@ -17,12 +17,14 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:pat
 import type { Readable } from 'node:stream'
 import { unzip } from 'fflate'
 import type {
+  AppCreateResult,
   AppInstallPreview,
   AppInstallResult,
   AppInstallSourceKind,
   AppUninstallResult,
   AppUpdateContext,
 } from './contracts.js'
+import { scaffoldAppSource, type AppScaffoldInput } from './app-scaffolder.js'
 
 const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024
 const MAX_EXTRACTED_BYTES = 256 * 1024 * 1024
@@ -490,6 +492,25 @@ export class DeepDeckAppPackageManager {
     this.runGit = options.runGit ?? defaultGitRunner
     this.now = options.now ?? Date.now
     this.pluginRoot = resolve(options.homeDirectory ?? homedir(), APP_PLUGIN_DIRECTORY)
+  }
+
+  async create(input: AppScaffoldInput, signal?: AbortSignal): Promise<AppCreateResult> {
+    signal?.throwIfAborted()
+    const scaffold = await scaffoldAppSource(this.pluginRoot, input)
+    try {
+      const preview = await this.preview(scaffold.sourceDirectory, signal)
+      if (preview.appId !== scaffold.appId || preview.packageName !== scaffold.packageName) {
+        await this.discard(preview.previewId)
+        throw new Error('生成的 App 身份与安装预览不一致。')
+      }
+      const installed = await this.install(preview.previewId, signal)
+      return Object.freeze({ ...installed, createdFromTemplate: true })
+    } catch (cause) {
+      throw new Error(
+        `App 创建未完成；已保留源码目录 ${scaffold.sourceDirectory}。${errorMessage(cause)}`,
+        { cause },
+      )
+    }
   }
 
   async preview(sourceValue: string, signal?: AbortSignal): Promise<AppInstallPreview> {

@@ -5,6 +5,8 @@ import { isAbsolute, join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import {
   APP_CONVERSATION_API_PATH,
+  type AppBuildValidationResult,
+  type AppCreateResult,
   type AppRebuildResult,
   type AppRestartResult,
   type AppConversationHostDefinition,
@@ -47,10 +49,18 @@ interface AppConversationHostContext {
   readonly bunPluginBuilder: AppBunBuilderService
   readonly desktopProfiles: { readonly current: AppInstallerProfile }
   readonly desktopPnpm: AppInstallerPnpm
-  readonly desktopActions: { requestRestart(): Promise<void> }
+  readonly desktopActions: {
+    requestRestart(): Promise<void>
+    reloadAppWindows?(path: string): Promise<number>
+  }
   readonly agentPresets: {
     composedPreset(agentContext: Context): string | undefined
   }
+  readonly agents: {
+    get(sessionId: string): { readonly ctx: Context } | undefined
+  }
+  readonly sessions: { flush(session: unknown): Promise<boolean> }
+  readonly logger: { warn(message: string): void }
   effect(effect: () => unknown, label: string): unknown
 }
 
@@ -78,6 +88,7 @@ interface AppBunBuilderService {
     readonly packageName: string
     readonly version: string
     readonly sourcePackageRoot: string
+    readonly completedAt: string
     readonly logs: { readonly install: string; readonly build: string }
   }>
   hotUpdate(input: {
@@ -105,6 +116,8 @@ export const inject = [
   'desktopPnpm',
   'desktopActions',
   'agentPresets',
+  'agents',
+  'sessions',
   'tools',
   'systemPrompt',
 ] as const
@@ -120,6 +133,7 @@ function normalizedDefinition(definition: AppConversationHostDefinition): AppCon
   const workspaceTitle = definition.workspaceTitle?.trim()
   const packageName = definition.packageName.trim()
   const sourcePackageRoot = resolve(definition.sourcePackageRoot)
+  const appWindowPath = definition.appWindowPath?.trim()
   if (!APP_ID_PATTERN.test(id)) throw new Error(`invalid app conversation id '${id}'`)
   if (!APP_ID_PATTERN.test(workspaceSlug)) throw new Error(`invalid app workspace slug '${workspaceSlug}'`)
   if (title.length === 0) throw new Error('app conversation title must not be blank')
@@ -128,6 +142,17 @@ function normalizedDefinition(definition: AppConversationHostDefinition): AppCon
   }
   if (!PACKAGE_NAME_PATTERN.test(packageName)) throw new Error(`invalid app package name '${packageName}'`)
   if (!isAbsolute(definition.sourcePackageRoot)) throw new Error('app source package root must be absolute')
+  if (appWindowPath !== undefined) {
+    const parsed = new URL(appWindowPath, 'http://deepdeck.local')
+    if (
+      !appWindowPath.startsWith('/')
+      || appWindowPath.startsWith('//')
+      || parsed.origin !== 'http://deepdeck.local'
+      || parsed.pathname !== appWindowPath
+      || parsed.search.length > 0
+      || parsed.hash.length > 0
+    ) throw new Error('app window path must be an absolute same-origin pathname')
+  }
   return {
     id,
     title,
@@ -135,6 +160,7 @@ function normalizedDefinition(definition: AppConversationHostDefinition): AppCon
     packageName,
     sourcePackageRoot,
     ...(workspaceTitle === undefined ? {} : { workspaceTitle }),
+    ...(appWindowPath === undefined ? {} : { appWindowPath }),
   }
 }
 
@@ -147,6 +173,7 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     private readonly home = homedir(),
     private readonly builder?: AppBunBuilderService,
     private readonly packages?: DeepDeckAppPackageManager,
+    private readonly reloadAppWindows?: (path: string) => Promise<number>,
   ) {}
 
   register(rawDefinition: AppConversationHostDefinition): () => void {
@@ -171,6 +198,10 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     return () => {
       if (this.definitions.get(definition.id) === definition) this.definitions.delete(definition.id)
     }
+  }
+
+  has(appId: string): boolean {
+    return this.definitions.has(appId.trim().toLowerCase())
   }
 
   async resolve(appId: string): Promise<AppConversationWorkspace> {
@@ -257,12 +288,24 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         confirmation: preview.confirmation,
         ...(signal === undefined ? {} : { signal }),
       })
+      let appWindowsReloaded = 0
+      let appWindowsReloadError: string | undefined
+      if (this.reloadAppWindows !== undefined) {
+        try {
+          appWindowsReloaded = await this.reloadAppWindows(definition.appWindowPath ?? `/apps/${definition.id}`)
+        } catch (error) {
+          appWindowsReloadError = errorMessage(error)
+        }
+      }
       return {
         appId,
         packageName: result.packageName,
         completedAt: result.completedAt,
         durationMs: Date.now() - startedAt,
         hostReloaded: result.hostReloaded,
+        clientReload: 'not-observed',
+        appWindowsReloaded,
+        ...(appWindowsReloadError === undefined ? {} : { appWindowsReloadError }),
         buildLog: result.buildLog,
       }
     } finally {
@@ -272,6 +315,34 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
 
   async rebuildCreator(cwd: string, signal?: AbortSignal): Promise<AppRebuildResult> {
     return await this.rebuild((await this.definitionForSource(cwd, signal)).id, signal)
+  }
+
+  async validateCreator(cwd: string, signal?: AbortSignal): Promise<AppBuildValidationResult> {
+    const definition = await this.definitionForSource(cwd, signal)
+    if (this.builder === undefined) throw new Error('Bun Builder is unavailable.')
+    const startedAt = Date.now()
+    let preview: AppBuildPreview | undefined
+    try {
+      preview = await this.builder.preview({ sourceDirectory: definition.sourcePackageRoot }, signal)
+      if (preview.packageName !== definition.packageName) {
+        throw new Error('the registered App package identity does not match its source')
+      }
+      const result = await this.builder.buildSource({
+        previewId: preview.previewId,
+        confirmation: preview.confirmation,
+        ...(signal === undefined ? {} : { signal }),
+      })
+      return {
+        appId: definition.id,
+        packageName: result.packageName,
+        completedAt: result.completedAt,
+        durationMs: Date.now() - startedAt,
+        installLog: result.logs.install,
+        buildLog: result.logs.build,
+      }
+    } finally {
+      if (preview !== undefined) await this.builder.discard(preview.previewId).catch(() => {})
+    }
   }
 
   async restartCreator(cwd: string, signal?: AbortSignal): Promise<AppRestartResult> {
@@ -440,6 +511,9 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
     homedir(),
     ctx.bunPluginBuilder,
     packages,
+    ctx.desktopActions.reloadAppWindows === undefined
+      ? undefined
+      : async path => await ctx.desktopActions.reloadAppWindows!(path),
   )
   ctx.effect(
     () => () => { void packages.close() },
@@ -473,6 +547,19 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
         const body = await readJsonBody(request)
         if (body.action === 'list-apps') {
           sendJson(response, 200, { apps: await registry.list() })
+          return
+        }
+        if (body.action === 'create-app' && typeof body.appId === 'string' && typeof body.title === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          if (registry.has(body.appId)) {
+            sendJson(response, 409, { error: `App '${body.appId}' 已在当前 profile 中加载。` })
+            return
+          }
+          const created: AppCreateResult = await packages.create({ id: body.appId, title: body.title }, controller.signal)
+          sendJson(response, 200, { created })
           return
         }
         if (body.action === 'rebuild' && typeof body.appId === 'string') {

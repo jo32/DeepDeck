@@ -57,6 +57,8 @@ export interface AppConversationHostDefinition {
   readonly packageName: string
   /** Local package root whose reviewed build script may be run in place. */
   readonly sourcePackageRoot: string
+  /** Optional same-origin page promoted into a DeepDeck secondary App window. */
+  readonly appWindowPath?: string
 }
 
 export interface AppSettingsDescriptor {
@@ -88,6 +90,39 @@ export interface AppRebuildResult {
   readonly completedAt: string
   readonly durationMs: number
   readonly hostReloaded: boolean
+  /** Client replacement is asynchronous and is not acknowledged by the Harness client. */
+  readonly clientReload: 'not-observed'
+  /** Secondary App windows that completed a reload against the new Host output. */
+  readonly appWindowsReloaded: number
+  readonly appWindowsReloadError?: string
+  readonly buildLog: string
+}
+
+/** A reviewed in-place build that intentionally waits for a full runtime restart. */
+export interface AppBuildValidationResult {
+  readonly appId: string
+  readonly packageName: string
+  readonly completedAt: string
+  readonly durationMs: number
+  readonly installLog: string
+  readonly buildLog: string
+}
+
+/** One authoritative Creator apply outcome. */
+export interface AppApplyResult {
+  readonly appId: string
+  readonly packageName: string
+  readonly completedAt: string
+  readonly durationMs: number
+  readonly outcome: 'hot-reloaded' | 'restart-queued'
+  readonly buildSucceeded: true
+  readonly hostReloaded: boolean
+  readonly clientReload: 'not-observed' | 'restart-queued'
+  readonly appWindowsReloaded: number
+  readonly appWindowsReloadError?: string
+  readonly runtimeRestart: 'not-required' | 'queued-after-turn-flush'
+  readonly changedFiles: readonly string[]
+  readonly installLog?: string
   readonly buildLog: string
 }
 
@@ -137,6 +172,11 @@ export interface AppInstallResult {
   readonly restartRequired: true
 }
 
+/** A generated starter App that has been built and linked into the profile. */
+export interface AppCreateResult extends AppInstallResult {
+  readonly createdFromTemplate: true
+}
+
 export interface AppUninstallResult {
   readonly packageName: string
   readonly sourceDirectory: string
@@ -172,6 +212,7 @@ export interface AppConversationHostRegistry {
   updateContext(appId: string, signal?: AbortSignal): Promise<AppUpdateContext>
   rebuild(appId: string, signal?: AbortSignal): Promise<AppRebuildResult>
   rebuildCreator(cwd: string, signal?: AbortSignal): Promise<AppRebuildResult>
+  validateCreator(cwd: string, signal?: AbortSignal): Promise<AppBuildValidationResult>
   restartCreator(cwd: string, signal?: AbortSignal): Promise<AppRestartResult>
   uninstall(appId: string, signal?: AbortSignal): Promise<AppUninstallResult>
 }

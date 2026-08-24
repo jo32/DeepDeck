@@ -14,8 +14,12 @@ import type { HarnessRuntimeStatus } from "../../shared/runtime.js";
 import { parseReadinessUrl } from "./readiness.js";
 import { migratePresetBundles } from "./preset-profile.js";
 import {
+  APP_WINDOWS_RELOAD_RESULT,
   isAppMainWindowFocusRequest,
   isAppWindowOpenRequest,
+  isAppWindowsReloadRequest,
+  isSameOriginHttpUrl,
+  type AppWindowsReloadResult,
 } from "../windows/app-window-request.js";
 
 const START_TIMEOUT_MS = 90_000;
@@ -94,6 +98,8 @@ export interface HarnessProcessOptions {
   displayName: string;
   /** Receives validated-open candidates; the desktop shell owns origin checks and window creation. */
   onAppWindowOpenRequest?: (url: string) => void;
+  /** Reloads matching secondary App windows and resolves after their pages finish loading. */
+  onAppWindowsReloadRequest?: (url: string) => Promise<number>;
   /** Restores the primary window when an app preview navigates to its canonical Session. */
   onMainWindowFocusRequest?: () => void;
 }
@@ -349,6 +355,33 @@ export class HarnessProcess {
         }
         if (isAppWindowOpenRequest(message)) {
           this.options.onAppWindowOpenRequest?.(message.url);
+          return;
+        }
+        if (isAppWindowsReloadRequest(message)) {
+          const reply = (result: Omit<AppWindowsReloadResult, "type" | "requestId">): void => {
+            if (!child.connected) return;
+            try {
+              child.send({
+                type: APP_WINDOWS_RELOAD_RESULT,
+                requestId: message.requestId,
+                ...result,
+              } satisfies AppWindowsReloadResult);
+            } catch {
+              // The Harness may exit while a secondary window is reloading.
+            }
+          };
+          if (!readyUrl) {
+            reply({ reloaded: 0, error: "DeepDeck Harness is not ready." });
+            return;
+          }
+          const target = new URL(message.path, readyUrl).href;
+          if (!isSameOriginHttpUrl(target, readyUrl)) {
+            reply({ reloaded: 0, error: "App window reload target must be same-origin." });
+            return;
+          }
+          void (this.options.onAppWindowsReloadRequest?.(target) ?? Promise.resolve(0))
+            .then(reloaded => reply({ reloaded }))
+            .catch((error: unknown) => reply({ reloaded: 0, error: errorMessage(error) }));
           return;
         }
         if (isAppMainWindowFocusRequest(message)) {

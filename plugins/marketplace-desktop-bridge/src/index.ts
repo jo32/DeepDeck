@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { isAbsolute, join } from 'node:path'
 import { DeepDeckCommunityMarketPlugins } from './plugins.js'
 import {
@@ -12,6 +13,8 @@ declare const process: {
   readonly env: NodeJS.ProcessEnv
   readonly pid: number
   readonly send?: (message: CommunityMarketDesktopMessage) => boolean
+  on?(event: 'message', listener: (message: unknown) => void): void
+  off?(event: 'message', listener: (message: unknown) => void): void
 }
 
 interface HostContext {
@@ -25,10 +28,20 @@ export const name = 'deepdeck-community-market-desktop-bridge'
 export const MARKETPLACE_RESTART_REQUEST = 'dsh-market:restart' as const
 export const COMMUNITY_MARKET_RESTART_REQUEST = 'dsh-community-market:restart' as const
 export const COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST = 'dsh-community-market:open-terminal' as const
+export const APP_WINDOWS_RELOAD_REQUEST = 'deepdeck:reload-app-windows' as const
+export const APP_WINDOWS_RELOAD_RESULT = 'deepdeck:reload-app-windows-result' as const
 
 export type CommunityMarketDesktopMessage =
   | { readonly type: typeof COMMUNITY_MARKET_RESTART_REQUEST }
   | { readonly type: typeof COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST }
+  | { readonly type: typeof APP_WINDOWS_RELOAD_REQUEST; readonly requestId: string; readonly path: string }
+
+export interface AppWindowsReloadResponse {
+  readonly type: typeof APP_WINDOWS_RELOAD_RESULT
+  readonly requestId: string
+  readonly reloaded: number
+  readonly error?: string
+}
 
 type SendToDesktop = (message: CommunityMarketDesktopMessage) => boolean
 
@@ -61,6 +74,7 @@ export interface CommunityMarketDesktopServicesOptions {
   readonly cliPath?: string
   readonly send?: SendToDesktop
   readonly defer?: (callback: () => void, delay: number) => unknown
+  readonly subscribe?: (listener: (message: unknown) => void) => () => void
 }
 
 export function createCommunityMarketDesktopServices(
@@ -75,6 +89,13 @@ export function createCommunityMarketDesktopServices(
   }
   const send = options.send ?? process.send?.bind(process)
   const defer = options.defer ?? setTimeout
+  const subscribe = options.subscribe ?? ((listener: (message: unknown) => void) => {
+    if (process.on === undefined || process.off === undefined) {
+      throw new Error('DeepDeck App window reload requires a desktop IPC receiver')
+    }
+    process.on('message', listener)
+    return () => { process.off?.('message', listener) }
+  })
   let restartRequested = false
   return Object.freeze({
     desktopProfiles: Object.freeze({ current: profile }),
@@ -96,6 +117,36 @@ export function createCommunityMarketDesktopServices(
         if (send === undefined) throw new Error('DeepDeck restart requires a desktop IPC parent')
         restartRequested = true
         defer(() => { send({ type: COMMUNITY_MARKET_RESTART_REQUEST }) }, 100)
+      },
+      reloadAppWindows: async (path: string): Promise<number> => {
+        if (send === undefined) throw new Error('DeepDeck App window reload requires a desktop IPC parent')
+        const requestId = randomUUID()
+        return await new Promise<number>((resolve, reject) => {
+          let settled = false
+          let stop = (): void => {}
+          let timeout: ReturnType<typeof setTimeout> | undefined
+          const finish = (error: Error | undefined, reloaded = 0): void => {
+            if (settled) return
+            settled = true
+            if (timeout !== undefined) clearTimeout(timeout)
+            stop()
+            if (error === undefined) resolve(reloaded)
+            else reject(error)
+          }
+          stop = subscribe((message) => {
+            if (typeof message !== 'object' || message === null) return
+            const result = message as Partial<AppWindowsReloadResponse>
+            if (result.type !== APP_WINDOWS_RELOAD_RESULT || result.requestId !== requestId) return
+            if (typeof result.error === 'string') finish(new Error(result.error))
+            else if (typeof result.reloaded === 'number' && Number.isSafeInteger(result.reloaded) && result.reloaded >= 0) {
+              finish(undefined, result.reloaded)
+            } else finish(new Error('DeepDeck returned an invalid App window reload result'))
+          })
+          timeout = setTimeout(() => finish(new Error('DeepDeck App window reload timed out')), 20_000)
+          if (!send({ type: APP_WINDOWS_RELOAD_REQUEST, requestId, path })) {
+            finish(new Error('DeepDeck could not send the App window reload request'))
+          }
+        })
       },
     }),
   })

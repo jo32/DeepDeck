@@ -27,6 +27,13 @@ export function scheduleDesktopFrameReveal(
   cancelTask: CancelTask = clearTimeout,
 ): () => void {
   notifyReady()
-  const motionTask = scheduleTask(enableLayoutMotion, DESKTOP_FRAME_MOTION_RESUME_MS)
+  const motionTask = scheduleTask(() => {
+    enableLayoutMotion()
+    // A Harness restart can commit its new navigation immediately after the
+    // first IPC signal and reset the native display gate. Repeating the
+    // idempotent signal at the already-required compositor settle point closes
+    // that race without delaying a normal first reveal.
+    notifyReady()
+  }, DESKTOP_FRAME_MOTION_RESUME_MS)
   return () => { cancelTask(motionTask) }
 }

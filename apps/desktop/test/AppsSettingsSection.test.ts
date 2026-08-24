@@ -31,7 +31,7 @@ function actionFrom(init?: RequestInit): string {
 }
 
 function button(label: string): HTMLButtonElement | undefined {
-  return [...(container?.querySelectorAll('button') ?? [])].find(candidate => candidate.textContent === label)
+  return [...document.querySelectorAll('button')].find(candidate => candidate.textContent === label)
 }
 
 async function render(overrides: Partial<ComponentProps<typeof AppsSettingsSection>> = {}): Promise<void> {
@@ -51,6 +51,65 @@ async function render(overrides: Partial<ComponentProps<typeof AppsSettingsSecti
 }
 
 describe('AppsSettingsSection package controls', () => {
+  it('creates a starter App from the new button and offers to restart', async () => {
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const action = actionFrom(init)
+      if (action === 'list-apps') return response({ apps: [] })
+      if (action === 'create-app') return response({
+        created: {
+          appId: 'project-brief',
+          title: 'Project Brief',
+          packageName: '@deepdeck-apps/project-brief',
+          version: '0.1.0',
+          sourceDirectory: '/Users/test/DeepDeck/Plugins/project-brief',
+          profileAction: 'install',
+          completedAt: '2026-08-24T00:00:00.000Z',
+          installLog: '',
+          buildLog: '',
+          packageLog: '',
+          createdFromTemplate: true,
+          restartRequired: true,
+        },
+      })
+      throw new Error(`unexpected action ${action}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await render()
+
+    await act(async () => { button('newApp')?.click() })
+    const name = document.querySelector<HTMLInputElement>('#deepdeck-create-app-title')
+    expect(name).toBeDefined()
+    await act(async () => {
+      const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+      setValue?.call(name, 'Project Brief')
+      name?.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(document.querySelector<HTMLInputElement>('#deepdeck-create-app-id')?.value).toBe('project-brief')
+
+    await act(async () => { button('createApp')?.click() })
+    await vi.waitFor(() => expect(document.body.textContent).toContain('createComplete'))
+    expect(fetchMock.mock.calls.map(call => actionFrom(call[1]))).toContain('create-app')
+    expect(document.body.textContent).toContain('/Users/test/DeepDeck/Plugins/project-brief')
+    expect(button('restartNow')).toBeDefined()
+  })
+
+  it('keeps Escape scoped to the nested New App dialog', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response({ apps: [] })))
+    const parentEscape = vi.fn()
+    document.addEventListener('keydown', parentEscape)
+    try {
+      await render()
+      await act(async () => { button('newApp')?.click() })
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+
+      await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+      expect(document.querySelector('[role="dialog"]')).toBeNull()
+      expect(parentEscape).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('keydown', parentEscape)
+    }
+  })
+
   it('previews a Git source and confirms installation into the Vibe plugin directory', async () => {
     const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const action = actionFrom(init)

@@ -43,4 +43,14 @@ describe("DesktopSidebar Apps navigation", () => {
     expect(styles).toMatch(/\.sidebarAppsPanel\s*\{[\s\S]*?width: min\(440px, 100%\)/);
     expect(styles).toMatch(/\.sidebarAppsList\s*\{[\s\S]*?overflow-y: auto/);
   });
+
+  it("owns one canonical launcher row style for every App slot entry", () => {
+    expect(styles).toContain(
+      ".sidebarAppsList > :global([data-slot='sidebar.apps']) > :global(button)",
+    );
+    expect(styles).toMatch(/data-slot='sidebar\.apps'[\s\S]*?height: 36px;[\s\S]*?padding: 0 9px;/);
+    expect(styles).toMatch(/data-slot='sidebar\.apps'[\s\S]*?font-size: 13px;[\s\S]*?font-weight: 500;/);
+    expect(styles).toContain(":global(button:hover:not(:disabled))");
+    expect(styles).toContain(":global(button:focus-visible)");
+  });
 });

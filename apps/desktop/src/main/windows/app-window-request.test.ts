@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   APP_MAIN_WINDOW_FOCUS_REQUEST,
+  APP_WINDOWS_RELOAD_REQUEST,
   APP_WINDOW_OPEN_REQUEST,
   isAppMainWindowFocusRequest,
+  isAppWindowsReloadRequest,
   isAppWindowOpenRequest,
   isSameOriginHttpUrl,
 } from "./app-window-request.js";
@@ -46,5 +48,25 @@ describe("same-origin app window policy", () => {
     expect(isSameOriginHttpUrl("file:///etc/passwd", origin)).toBe(false);
     expect(isSameOriginHttpUrl("about:blank", origin)).toBe(false);
     expect(isSameOriginHttpUrl("not a url", origin)).toBe(false);
+  });
+});
+
+describe("App window reload requests", () => {
+  it("accepts only bounded same-origin path requests", () => {
+    expect(isAppWindowsReloadRequest({
+      type: APP_WINDOWS_RELOAD_REQUEST,
+      requestId: "request-1",
+      path: "/apps/reader",
+    })).toBe(true);
+    expect(isAppWindowsReloadRequest({
+      type: APP_WINDOWS_RELOAD_REQUEST,
+      requestId: "request-1",
+      path: "https://example.com/apps/reader",
+    })).toBe(false);
+    expect(isAppWindowsReloadRequest({
+      type: APP_WINDOWS_RELOAD_REQUEST,
+      requestId: "",
+      path: "/apps/reader",
+    })).toBe(false);
   });
 });

@@ -73,6 +73,7 @@ ctx.effect(() => ctx.appConversations.register({
   workspaceTitle: 'Apps · Example Reader',
   packageName: '@example/dsh-example-reader',
   sourcePackageRoot: packageRoot,
+  appWindowPath: '/apps/example-reader',
 }), 'example reader: app registration')
 ```
 
@@ -86,6 +87,7 @@ ctx.effect(() => ctx.appConversations.register({
 | `workspaceTitle` | 普通 App Workspace 的显示名 | 可选；默认 `Apps · <title>` |
 | `packageName` | Bun Builder 审核和 Loader 匹配使用的包名 | 必须与 `package.json.name` 完全一致 |
 | `sourcePackageRoot` | Vibe Coding 和 Rebuild 使用的源码根目录 | 必须是绝对本地路径，不能是 Builder staging 目录 |
+| `appWindowPath` | 可选的独立 App 窗口页面 | 同源绝对 pathname；Apply 后 Desktop 刷新匹配窗口并回报数量 |
 
 建议从 `import.meta.url` 推导 `sourcePackageRoot`，不要写开发机绝对路径。热更新后 Host 会从 Builder staging 目录重新注册；注册表只在包名一致时保留之前审核过的原始源码根目录，避免下一次 Rebuild 错误地指向临时目录。
 
@@ -152,6 +154,22 @@ interface AppConversationPreparedAction {
 ```
 
 转换函数负责验证和限制页面传入的 payload。协议还会拒绝空 prompt、超过 64 KiB 的 prompt，并把 Session 标题限制在 120 个字符内。
+
+### 3.5 新建 App
+
+Apps 设置标题栏提供 **新建 App**。用户填写显示名称和稳定 App ID 后，Host 会在
+`~/DeepDeck/Plugins/<app-id>` 创建一个不会覆盖同名目录的 Cordis App 骨架。骨架包含：
+
+- Host、Client 和 invariant 入口及类型出口；
+- `dsh.app`、`dsh.bundle`、Client inject 和自挂载 `cordis.patch.yml`；
+- `sidebar.apps` 与 `settings.apps.item` 注册；
+- 一个由 Host 同源路由提供、通过 Electron App window bridge 打开的 starter 页面；
+- `AGENTS.md`、README、构建脚本和不提交 `lib/` 的 `.gitignore`。
+
+创建不是绕过安装边界的文件复制。生成目录会继续经过 Bun Builder 的 preview/build
+校验，并由受保护的 profile package transaction 以 `link:` 方式加入当前 bundle。
+App ID、包名或目标目录发生碰撞时创建会停止且不会覆盖已有源码；创建成功后需要重启
+DeepDeck 装配新的 Host/Client package，之后即可从 App 卡片进入 Vibe Coding。
 
 ## 4. 两类 Workspace
 
@@ -268,18 +286,20 @@ Loader 更新失败时，旧 Host 保持活动；成功后才清理同一 packag
 
 ### 6.2 Creator mode
 
-`app-conversations` 只向选择了 `cordis` preset 的 agent scope 注册两个工具：
+`app-conversations` 只向选择了 `cordis` preset 的 agent scope 注册四个工具：
 
 | Tool | 作用 |
 | --- | --- |
 | `deepdeck_app_context` | 返回当前 Creator Workspace 绑定的 App id、包名、可信源码根目录和 Rebuild 可用性 |
-| `deepdeck_app_rebuild` | 对当前绑定 App 执行同一套 Bun build + Cordis HMR |
+| `deepdeck_app_apply` | 单一权威入口：构建一次，普通源码走 Cordis HMR，结构变化排队完整重启 |
+| `deepdeck_app_rebuild` | `deepdeck_app_apply` 的兼容别名 |
+| `deepdeck_app_restart` | 构建验证后登记完整重启；等当前 turn 持久化完成才执行 |
 
-工具没有 `sourceDirectory` 或 `appId` 参数，而是从 Session header 的 `cwd` 解析 App，并要求它与注册源码目录的 realpath 完全一致。因此 Creator agent 不能借此构建任意目录；从其他入口打开的 Creator Session 也会被拒绝。
+工具没有 `sourceDirectory` 或 `appId` 参数，而是从 Session header 的 `cwd` 解析 App，并要求它与注册源码目录的 realpath 完全一致。因此 Creator agent 不能借此构建任意目录；从其他入口打开的 Creator Session 也会被拒绝。Host 在每个 Creator turn 前后对 Workspace 建立指纹；源码变化但没有成功 Apply 时，会继续当前 turn，第二次仍遗漏时由 Host 执行兜底 Apply。构建失败会留下可报告的失败状态，不会形成无限循环。
 
 ![Creator mode 调用 Bun Rebuild 并热重载 Cordis Host](images/apps-protocol/creator-rebuild.png)
 
-图中 2007 ms 是一次本地参考构建结果，不是协议 SLA。结果中的 `hostReloaded: true` 表示 Cordis Host 已切换到新输出；构建日志同时列出 Client 和 Host bundle。
+图中 2007 ms 是一次本地参考构建结果，不是协议 SLA。结果中的 `hostReloaded: true` 只表示 Cordis Host 已切换到新输出；Client HMR 没有确认协议，因此结果明确标为 `not-observed`。Desktop 会刷新与 App pathname 匹配的独立窗口，并返回实际完成加载的窗口数。
 
 ## 7. 包与 patch 要求
 
@@ -351,6 +371,7 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 | action | 调用方 | 保护 |
 | --- | --- | --- |
 | `list-apps` | Apps 设置 | 返回非敏感 App descriptor |
+| `create-app` | Apps 设置 | 要求 loopback + 同源；校验 App ID，并拒绝覆盖已有源码目录或已加载 App |
 | `rebuild` | Apps 设置 | 要求同源；路径和命令只能由 Host 注册表决定 |
 | `resolve-workspace` | App Client | 只解析普通 App Workspace |
 | `resolve-creator-workspace` | Vibe Coding | 要求 loopback + 同源 |

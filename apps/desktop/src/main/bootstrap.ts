@@ -103,6 +103,7 @@ export async function bootstrapDesktop(
       if (!base || !isSameOriginHttpUrl(url, base)) return;
       appWindows.open(url);
     },
+    onAppWindowsReloadRequest: async url => await appWindows.reload(url),
     onMainWindowFocusRequest: focusMainWindow,
   });
   const updates = createDesktopUpdateService(initialUpdateStatus);

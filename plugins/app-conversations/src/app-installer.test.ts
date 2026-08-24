@@ -126,6 +126,69 @@ function builder() {
 }
 
 describe('DeepDeckAppPackageManager', () => {
+  it('scaffolds, builds, and links a new App into the current profile', async () => {
+    const paths = await fixture()
+    const build = {
+      preview: vi.fn(async (input: { readonly sourceDirectory: string }) => ({
+        previewId: '33333333-3333-4333-8333-333333333333',
+        packageName: '@deepdeck-apps/daily-notes',
+        version: '0.1.0',
+        packageKind: 'bundle' as const,
+        confirmation: '@deepdeck-apps/daily-notes@0.1.0',
+        buildScript: 'bun run build.mjs',
+        frozenInstall: false,
+        warnings: [],
+        sourceDirectory: input.sourceDirectory,
+      })),
+      buildSource: vi.fn(async (input: { readonly previewId: string }) => ({
+        previewId: input.previewId,
+        packageName: '@deepdeck-apps/daily-notes',
+        version: '0.1.0',
+        sourcePackageRoot: '/reviewed/source',
+        logs: { install: '', build: 'built starter\n' },
+      })),
+      discard: vi.fn(async () => {}),
+    }
+    const runPluginInstall = vi.fn(async () => {
+      await mutateProfile(paths.profile.dir, '@deepdeck-apps/daily-notes', 'add')
+      return completedHandle('profile linked\n')
+    })
+    const manager = new DeepDeckAppPackageManager({
+      builder: build,
+      profile: paths.profile,
+      pnpm: {
+        runPlugin: vi.fn(),
+        runPluginInstall,
+        rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
+      },
+      requestRestart: vi.fn(async () => {}),
+      homeDirectory: paths.home,
+    })
+
+    const created = await manager.create({ id: 'daily-notes', title: 'Daily Notes' })
+    const expectedSource = await realpath(join(paths.home, 'DeepDeck', 'Plugins', 'daily-notes'))
+
+    expect(created).toMatchObject({
+      appId: 'daily-notes',
+      title: 'Daily Notes',
+      packageName: '@deepdeck-apps/daily-notes',
+      version: '0.1.0',
+      sourceDirectory: expectedSource,
+      createdFromTemplate: true,
+      restartRequired: true,
+    })
+    expect(build.preview).toHaveBeenCalledWith({ sourceDirectory: created.sourceDirectory }, undefined)
+    expect(runPluginInstall).toHaveBeenCalledWith(
+      ['add', '--save-exact', `link:${created.sourceDirectory}`],
+      paths.profile.dir,
+      expect.objectContaining({ packageName: '@deepdeck-apps/daily-notes' }),
+      undefined,
+    )
+    await expect(readFile(join(created.sourceDirectory, 'src', 'client.js'), 'utf8'))
+      .resolves.toContain("'sidebar.apps'")
+  })
+
   it('copies, builds, and links a local repository into the managed plugin directory', async () => {
     const paths = await fixture()
     const build = builder()

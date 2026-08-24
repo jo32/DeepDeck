@@ -10,11 +10,13 @@ import { BaseWindow, WebContentsView } from "electron";
  */
 export interface AppWindowManager {
   open(url: string): void;
+  reload(url: string): Promise<number>;
   dispose(): void;
 }
 
 const DEFAULT_WIDTH = 1240;
 const DEFAULT_HEIGHT = 840;
+const RELOAD_TIMEOUT_MS = 15_000;
 
 export function createAppWindowManager(): AppWindowManager {
   const windows = new Set<BaseWindow>();
@@ -77,6 +79,37 @@ export function createAppWindowManager(): AppWindowManager {
       void view.webContents.loadURL(url).catch(() => {
         if (!window.isDestroyed()) window.destroy();
       });
+    },
+    async reload(url: string): Promise<number> {
+      const target = new URL(url);
+      const candidates = [...views].filter(([window, view]) => {
+        if (window.isDestroyed() || view.webContents.isDestroyed()) return false;
+        try {
+          const current = new URL(view.webContents.getURL());
+          return current.origin === target.origin && current.pathname === target.pathname;
+        } catch {
+          return false;
+        }
+      });
+      const results = await Promise.all(candidates.map(async ([window, view]) => await new Promise<boolean>((resolve) => {
+        let settled = false;
+        const finish = (loaded: boolean): void => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          view.webContents.removeListener("did-finish-load", loadedPage);
+          view.webContents.removeListener("did-fail-load", failedPage);
+          if (loaded && !window.isDestroyed()) syncBounds(window, view);
+          resolve(loaded);
+        };
+        const loadedPage = (): void => finish(true);
+        const failedPage = (): void => finish(false);
+        const timeout = setTimeout(() => finish(false), RELOAD_TIMEOUT_MS);
+        view.webContents.once("did-finish-load", loadedPage);
+        view.webContents.once("did-fail-load", failedPage);
+        view.webContents.reloadIgnoringCache();
+      })));
+      return results.filter(Boolean).length;
     },
     dispose(): void {
       for (const window of [...windows]) {

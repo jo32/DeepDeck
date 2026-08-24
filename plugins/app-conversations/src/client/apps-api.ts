@@ -1,5 +1,6 @@
 import {
   APP_CONVERSATION_API_PATH,
+  type AppCreateResult,
   type AppInstallPreview,
   type AppInstallResult,
   type AppRebuildResult,
@@ -34,6 +35,12 @@ export async function listApps(): Promise<readonly AppSettingsDescriptor[]> {
   const value = await call({ action: 'list-apps' })
   if (!Array.isArray(value.apps)) throw new Error('Apps response is invalid')
   return value.apps as AppSettingsDescriptor[]
+}
+
+export async function createApp(appId: string, title: string): Promise<AppCreateResult> {
+  const value = await call({ action: 'create-app', appId, title })
+  if (!isObject(value.created)) throw new Error('App creation response is invalid')
+  return value.created as unknown as AppCreateResult
 }
 
 export async function rebuildApp(appId: string): Promise<AppRebuildResult> {

@@ -303,6 +303,48 @@
   overflow-y: auto;
 }
 
+/* The Apps panel owns launcher geometry. App plugins only choose their label,
+ * icon, state, and behavior, so generated and hand-authored Apps cannot drift
+ * into different row shapes. Slot outlets use display:contents, leaving each
+ * launcher button as the addressable row. */
+.sidebarAppsList > :global([data-slot='sidebar.apps']) > :global(button) {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  margin: 3px 0;
+  padding: 0 9px;
+  gap: 9px;
+  justify-content: flex-start;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.sidebarAppsList > :global([data-slot='sidebar.apps']) > :global(button:hover:not(:disabled)) {
+  border-color: var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.sidebarAppsList > :global([data-slot='sidebar.apps']) > :global(button:focus-visible) {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
 .sidebarSettingsRow {
   position: relative;
 }

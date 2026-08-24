@@ -15,7 +15,7 @@ const frameSource = readFileSync(
 );
 
 describe("desktop frame startup handoff", () => {
-  it("reveals the static Harness immediately and enables panel motion in the next task", () => {
+  it("reveals immediately and repeats readiness after the navigation settle point", () => {
     const tasks: Array<() => void> = [];
     const scheduleTask = vi.fn((callback: () => void, _delayMs: number) => {
       tasks.push(callback);
@@ -34,12 +34,13 @@ describe("desktop frame startup handoff", () => {
     expect(notifyReady).toHaveBeenCalledOnce();
     expect(enableLayoutMotion).not.toHaveBeenCalled();
     expect(scheduleTask).toHaveBeenCalledWith(
-      enableLayoutMotion,
+      expect.any(Function),
       DESKTOP_FRAME_MOTION_RESUME_MS,
     );
 
     tasks.shift()?.();
     expect(enableLayoutMotion).toHaveBeenCalledOnce();
+    expect(notifyReady).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the initial grid static while preserving later user-driven transitions", () => {

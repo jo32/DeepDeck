@@ -209,8 +209,8 @@ export function appUpdatePrompt(context: AppUpdateContext): string {
     `The candidate must keep package name ${JSON.stringify(context.packageName)}, App ID ${JSON.stringify(context.appId)}, and a valid dsh.bundle declaration. Stop and report any identity change.`,
     'Preserve all local work. Never use reset --hard, forced checkout, or extract/copy a candidate over the Workspace. If local changes conflict, stop and ask the user how to reconcile them.',
     'Do not run dependency lifecycle scripts. If dependencies, cordis.patch.yml, package exports or entry points, or runtime assembly change, plan a full DeepDeck runtime restart after the build.',
-    'If an update is available and safe, apply only the reviewed changes, run the repository\'s relevant check/test/build commands, then call deepdeck_app_rebuild so the active Cordis plugin is rebuilt.',
-    'When the update requires full loader or profile reassembly, or safe hot reload is unavailable, call deepdeck_app_restart as the final tool action after validation and build complete. The desktop window reconnects automatically; do not leave a manual restart step for the user when this tool is available.',
+    'If an update is available and safe, apply only the reviewed changes, run the repository\'s relevant checks and tests, then call deepdeck_app_apply. It performs the authoritative build exactly once and chooses hot reload or a full runtime restart.',
+    'Structural changes and cases where safe hot reload is unavailable are queued for a full loader/profile restart only after the final response is durably saved. Do not run a duplicate build or leave a manual restart step for the user.',
     'If there is no update, make no source changes. Finish with a concise summary of the compared revisions/source, changed files, validation, and any remaining risk.',
   ].join('\n')
 }

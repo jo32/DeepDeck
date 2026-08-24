@@ -9,6 +9,8 @@
 
 export const APP_WINDOW_OPEN_REQUEST = "deepdeck:open-app-window";
 export const APP_MAIN_WINDOW_FOCUS_REQUEST = "deepdeck:focus-main-window";
+export const APP_WINDOWS_RELOAD_REQUEST = "deepdeck:reload-app-windows";
+export const APP_WINDOWS_RELOAD_RESULT = "deepdeck:reload-app-windows-result";
 
 export interface AppWindowOpenRequest {
   readonly type: typeof APP_WINDOW_OPEN_REQUEST;
@@ -17,6 +19,19 @@ export interface AppWindowOpenRequest {
 
 export interface AppMainWindowFocusRequest {
   readonly type: typeof APP_MAIN_WINDOW_FOCUS_REQUEST;
+}
+
+export interface AppWindowsReloadRequest {
+  readonly type: typeof APP_WINDOWS_RELOAD_REQUEST;
+  readonly requestId: string;
+  readonly path: string;
+}
+
+export interface AppWindowsReloadResult {
+  readonly type: typeof APP_WINDOWS_RELOAD_RESULT;
+  readonly requestId: string;
+  readonly reloaded: number;
+  readonly error?: string;
 }
 
 export function isAppWindowOpenRequest(message: unknown): message is AppWindowOpenRequest {
@@ -28,6 +43,29 @@ export function isAppWindowOpenRequest(message: unknown): message is AppWindowOp
 export function isAppMainWindowFocusRequest(message: unknown): message is AppMainWindowFocusRequest {
   if (typeof message !== "object" || message === null) return false;
   return (message as { type?: unknown }).type === APP_MAIN_WINDOW_FOCUS_REQUEST;
+}
+
+export function isAppWindowsReloadRequest(message: unknown): message is AppWindowsReloadRequest {
+  if (typeof message !== "object" || message === null) return false;
+  const candidate = message as { type?: unknown; requestId?: unknown; path?: unknown };
+  if (
+    candidate.type !== APP_WINDOWS_RELOAD_REQUEST
+    || typeof candidate.requestId !== "string"
+    || candidate.requestId.length === 0
+    || candidate.requestId.length > 128
+    || typeof candidate.path !== "string"
+  ) return false;
+  try {
+    const parsed = new URL(candidate.path, "http://deepdeck.local");
+    return candidate.path.startsWith("/")
+      && !candidate.path.startsWith("//")
+      && parsed.origin === "http://deepdeck.local"
+      && parsed.pathname === candidate.path
+      && parsed.search.length === 0
+      && parsed.hash.length === 0;
+  } catch {
+    return false;
+  }
 }
 
 /**

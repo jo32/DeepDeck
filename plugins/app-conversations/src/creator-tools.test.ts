@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -19,46 +19,85 @@ async function temporaryRoot(): Promise<string> {
 }
 
 describe('App Creator binding', () => {
-  it('registers App tools only on agents composed with Creator mode', () => {
-    type Agent = { readonly ctx: object }
-    const listeners = new Map<string, (payload: { readonly agent: Agent }) => void>()
-    const toolDisposers = [vi.fn(), vi.fn(), vi.fn()]
-    const promptDisposer = vi.fn()
+  it('mounts, unmounts, and remounts App tools when one live agent switches Creator mode', () => {
+    type Agent = { readonly id: string; readonly ctx: object; readonly session: object; readonly steer: ReturnType<typeof vi.fn> }
+    const lifecycle = new Map<string, (...args: never[]) => void>()
+    let presetSelected: ((sessionId: string, agentPreset: string) => void) | undefined
+    const toolDisposers: Array<ReturnType<typeof vi.fn>> = []
+    const promptDisposers: Array<ReturnType<typeof vi.fn>> = []
     const creatorContext = {
-      tools: { register: vi.fn((_definition: unknown) => toolDisposers.shift() ?? vi.fn()) },
-      systemPrompt: { section: vi.fn(() => promptDisposer) },
+      tools: { register: vi.fn((_definition: unknown) => {
+        const dispose = vi.fn()
+        toolDisposers.push(dispose)
+        return dispose
+      }) },
+      systemPrompt: { section: vi.fn(() => {
+        const dispose = vi.fn()
+        promptDisposers.push(dispose)
+        return dispose
+      }) },
+      on: vi.fn(() => vi.fn()),
     }
     const standardContext = {
       tools: { register: vi.fn() },
       systemPrompt: { section: vi.fn() },
+      on: vi.fn(() => vi.fn()),
     }
+    const currentPreset = new Map<object, string>([
+      [creatorContext, 'standard'],
+      [standardContext, 'standard'],
+    ])
+    const creator = { id: 'creator', ctx: creatorContext, session: { id: 'creator', header: { cwd: '/creator' } }, steer: vi.fn() }
+    const standard = { id: 'standard', ctx: standardContext, session: { id: 'standard', header: { cwd: '/standard' } }, steer: vi.fn() }
+    const live = new Map<string, Agent>([
+      [creator.id, creator],
+      [standard.id, standard],
+    ])
     const host = {
+      agents: { get: vi.fn((sessionId: string) => live.get(sessionId)) },
       agentPresets: {
-        composedPreset: vi.fn((agentContext: object) => (
-          agentContext === creatorContext ? 'cordis' : 'standard'
-        )),
+        composedPreset: vi.fn((agentContext: object) => currentPreset.get(agentContext)),
       },
-      on: vi.fn((event: string, listener: (payload: { readonly agent: Agent }) => void) => {
-        listeners.set(event, listener)
-        return () => { listeners.delete(event) }
+      on: vi.fn((event: string, listener: unknown) => {
+        if (event === 'agent-preset/selected') {
+          presetSelected = listener as typeof presetSelected
+          return () => { presetSelected = undefined }
+        }
+        lifecycle.set(event, listener as (...args: never[]) => void)
+        return () => { lifecycle.delete(event) }
       }),
+      sessions: { flush: vi.fn(async () => true) },
+      logger: { warn: vi.fn() },
     }
     const registry = {} as AppConversationHostRegistry
     const dispose = installAppCreatorMode(host as never, registry)
 
-    listeners.get('agent/created')?.({ agent: { ctx: standardContext } })
+    lifecycle.get('agent/created')?.({ agent: standard } as never)
     expect(standardContext.tools.register).not.toHaveBeenCalled()
     expect(standardContext.systemPrompt.section).not.toHaveBeenCalled()
 
-    const creator = { ctx: creatorContext }
-    listeners.get('agent/created')?.({ agent: creator })
-    expect(creatorContext.tools.register).toHaveBeenCalledTimes(3)
+    lifecycle.get('agent/created')?.({ agent: creator } as never)
+    expect(creatorContext.tools.register).not.toHaveBeenCalled()
+
+    currentPreset.set(creatorContext, 'cordis')
+    presetSelected?.(creator.id, 'cordis')
+    expect(creatorContext.tools.register).toHaveBeenCalledTimes(4)
     expect(creatorContext.systemPrompt.section).toHaveBeenCalledWith(expect.objectContaining({
       name: 'deepdeck:app-creator',
     }))
 
+    currentPreset.set(creatorContext, 'standard')
+    presetSelected?.(creator.id, 'standard')
+    for (const stop of toolDisposers) expect(stop).toHaveBeenCalledOnce()
+    expect(promptDisposers[0]).toHaveBeenCalledOnce()
+
+    currentPreset.set(creatorContext, 'cordis')
+    presetSelected?.(creator.id, 'cordis')
+    expect(creatorContext.tools.register).toHaveBeenCalledTimes(8)
+    expect(creatorContext.systemPrompt.section).toHaveBeenCalledTimes(2)
+
     dispose()
-    expect(promptDisposer).toHaveBeenCalledOnce()
+    expect(presetSelected).toBeUndefined()
   })
 
   it('uses only the current Creator Workspace for context, rebuild, and restart', async () => {
@@ -75,6 +114,8 @@ describe('App Creator binding', () => {
       completedAt: '2026-08-23T00:00:00.000Z',
       durationMs: 125,
       hostReloaded: true,
+      clientReload: 'not-observed' as const,
+      appWindowsReloaded: 1,
       buildLog: 'built',
     }))
     const restartCreator = vi.fn(async () => ({
@@ -83,19 +124,171 @@ describe('App Creator binding', () => {
       restartScheduled: true as const,
     }))
     const registry = { creatorContext, rebuildCreator, restartCreator } as unknown as AppConversationHostRegistry
-    const [contextTool, rebuildTool, restartTool] = appCreatorToolDefinitions(registry)
+    const [contextTool, applyTool, rebuildTool, restartTool] = appCreatorToolDefinitions(registry)
     const signal = new AbortController().signal
     const exec = { agent: { session: { header: { cwd: '/plugins/reader' } } }, signal }
 
     expect(contextTool?.name).toBe('deepdeck_app_context')
+    expect(applyTool?.name).toBe('deepdeck_app_apply')
     expect(rebuildTool?.name).toBe('deepdeck_app_rebuild')
     expect(restartTool?.name).toBe('deepdeck_app_restart')
     await expect(contextTool?.execute({}, exec)).resolves.toContain('"appId": "reader"')
-    await expect(rebuildTool?.execute({}, exec)).resolves.toContain('"durationMs": 125')
+    await expect(applyTool?.execute({}, exec)).resolves.toContain('"outcome": "hot-reloaded"')
+    await expect(rebuildTool?.execute({}, exec)).resolves.toContain('"appWindowsReloaded": 1')
     await expect(restartTool?.execute({}, exec)).resolves.toContain('"restartScheduled": true')
     expect(creatorContext).toHaveBeenCalledWith('/plugins/reader', signal)
+    expect(rebuildCreator).toHaveBeenCalledTimes(2)
     expect(rebuildCreator).toHaveBeenCalledWith('/plugins/reader', signal)
     expect(restartCreator).toHaveBeenCalledWith('/plugins/reader', signal)
+  })
+
+  it('continues a dirty turn and applies automatically if the reminder is ignored', async () => {
+    const root = await temporaryRoot()
+    await writeFile(join(root, 'source.js'), 'export const value = 1\n')
+    const scoped = new Map<string, (...args: never[]) => unknown>()
+    const hostEvents = new Map<string, (...args: never[]) => void>()
+    const registered: unknown[] = []
+    const session = { id: 'creator', header: { cwd: root } }
+    const agent = {
+      id: 'creator',
+      session,
+      steer: vi.fn(),
+      ctx: {
+        tools: { register: vi.fn((definition: unknown) => { registered.push(definition); return vi.fn() }) },
+        systemPrompt: { section: vi.fn(() => vi.fn()) },
+        on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
+          scoped.set(event, listener)
+          return () => { scoped.delete(event) }
+        }),
+      },
+    }
+    const rebuildCreator = vi.fn(async () => ({
+      appId: 'reader',
+      packageName: '@deepdeck/reader',
+      completedAt: '2026-08-24T00:00:00.000Z',
+      durationMs: 10,
+      hostReloaded: true,
+      clientReload: 'not-observed' as const,
+      appWindowsReloaded: 0,
+      buildLog: 'built',
+    }))
+    const registry = {
+      creatorContext: vi.fn(async () => ({
+        appId: 'reader',
+        title: 'Reader',
+        packageName: '@deepdeck/reader',
+        sourcePackageRoot: root,
+        rebuildAvailable: true,
+      })),
+      rebuildCreator,
+    } as unknown as AppConversationHostRegistry
+    const host = {
+      agents: { get: vi.fn(() => agent) },
+      agentPresets: { composedPreset: vi.fn(() => 'cordis') },
+      sessions: { flush: vi.fn(async () => true) },
+      logger: { warn: vi.fn() },
+      on: vi.fn((event: string, listener: (...args: never[]) => void) => {
+        hostEvents.set(event, listener)
+        return () => { hostEvents.delete(event) }
+      }),
+    }
+    const dispose = installAppCreatorMode(host as never, registry)
+    hostEvents.get('agent/created')?.({ agent } as never)
+    expect(registered).toHaveLength(4)
+    await scoped.get('agent/pre-step')?.(
+      { agent, turn: 1, signal: new AbortController().signal } as never,
+      (async () => ({ kind: 'enter' })) as never,
+    )
+    await writeFile(join(root, 'source.js'), 'export const value = 2\n')
+    const stopping = scoped.get('agent/turn-stopping')
+    await stopping?.({ agent, turn: 1, signal: new AbortController().signal } as never)
+    expect(agent.steer).toHaveBeenCalledTimes(1)
+    expect(agent.steer).toHaveBeenCalledWith(expect.objectContaining({
+      id: expect.any(String),
+      role: 'user',
+      content: [expect.objectContaining({ type: 'text', text: expect.stringContaining('deepdeck_app_apply') })],
+      source: { kind: 'plugin', plugin: 'deepdeck-app-apply-guard' },
+    }))
+    expect(rebuildCreator).not.toHaveBeenCalled()
+
+    await stopping?.({ agent, turn: 1, signal: new AbortController().signal } as never)
+    expect(rebuildCreator).toHaveBeenCalledOnce()
+    expect(agent.steer).toHaveBeenCalledTimes(2)
+    await stopping?.({ agent, turn: 1, signal: new AbortController().signal } as never)
+    expect(agent.steer).toHaveBeenCalledTimes(2)
+    dispose()
+  })
+
+  it('queues structural changes and requests restart only after turn-end flush', async () => {
+    const root = await temporaryRoot()
+    await writeFile(join(root, 'package.json'), '{"name":"@deepdeck/reader","version":"1.0.0"}\n')
+    const scoped = new Map<string, (...args: never[]) => unknown>()
+    const hostEvents = new Map<string, (...args: never[]) => void>()
+    const registered: Array<{ readonly name: string; execute(args: unknown, exec: unknown): Promise<string> }> = []
+    const session = { id: 'creator', header: { cwd: root } }
+    const agent = {
+      id: 'creator',
+      session,
+      steer: vi.fn(),
+      ctx: {
+        tools: { register: vi.fn((definition: (typeof registered)[number]) => { registered.push(definition); return vi.fn() }) },
+        systemPrompt: { section: vi.fn(() => vi.fn()) },
+        on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
+          scoped.set(event, listener)
+          return () => { scoped.delete(event) }
+        }),
+      },
+    }
+    const order: string[] = []
+    const restartCreator = vi.fn(async () => {
+      order.push('restart')
+      return { appId: 'reader', packageName: '@deepdeck/reader', restartScheduled: true as const }
+    })
+    const registry = {
+      creatorContext: vi.fn(async () => ({
+        appId: 'reader',
+        title: 'Reader',
+        packageName: '@deepdeck/reader',
+        sourcePackageRoot: root,
+        rebuildAvailable: true,
+      })),
+      validateCreator: vi.fn(async () => ({
+        appId: 'reader',
+        packageName: '@deepdeck/reader',
+        completedAt: '2026-08-24T00:00:00.000Z',
+        durationMs: 20,
+        installLog: 'installed without lifecycle scripts',
+        buildLog: 'built',
+      })),
+      restartCreator,
+    } as unknown as AppConversationHostRegistry
+    const flush = vi.fn(async () => { order.push('flush'); return true })
+    const host = {
+      agents: { get: vi.fn(() => agent) },
+      agentPresets: { composedPreset: vi.fn(() => 'cordis') },
+      sessions: { flush },
+      logger: { warn: vi.fn() },
+      on: vi.fn((event: string, listener: (...args: never[]) => void) => {
+        hostEvents.set(event, listener)
+        return () => { hostEvents.delete(event) }
+      }),
+    }
+    const dispose = installAppCreatorMode(host as never, registry)
+    hostEvents.get('agent/created')?.({ agent } as never)
+    await scoped.get('agent/pre-step')?.(
+      { agent, turn: 1, signal: new AbortController().signal } as never,
+      (async () => ({ kind: 'enter' })) as never,
+    )
+    await writeFile(join(root, 'package.json'), '{"name":"@deepdeck/reader","version":"1.1.0"}\n')
+    const applyTool = registered.find(tool => tool.name === 'deepdeck_app_apply')
+    await expect(applyTool?.execute({}, { agent, signal: new AbortController().signal }))
+      .resolves.toContain('"outcome": "restart-queued"')
+    expect(restartCreator).not.toHaveBeenCalled()
+
+    hostEvents.get('session/event')?.(session as never, { type: 'turn/end' } as never)
+    await vi.waitFor(() => expect(restartCreator).toHaveBeenCalledOnce())
+    expect(order).toEqual(['flush', 'restart'])
+    dispose()
   })
 
   it('refuses a Creator session without a Workspace before touching the registry', async () => {
@@ -175,5 +368,50 @@ describe('App source registry', () => {
     await expect(registry.restartCreator(join(root, 'other')))
       .rejects.toThrow('not a registered DeepDeck App source')
     expect(requestRestart).toHaveBeenCalledOnce()
+  })
+
+  it('validates structural Creator changes through the reviewed source build', async () => {
+    const root = await temporaryRoot()
+    const source = join(root, 'reader')
+    await mkdir(source)
+    const buildSource = vi.fn(async () => ({
+      packageName: '@deepdeck/reader',
+      version: '1.1.0',
+      sourcePackageRoot: source,
+      completedAt: '2026-08-24T01:00:00.000Z',
+      logs: { install: 'ignored lifecycle scripts', build: 'built reader' },
+    }))
+    const discard = vi.fn(async () => {})
+    const registry = new DefaultAppConversationHostRegistry(
+      { create: vi.fn(async path => ({ id: 'workspace', path, title: path })) },
+      root,
+      {
+        preview: vi.fn(async () => ({
+          previewId: 'preview',
+          packageName: '@deepdeck/reader',
+          confirmation: 'confirm',
+          hotUpdateAvailable: true,
+        })),
+        buildSource,
+        hotUpdate: vi.fn(),
+        discard,
+      },
+    )
+    registry.register({
+      id: 'reader',
+      title: 'Reader',
+      workspaceSlug: 'reader',
+      packageName: '@deepdeck/reader',
+      sourcePackageRoot: source,
+    })
+
+    await expect(registry.validateCreator(source)).resolves.toMatchObject({
+      appId: 'reader',
+      packageName: '@deepdeck/reader',
+      installLog: 'ignored lifecycle scripts',
+      buildLog: 'built reader',
+    })
+    expect(buildSource).toHaveBeenCalledWith({ previewId: 'preview', confirmation: 'confirm' })
+    expect(discard).toHaveBeenCalledOnce()
   })
 })
