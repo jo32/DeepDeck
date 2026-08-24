@@ -10,6 +10,7 @@ import {
   readdir,
   realpath,
   rm,
+  symlink,
 } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import {
@@ -372,11 +373,11 @@ function isInside(parent: string, candidate: string): boolean {
   return fromParent === '' || (!fromParent.startsWith('..') && !isAbsolute(fromParent))
 }
 
-function childEnvironment(
+async function childEnvironment(
   base: NodeJS.ProcessEnv,
   bunBinary: string,
   cacheRoot: string,
-): NodeJS.ProcessEnv {
+): Promise<NodeJS.ProcessEnv> {
   const environment: NodeJS.ProcessEnv = {}
   for (const key of [
     'LANG',
@@ -392,7 +393,16 @@ function childEnvironment(
   ]) {
     if (base[key] !== undefined) environment[key] = base[key]
   }
-  environment.PATH = [dirname(bunBinary), dirname(process.execPath), base.PATH ?? '']
+  const commandDirectories = [dirname(bunBinary), dirname(process.execPath), base.PATH ?? '']
+  if (process.platform !== 'win32') {
+    const toolDirectory = join(cacheRoot, 'bin')
+    const bunCommand = join(toolDirectory, 'bun')
+    await mkdir(toolDirectory, { recursive: true, mode: 0o700 })
+    await rm(bunCommand, { force: true })
+    await symlink(bunBinary, bunCommand)
+    commandDirectories.unshift(toolDirectory)
+  }
+  environment.PATH = commandDirectories
     .filter(Boolean)
     .join(delimiter)
   environment.CI = '1'
@@ -471,7 +481,7 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
       await regularFile(this.bunBinary, 'Bun runtime')
       const outcome = await this.processRunner(this.bunBinary, ['--version'], {
         cwd: this.stateRoot,
-        environment: childEnvironment(this.environment, this.bunBinary, join(this.stateRoot, 'cache')),
+        environment: await childEnvironment(this.environment, this.bunBinary, join(this.stateRoot, 'cache')),
         timeoutMs: 10_000,
         ...(signal === undefined ? {} : { signal }),
       })
@@ -591,7 +601,7 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
       await mkdir(cacheRoot, { recursive: true, mode: 0o700 })
       await rm(artifactRoot, { recursive: true, force: true })
       await mkdir(artifactRoot, { recursive: true, mode: 0o700 })
-      const environment = childEnvironment(this.environment, this.bunBinary, cacheRoot)
+      const environment = await childEnvironment(this.environment, this.bunBinary, cacheRoot)
 
       const installArgs = ['install', '--ignore-scripts', '--linker', 'isolated']
       if (job.preview.frozenInstall) installArgs.push('--frozen-lockfile')
@@ -701,7 +711,7 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
       await this.validateLiveSource(job)
       const cacheRoot = join(this.stateRoot, 'cache')
       await mkdir(cacheRoot, { recursive: true, mode: 0o700 })
-      const environment = childEnvironment(this.environment, this.bunBinary, cacheRoot)
+      const environment = await childEnvironment(this.environment, this.bunBinary, cacheRoot)
       const liveInstallRoot = resolve(job.sourceRoot, relative(job.snapshotRoot, job.installRoot))
       if (!isInside(job.sourceRoot, liveInstallRoot)) throw new Error('install directory escaped the reviewed source')
 
@@ -777,7 +787,7 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
 
       const cacheRoot = join(this.stateRoot, 'cache')
       await mkdir(cacheRoot, { recursive: true, mode: 0o700 })
-      const environment = childEnvironment(this.environment, this.bunBinary, cacheRoot)
+      const environment = await childEnvironment(this.environment, this.bunBinary, cacheRoot)
       const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
         cwd: job.sourcePackageRoot,
         environment,

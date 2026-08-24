@@ -1,6 +1,6 @@
 import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
@@ -181,10 +181,15 @@ describe('DeepDeckBunPluginBuilder', () => {
   it('installs dependencies and builds a reviewed managed source in place', async () => {
     const paths = await fixture({ lockfile: true })
     const calls: Array<{ readonly args: readonly string[]; readonly cwd: string }> = []
+    let buildPath: string | undefined
+    const baseRunner = successfulRunner(calls)
     const builder = new DeepDeckBunPluginBuilder({
       ...paths,
       now: () => Date.parse('2026-08-24T02:00:00.000Z'),
-      runProcess: successfulRunner(calls),
+      runProcess: async (command, args, options) => {
+        if (args[0] === 'run') buildPath = options.environment.PATH
+        return await baseRunner(command, args, options)
+      },
     })
 
     const preview = await builder.preview({ sourceDirectory: paths.source })
@@ -206,6 +211,13 @@ describe('DeepDeckBunPluginBuilder', () => {
       { args: ['install', '--ignore-scripts', '--linker', 'isolated', '--frozen-lockfile'], cwd: liveSource },
       { args: ['run', 'build'], cwd: liveSource },
     ])
+    const expectedBunDirectory = process.platform === 'win32'
+      ? dirname(paths.bunBinary)
+      : join(paths.stateRoot, 'cache', 'bin')
+    expect(buildPath?.split(delimiter)[0]).toBe(expectedBunDirectory)
+    if (process.platform !== 'win32') {
+      await expect(realpath(join(expectedBunDirectory, 'bun'))).resolves.toBe(await realpath(paths.bunBinary))
+    }
     await expect(readFile(join(liveSource, 'lib', 'index.js'), 'utf8')).resolves.toContain('value = 1')
   })
 
