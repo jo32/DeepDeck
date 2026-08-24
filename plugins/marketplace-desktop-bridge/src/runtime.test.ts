@@ -1,4 +1,5 @@
-import { homedir } from 'node:os'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
@@ -61,5 +62,53 @@ describe('Community Market runtime paths', () => {
         },
       },
     })
+  })
+
+  it('commits an awaiting install when a new generation starts the next protected install', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'deepdeck-install-recovery-'))
+    const profile = { name: 'web', dir: join(root, 'profile') }
+    const cliPath = join(root, 'cli.mjs')
+    const statePath = join(root, 'deepdeck', 'recovery.json')
+    await mkdir(profile.dir, { recursive: true })
+    await writeFile(cliPath, '')
+    await writeFile(join(profile.dir, 'package.json'), `${JSON.stringify({
+      dependencies: {},
+      dsh: { profile: { bundles: [] } },
+    })}\n`)
+
+    try {
+      const first = new DeepDeckCommunityMarketPnpm(
+        profile,
+        root,
+        process.execPath,
+        cliPath,
+        statePath,
+      )
+      const firstHandle = await first.runPluginInstall(
+        ['add', '@fixture/first'],
+        profile.dir,
+        { packageName: '@fixture/first', packageVersion: '1.0.0', receiptId: 'first-receipt' },
+      )
+      await expect(firstHandle.done).resolves.toEqual({ exitCode: 0, signal: null })
+      await expect(readFile(statePath, 'utf8')).resolves.toContain('"phase":"awaiting-restart"')
+
+      const second = new DeepDeckCommunityMarketPnpm(
+        profile,
+        root,
+        process.execPath,
+        cliPath,
+        statePath,
+      )
+      const secondHandle = await second.runPluginInstall(
+        ['add', '@fixture/second'],
+        profile.dir,
+        { packageName: '@fixture/second', packageVersion: '2.0.0', receiptId: 'second-receipt' },
+      )
+      await expect(secondHandle.done).resolves.toEqual({ exitCode: 0, signal: null })
+      const current = JSON.parse(await readFile(statePath, 'utf8')) as { receiptId: string; phase: string }
+      expect(current).toMatchObject({ receiptId: 'second-receipt', phase: 'awaiting-restart' })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })

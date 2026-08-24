@@ -175,7 +175,19 @@ class InstallRecoveryStore {
   }): Promise<void> {
     const existing = await this.read()
     if (existing !== undefined) {
-      throw new Error('A protected community market install is already pending restart or recovery')
+      if (existing.generationId !== this.generationId && existing.phase === 'awaiting-restart') {
+        // Starting another protected install from a new Host/Renderer generation
+        // proves the previous installation restarted successfully. App installs do
+        // not pass through the Community Market receipt reconciliation path, so
+        // commit that successful transaction here as well.
+        await this.clear()
+      } else if (existing.phase === 'awaiting-restart') {
+        throw new Error(
+          `插件 ${existing.packageName}@${existing.packageVersion} 已安装，正在等待重启验证。请重启 DeepDeck 后再安装其他插件。`,
+        )
+      } else {
+        throw new Error('上一笔受保护的插件安装仍在恢复处理中。请重启 DeepDeck 后重试。')
+      }
     }
     const before = Object.fromEntries(await Promise.all(RECOVERY_FILES.map(async (filename) => {
       const path = join(this.profileDir, filename)

@@ -42,6 +42,15 @@ function completedHandle(output = ''): AppInstallerPnpmHandle {
   return { stdout, stderr, done: Promise.resolve(outcome), cancel: vi.fn() }
 }
 
+function failedHandle(output = ''): AppInstallerPnpmHandle {
+  const stdout = new PassThrough()
+  const stderr = new PassThrough()
+  stdout.end()
+  stderr.end(output)
+  const outcome: AppInstallerPnpmOutcome = { exitCode: 1, signal: null }
+  return { stdout, stderr, done: Promise.resolve(outcome), cancel: vi.fn() }
+}
+
 async function fixture(): Promise<{
   readonly root: string
   readonly source: string
@@ -131,6 +140,7 @@ describe('DeepDeckAppPackageManager', () => {
         runPlugin: vi.fn(),
         runPluginInstall,
         rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
       },
       requestRestart: vi.fn(async () => {}),
       homeDirectory: paths.home,
@@ -181,6 +191,7 @@ describe('DeepDeckAppPackageManager', () => {
         runPlugin: vi.fn(),
         runPluginInstall,
         rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
       },
       requestRestart: vi.fn(async () => {}),
       homeDirectory: paths.home,
@@ -210,6 +221,7 @@ describe('DeepDeckAppPackageManager', () => {
           return completedHandle()
         }),
         rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
       },
       requestRestart: vi.fn(async () => {}),
       homeDirectory: paths.home,
@@ -241,6 +253,7 @@ describe('DeepDeckAppPackageManager', () => {
           return completedHandle()
         }),
         rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
       },
       requestRestart: vi.fn(async () => {}),
       homeDirectory: paths.home,
@@ -275,6 +288,7 @@ describe('DeepDeckAppPackageManager', () => {
           return completedHandle()
         }),
         rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
       },
       requestRestart: vi.fn(async () => {}),
       homeDirectory: paths.home,
@@ -307,6 +321,7 @@ describe('DeepDeckAppPackageManager', () => {
           return completedHandle()
         }),
         rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
       },
       requestRestart: vi.fn(async () => {}),
       homeDirectory: paths.home,
@@ -327,6 +342,31 @@ describe('DeepDeckAppPackageManager', () => {
       sourceKind: 'git-repository',
       source: 'https://example.com/reader',
     })
+  })
+
+  it('acknowledges its recovery record after a protected App install rolls back', async () => {
+    const paths = await fixture()
+    const rollbackPluginInstall = vi.fn(async () => true)
+    const acknowledgeRecoveredInstall = vi.fn(async () => {})
+    const manager = new DeepDeckAppPackageManager({
+      builder: builder(),
+      profile: paths.profile,
+      pnpm: {
+        runPlugin: vi.fn(),
+        runPluginInstall: vi.fn(async () => failedHandle('fixture package failure')),
+        rollbackPluginInstall,
+        acknowledgeRecoveredInstall,
+      },
+      requestRestart: vi.fn(async () => {}),
+      homeDirectory: paths.home,
+    })
+
+    const preview = await manager.preview(paths.source)
+    await expect(manager.install(preview.previewId)).rejects.toThrow('fixture package failure')
+    expect(rollbackPluginInstall).toHaveBeenCalledOnce()
+    expect(acknowledgeRecoveredInstall).toHaveBeenCalledWith(
+      rollbackPluginInstall.mock.calls[0]?.[0],
+    )
   })
 
   it('uninstalls the profile dependency while retaining its Vibe source directory', async () => {
@@ -350,6 +390,7 @@ describe('DeepDeckAppPackageManager', () => {
         runPlugin,
         runPluginInstall: vi.fn(async () => completedHandle()),
         rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
       },
       requestRestart: vi.fn(async () => {}),
       homeDirectory: paths.home,

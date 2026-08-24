@@ -94,6 +94,7 @@ export interface AppInstallerPnpm {
     signal?: AbortSignal,
   ): Promise<AppInstallerPnpmHandle>
   rollbackPluginInstall(receiptId: string): Promise<boolean>
+  acknowledgeRecoveredInstall(receiptId: string): Promise<void>
 }
 
 interface AppManifestIdentity {
@@ -682,7 +683,10 @@ export class DeepDeckAppPackageManager {
           restartRequired: true,
         })
       } catch (cause) {
-        if (recoveryId !== undefined) await this.pnpm.rollbackPluginInstall(recoveryId).catch(() => {})
+        if (recoveryId !== undefined) {
+          const restored = await this.pnpm.rollbackPluginInstall(recoveryId).catch(() => false)
+          if (restored) await this.pnpm.acknowledgeRecoveredInstall(recoveryId).catch(() => {})
+        }
         if (moved && preview.stagingRoot !== undefined) {
           await mkdir(dirname(preview.sourceRoot), { recursive: true, mode: 0o700 })
           await rename(preview.finalDirectory, preview.sourceRoot).catch(() => {})
