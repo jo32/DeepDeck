@@ -1,6 +1,6 @@
 import Image from "next/image";
-
-export type SiteLocale = "zh" | "en";
+import { setSiteLocale } from "../actions";
+import type { SiteLocale } from "../../lib/locale";
 
 const githubUrl = "https://github.com/jo32/DeepDeck";
 const releaseUrl = `${githubUrl}/releases/latest`;
@@ -38,8 +38,8 @@ const copy = {
       downloadShort: "下载",
     },
     language: {
-      href: "/en",
-      hrefLang: "en",
+      locale: "en",
+      lang: "en",
       label: "EN",
       ariaLabel: "Switch to English",
     },
@@ -90,8 +90,8 @@ const copy = {
       downloadShort: "Download",
     },
     language: {
-      href: "/",
-      hrefLang: "zh-CN",
+      locale: "zh",
+      lang: "zh-CN",
       label: "中文",
       ariaLabel: "切换到中文",
     },
@@ -153,15 +153,17 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>
           </nav>
           <div className="nav-actions">
-            <a
-              className="language-link"
-              href={content.language.href}
-              hrefLang={content.language.hrefLang}
-              lang={content.language.hrefLang}
-              aria-label={content.language.ariaLabel}
-            >
-              {content.language.label}
-            </a>
+            <form action={setSiteLocale} className="language-form">
+              <input type="hidden" name="locale" value={content.language.locale} />
+              <button
+                className="language-link"
+                type="submit"
+                lang={content.language.lang}
+                aria-label={content.language.ariaLabel}
+              >
+                {content.language.label}
+              </button>
+            </form>
             <a className="nav-cta" href={releaseUrl} target="_blank" rel="noreferrer">
               <span className="nav-cta-long">{content.nav.download}</span>
               <span className="nav-cta-short">{content.nav.downloadShort}</span>

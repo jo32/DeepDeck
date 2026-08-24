@@ -115,6 +115,11 @@ main {
   gap: 10px;
 }
 
+.language-form {
+  display: flex;
+  margin: 0;
+}
+
 .language-link {
   display: inline-flex;
   align-items: center;
@@ -124,6 +129,9 @@ main {
   padding: 0 11px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 540;
 }
