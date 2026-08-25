@@ -5,3 +5,7 @@
 [submodule "vendor/dsh-codex-connect"]
 	path = vendor/dsh-codex-connect
 	url = https://github.com/franksong2702/dsh-codex-connect.git
+[submodule "vendor/dsh-market"]
+	path = vendor/dsh-market
+	url = https://github.com/dsh-market/dsh-market.git
+	shallow = true

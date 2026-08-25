@@ -184,10 +184,17 @@ export interface HomeHeroArtworkProps {
     readonly phase: 'plain' | 'adjudicating' | 'claimed' | 'submitting'
   }
   readonly t: TranslateNS<'homeHero'>
+  /** Reports that the title mask and fallback character frame are committed. */
+  readonly onCompositionReady?: () => void
 }
 
 /** One persistent Alien Orb, mounted through the session-scoped input dock. */
-export function HomeHeroArtwork({ session, input, t }: HomeHeroArtworkProps) {
+export function HomeHeroArtwork({
+  session,
+  input,
+  t,
+  onCompositionReady,
+}: HomeHeroArtworkProps) {
   const [presentation, setPresentation] = useState<{
     expression: OrbExpression
     epoch: number
@@ -214,7 +221,14 @@ export function HomeHeroArtwork({ session, input, t }: HomeHeroArtworkProps) {
   }
 
   const readHeroTarget = () => launchRect(heroTargetRef.current)
-  const handleRendererReady = useCallback(() => { setRendererReady(true) }, [])
+  const handleRendererReady = useCallback(() => {
+    setRendererReady(true)
+  }, [])
+
+  // A hidden WebContentsView does not advance animation frames. Report the
+  // synchronous mask/fallback commit instead of waiting for Three's rAF-based
+  // ready signal, otherwise the native splash and the renderer deadlock.
+  useEffect(() => { onCompositionReady?.() }, [onCompositionReady])
 
   // Publish the compact position before a session-key remount. The new blank
   // instance consumes it in its first layout pass and continues the motion.

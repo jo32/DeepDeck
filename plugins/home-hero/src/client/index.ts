@@ -19,10 +19,15 @@ const en: Record<HomeHeroKey, string> = {
   characterLabel: 'Alien Orb character; eyes follow the pointer and the character can be dragged to rotate',
 }
 
-export const inject = ['slots', 'locale']
+export const inject = ['slots', 'locale', 'deepdeckBrandComposition']
+
+interface BrandCompositionReporter {
+  markReady(): void
+}
 
 /** Install one traveling-and-docked 3D Alien through the session dock slot. */
 export function apply(ctx: ClientContext): void {
+  const brandComposition = ctx.get('deepdeckBrandComposition') as BrandCompositionReporter
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'deepdeck home hero: dictionaries')
 
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
@@ -30,5 +35,8 @@ export function apply(ctx: ClientContext): void {
     id: 'deepdeck-home-hero',
     order: -1000,
     locale: NS,
+    inject: () => ({
+      onCompositionReady: () => { brandComposition.markReady() },
+    }),
   }, HomeHeroArtwork))
 }

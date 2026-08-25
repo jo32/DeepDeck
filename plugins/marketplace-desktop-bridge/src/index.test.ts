@@ -23,7 +23,9 @@ describe('createCommunityMarketDesktopServices', () => {
           receive?.({
             type: APP_WINDOWS_RELOAD_RESULT,
             requestId: message.requestId,
+            matched: 3,
             reloaded: 2,
+            failed: 1,
           })
         }
         return true
@@ -38,7 +40,7 @@ describe('createCommunityMarketDesktopServices', () => {
       desktopActions: {
         openTerminal(): void
         requestRestart(): Promise<void>
-        reloadAppWindows(path: string): Promise<number>
+        reloadAppWindows(path: string): Promise<{ matched: number; reloaded: number; failed: number }>
       }
     }
 
@@ -48,7 +50,11 @@ describe('createCommunityMarketDesktopServices', () => {
     })
 
     services.desktopActions.openTerminal()
-    await expect(services.desktopActions.reloadAppWindows('/apps/reader')).resolves.toBe(2)
+    await expect(services.desktopActions.reloadAppWindows('/apps/reader')).resolves.toEqual({
+      matched: 3,
+      reloaded: 2,
+      failed: 1,
+    })
     await services.desktopActions.requestRestart()
     await services.desktopActions.requestRestart()
     expect(messages).toEqual([

@@ -149,6 +149,9 @@ jobs:
           else
             app="release/mac-${{ matrix.arch }}/DeepDeck.app"
           fi
+          computer_use_app="$app/Contents/Resources/plugins/computer-use/node_modules/open-computer-use/dist/Open Computer Use.app"
+          test -d "$computer_use_app"
+          codesign --verify --deep --strict --verbose=2 "$computer_use_app"
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
           if command -v syspolicy_check >/dev/null 2>&1; then

@@ -39,8 +39,16 @@ export type CommunityMarketDesktopMessage =
 export interface AppWindowsReloadResponse {
   readonly type: typeof APP_WINDOWS_RELOAD_RESULT
   readonly requestId: string
+  readonly matched: number
   readonly reloaded: number
+  readonly failed: number
   readonly error?: string
+}
+
+export interface AppWindowReloadReceipt {
+  readonly matched: number
+  readonly reloaded: number
+  readonly failed: number
 }
 
 type SendToDesktop = (message: CommunityMarketDesktopMessage) => boolean
@@ -118,19 +126,19 @@ export function createCommunityMarketDesktopServices(
         restartRequested = true
         defer(() => { send({ type: COMMUNITY_MARKET_RESTART_REQUEST }) }, 100)
       },
-      reloadAppWindows: async (path: string): Promise<number> => {
+      reloadAppWindows: async (path: string): Promise<AppWindowReloadReceipt> => {
         if (send === undefined) throw new Error('DeepDeck App window reload requires a desktop IPC parent')
         const requestId = randomUUID()
-        return await new Promise<number>((resolve, reject) => {
+        return await new Promise<AppWindowReloadReceipt>((resolve, reject) => {
           let settled = false
           let stop = (): void => {}
           let timeout: ReturnType<typeof setTimeout> | undefined
-          const finish = (error: Error | undefined, reloaded = 0): void => {
+          const finish = (error: Error | undefined, receipt?: AppWindowReloadReceipt): void => {
             if (settled) return
             settled = true
             if (timeout !== undefined) clearTimeout(timeout)
             stop()
-            if (error === undefined) resolve(reloaded)
+            if (error === undefined && receipt !== undefined) resolve(receipt)
             else reject(error)
           }
           stop = subscribe((message) => {
@@ -138,8 +146,17 @@ export function createCommunityMarketDesktopServices(
             const result = message as Partial<AppWindowsReloadResponse>
             if (result.type !== APP_WINDOWS_RELOAD_RESULT || result.requestId !== requestId) return
             if (typeof result.error === 'string') finish(new Error(result.error))
-            else if (typeof result.reloaded === 'number' && Number.isSafeInteger(result.reloaded) && result.reloaded >= 0) {
-              finish(undefined, result.reloaded)
+            else if (
+              typeof result.matched === 'number' && Number.isSafeInteger(result.matched) && result.matched >= 0
+              && typeof result.reloaded === 'number' && Number.isSafeInteger(result.reloaded) && result.reloaded >= 0
+              && typeof result.failed === 'number' && Number.isSafeInteger(result.failed) && result.failed >= 0
+              && result.reloaded + result.failed === result.matched
+            ) {
+              finish(undefined, Object.freeze({
+                matched: result.matched,
+                reloaded: result.reloaded,
+                failed: result.failed,
+              }))
             } else finish(new Error('DeepDeck returned an invalid App window reload result'))
           })
           timeout = setTimeout(() => finish(new Error('DeepDeck App window reload timed out')), 20_000)

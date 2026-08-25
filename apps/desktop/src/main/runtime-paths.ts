@@ -81,6 +81,10 @@ export function resolveDesktopRuntimePaths(
           path: join(options.resourcesPath, "plugins", "app-conversations"),
         },
         {
+          packageName: "@deepdeck/dsh-computer-use",
+          path: join(options.resourcesPath, "plugins", "computer-use"),
+        },
+        {
           packageName: "dsh-codex-connect",
           path: join(options.resourcesPath, "harness", "node_modules", "dsh-codex-connect"),
           presetBundle: true,
@@ -172,6 +176,14 @@ export function resolveDesktopRuntimePaths(
           environment,
           "DEEPDECK_APP_CONVERSATIONS_PLUGIN",
           join(workspaceRepository, "plugins", "app-conversations"),
+        ),
+      },
+      {
+        packageName: "@deepdeck/dsh-computer-use",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_COMPUTER_USE_PLUGIN",
+          join(workspaceRepository, "plugins", "computer-use"),
         ),
       },
       {

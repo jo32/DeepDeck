@@ -1,5 +1,6 @@
 export const APP_CONVERSATION_API_PATH = '/api/deepdeck/app-conversations'
 export const APP_CONVERSATION_CHANNEL = 'deepdeck-app-conversations-v1'
+export const APP_CREATOR_PROTOCOL_VERSION = 2
 export const APP_CONVERSATION_PAGE_SOURCE = 'deepdeck-app-page'
 export const APP_CONVERSATION_RUNTIME_SOURCE = 'deepdeck-app-runtime'
 
@@ -87,14 +88,23 @@ export interface AppUpdateContext {
 export interface AppRebuildResult {
   readonly appId: string
   readonly packageName: string
+  readonly applyId: string
+  readonly sourceDigest: string
+  readonly outputRevision: string
   readonly completedAt: string
   readonly durationMs: number
+  readonly buildSucceeded: true
   readonly hostReloaded: boolean
-  /** Client replacement is asynchronous and is not acknowledged by the Harness client. */
-  readonly clientReload: 'not-observed'
-  /** Secondary App windows that completed a reload against the new Host output. */
+  readonly hostRuntime: 'confirmed' | 'not-confirmed'
+  /** Target Client registration observed after the HMR request, when available. */
+  readonly clientReload: 'confirmed' | 'not-observed'
+  readonly clientRuntime: 'confirmed' | 'not-observed'
+  /** Secondary App windows matched and completed/failed a reload against the new Host output. */
+  readonly appWindowsMatched: number
   readonly appWindowsReloaded: number
+  readonly appWindowsFailed: number
   readonly appWindowsReloadError?: string
+  readonly userActionRequired: 'reopen-app-window' | 'verify-host-runtime' | null
   readonly buildLog: string
 }
 
@@ -102,8 +112,14 @@ export interface AppRebuildResult {
 export interface AppBuildValidationResult {
   readonly appId: string
   readonly packageName: string
+  readonly applyId: string
+  readonly sourceDigest: string
+  readonly outputRevision: string
   readonly completedAt: string
   readonly durationMs: number
+  readonly buildSucceeded: true
+  readonly runtimeRestart: 'queued-after-turn-flush'
+  readonly userActionRequired: 'restart-pending'
   readonly installLog: string
   readonly buildLog: string
 }
@@ -112,15 +128,23 @@ export interface AppBuildValidationResult {
 export interface AppApplyResult {
   readonly appId: string
   readonly packageName: string
+  readonly applyId: string
+  readonly sourceDigest: string
+  readonly outputRevision: string
   readonly completedAt: string
   readonly durationMs: number
   readonly outcome: 'hot-reloaded' | 'restart-queued'
   readonly buildSucceeded: true
   readonly hostReloaded: boolean
-  readonly clientReload: 'not-observed' | 'restart-queued'
+  readonly hostRuntime: 'confirmed' | 'not-confirmed' | 'restart-queued'
+  readonly clientReload: 'confirmed' | 'not-observed' | 'restart-queued'
+  readonly clientRuntime: 'confirmed' | 'not-observed' | 'restart-queued'
+  readonly appWindowsMatched: number
   readonly appWindowsReloaded: number
+  readonly appWindowsFailed: number
   readonly appWindowsReloadError?: string
   readonly runtimeRestart: 'not-required' | 'queued-after-turn-flush'
+  readonly userActionRequired: 'reopen-app-window' | 'verify-host-runtime' | 'restart-pending' | null
   readonly changedFiles: readonly string[]
   readonly installLog?: string
   readonly buildLog: string
@@ -194,6 +218,36 @@ export interface AppCreatorContext {
   readonly sourcePackageRoot: string
   readonly rebuildAvailable: boolean
   readonly rebuildReason?: string
+  readonly applyState: AppPersistedApplyState
+}
+
+export interface AppPersistedApplyState {
+  readonly status: 'unknown' | 'applied' | 'restart-queued'
+  readonly appliedDigest?: string
+  readonly pendingRestartDigest?: string
+  readonly lastApplyId?: string
+  readonly lastAppliedAt?: string
+  readonly outputRevision?: string
+}
+
+export interface AppCreatorReadyResult {
+  readonly protocolVersion: typeof APP_CREATOR_PROTOCOL_VERSION
+  readonly sessionId: string
+  readonly appId: string
+  readonly agentPreset: 'cordis'
+  readonly sourcePackageRoot: string
+  readonly tools: readonly [
+    'deepdeck_app_context',
+    'deepdeck_app_apply',
+    'deepdeck_app_rebuild',
+    'deepdeck_app_restart',
+  ]
+}
+
+export interface AppWindowReloadReceipt {
+  readonly matched: number
+  readonly reloaded: number
+  readonly failed: number
 }
 
 export interface AppConversationWorkspace {
@@ -207,7 +261,15 @@ export interface AppConversationHostRegistry {
   register(definition: AppConversationHostDefinition): () => void
   resolve(appId: string): Promise<AppConversationWorkspace>
   resolveCreator(appId: string): Promise<AppConversationWorkspace>
+  isCreatorSource(cwd: string): boolean
   creatorContext(cwd: string, signal?: AbortSignal): Promise<AppCreatorContext>
+  applyState(cwd: string, signal?: AbortSignal): Promise<AppPersistedApplyState>
+  changedFilesSinceApply(
+    cwd: string,
+    currentFiles: Readonly<Record<string, string>>,
+    signal?: AbortSignal,
+  ): Promise<readonly string[] | undefined>
+  noteClientReady(appId: string): void
   list(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]>
   updateContext(appId: string, signal?: AbortSignal): Promise<AppUpdateContext>
   rebuild(appId: string, signal?: AbortSignal): Promise<AppRebuildResult>

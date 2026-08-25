@@ -3,9 +3,11 @@ import type {
   AppApplyResult,
   AppConversationHostRegistry,
   AppCreatorContext,
+  AppCreatorReadyResult,
   AppRebuildResult,
   AppRestartResult,
 } from './contracts.js'
+import { APP_CREATOR_PROTOCOL_VERSION } from './contracts.js'
 import {
   changedWorkspaceFiles,
   requiresRuntimeRestart,
@@ -99,11 +101,10 @@ interface CreatorAgentState {
   readonly agent: CreatorAgent
   readonly cwd: string
   context?: AppCreatorContext
-  unbound?: true
   turn?: number
   turnBaseline?: AppWorkspaceSnapshot
-  lastApplied?: AppWorkspaceSnapshot
   failedDigest?: string
+  guardFailure?: string
   pendingRestart: boolean
   restartDispatchStarted: boolean
   steeredDigest?: string
@@ -146,6 +147,7 @@ function renderContext(context: AppCreatorContext): string {
     sourcePackageRoot: context.sourcePackageRoot,
     rebuildAvailable: context.rebuildAvailable,
     ...(context.rebuildReason === undefined ? {} : { rebuildReason: context.rebuildReason }),
+    applyState: context.applyState,
   }, null, 2)
 }
 
@@ -153,15 +155,23 @@ function applyFromRebuild(result: AppRebuildResult, changedFiles: readonly strin
   return Object.freeze({
     appId: result.appId,
     packageName: result.packageName,
+    applyId: result.applyId,
+    sourceDigest: result.sourceDigest,
+    outputRevision: result.outputRevision,
     completedAt: result.completedAt,
     durationMs: result.durationMs,
     outcome: 'hot-reloaded',
     buildSucceeded: true,
     hostReloaded: result.hostReloaded,
+    hostRuntime: result.hostRuntime,
     clientReload: result.clientReload,
+    clientRuntime: result.clientRuntime,
+    appWindowsMatched: result.appWindowsMatched,
     appWindowsReloaded: result.appWindowsReloaded,
+    appWindowsFailed: result.appWindowsFailed,
     ...(result.appWindowsReloadError === undefined ? {} : { appWindowsReloadError: result.appWindowsReloadError }),
     runtimeRestart: 'not-required',
+    userActionRequired: result.userActionRequired,
     changedFiles,
     buildLog: result.buildLog,
   })
@@ -236,43 +246,34 @@ export function appCreatorToolDefinitions(
   ]
 }
 
-/** Install App tools and the deterministic apply guard into live `cordis` Creator agents. */
+/** Install App tools and the deterministic apply guard into every source-bound Agent. */
 export function installAppCreatorMode(
   ctx: CreatorModeHostContext,
   registry: AppConversationHostRegistry,
-): () => void {
+): (() => void) & {
+  assertReady(sessionId: string, appId: string, signal?: AbortSignal): Promise<AppCreatorReadyResult>
+} {
   const registrations = new Set<() => void>()
   const agents = new WeakMap<object, () => void>()
   const states = new WeakMap<object, CreatorAgentState>()
   const sessions = new WeakMap<object, CreatorAgentState>()
 
-  const ensureBound = async (state: CreatorAgentState, signal?: AbortSignal): Promise<boolean> => {
-    if (state.context !== undefined) return true
-    if (state.unbound) return false
-    if (state.cwd.length === 0) {
-      state.unbound = true
-      return false
-    }
-    try {
-      state.context = await registry.creatorContext(state.cwd, signal)
-    } catch (error) {
-      if (signal?.aborted === true) throw error
-      state.unbound = true
-      return false
-    }
-    const snapshot = await snapshotAppWorkspace(state.cwd, signal)
-    state.lastApplied ??= snapshot
-    state.turnBaseline ??= snapshot
-    return true
+  const ensureBound = async (state: CreatorAgentState, signal?: AbortSignal): Promise<AppCreatorContext> => {
+    if (state.cwd.length === 0) throw new Error('This Creator session is not attached to a Workspace.')
+    state.context ??= await registry.creatorContext(state.cwd, signal)
+    return state.context
   }
 
   const applyState = async (state: CreatorAgentState, signal?: AbortSignal): Promise<AppApplyResult> => {
-    if (!await ensureBound(state, signal) || state.context === undefined) {
-      throw new Error('This Creator Workspace is not a registered DeepDeck App source.')
-    }
+    await ensureBound(state, signal)
     const before = await snapshotAppWorkspace(state.cwd, signal)
-    const baseline = state.lastApplied ?? state.turnBaseline ?? before
-    const changedFiles = changedWorkspaceFiles(baseline, before)
+    const persistedChanges = await registry.changedFilesSinceApply(
+      state.cwd,
+      Object.fromEntries(before.files),
+      signal,
+    )
+    const changedFiles = persistedChanges
+      ?? changedWorkspaceFiles(state.turnBaseline ?? before, before)
     try {
       let result: AppApplyResult
       if (requiresRuntimeRestart(changedFiles)) {
@@ -280,14 +281,22 @@ export function installAppCreatorMode(
         result = Object.freeze({
           appId: validation.appId,
           packageName: validation.packageName,
+          applyId: validation.applyId,
+          sourceDigest: validation.sourceDigest,
+          outputRevision: validation.outputRevision,
           completedAt: validation.completedAt,
           durationMs: validation.durationMs,
           outcome: 'restart-queued',
           buildSucceeded: true,
           hostReloaded: false,
+          hostRuntime: 'restart-queued',
           clientReload: 'restart-queued',
+          clientRuntime: 'restart-queued',
+          appWindowsMatched: 0,
           appWindowsReloaded: 0,
+          appWindowsFailed: 0,
           runtimeRestart: 'queued-after-turn-flush',
+          userActionRequired: 'restart-pending',
           changedFiles,
           installLog: validation.installLog,
           buildLog: validation.buildLog,
@@ -296,7 +305,7 @@ export function installAppCreatorMode(
       } else {
         result = applyFromRebuild(await registry.rebuildCreator(state.cwd, signal), changedFiles)
       }
-      state.lastApplied = await snapshotAppWorkspace(state.cwd, signal)
+      state.turnBaseline = await snapshotAppWorkspace(state.cwd, signal)
       delete state.failedDigest
       return result
     } catch (error) {
@@ -306,19 +315,19 @@ export function installAppCreatorMode(
   }
 
   const queueRestart = async (state: CreatorAgentState, signal?: AbortSignal): Promise<AppRestartResult> => {
-    if (!await ensureBound(state, signal) || state.context === undefined) {
-      throw new Error('This Creator Workspace is not a registered DeepDeck App source.')
-    }
+    const context = await ensureBound(state, signal)
     const current = await snapshotAppWorkspace(state.cwd, signal)
-    if (state.lastApplied?.digest !== current.digest) {
+    const applyState = await registry.applyState(state.cwd, signal)
+    const effectiveDigest = applyState.pendingRestartDigest ?? applyState.appliedDigest
+    if (effectiveDigest !== current.digest) {
       const validation = await registry.validateCreator(state.cwd, signal)
-      state.lastApplied = await snapshotAppWorkspace(state.cwd, signal)
-      state.context = { ...state.context, packageName: validation.packageName }
+      state.turnBaseline = await snapshotAppWorkspace(state.cwd, signal)
+      state.context = { ...context, packageName: validation.packageName }
     }
     state.pendingRestart = true
     return Object.freeze({
-      appId: state.context.appId,
-      packageName: state.context.packageName,
+      appId: context.appId,
+      packageName: context.packageName,
       restartScheduled: true,
     })
   }
@@ -342,8 +351,8 @@ export function installAppCreatorMode(
   }
 
   const attach = (agent: CreatorAgent): void => {
-    if (agents.has(agent) || ctx.agentPresets.composedPreset(agent.ctx) !== 'cordis') return
     const cwd = agent.session.header.cwd?.trim()
+    if (agents.has(agent) || cwd === undefined || !registry.isCreatorSource(cwd)) return
     const state: CreatorAgentState = {
       agent,
       cwd: cwd ?? '',
@@ -359,12 +368,12 @@ export function installAppCreatorMode(
       name: 'deepdeck:app-creator',
       order: 95,
       text: [
-        'When this Creator session was launched from Settings > Apps, its Workspace is the registered App source package.',
+        'This session Workspace is a registered DeepDeck App source package, so the Host enforces the Creator apply lifecycle independently of the selected preset.',
         'Call deepdeck_app_context before App-specific work to verify that binding.',
         'After source edits, call deepdeck_app_apply; it is the single authoritative build-and-apply operation, so do not run a duplicate build first.',
         'Ordinary code changes use Cordis hot reload. Structural changes queue a full runtime restart only after the final response is durably saved.',
         'The Host apply guard compares the Workspace before the turn can finish and will continue the turn if changed source has not been applied.',
-        'A Creator session opened elsewhere may not be bound to an App; in that case these App tools refuse the operation and the guard stays inactive.',
+        'Never claim the running App was updated unless the apply receipt confirms the relevant Host, Client, or App-window runtime surface.',
       ].join(' '),
     }))
     disposers.push(agent.ctx.on('agent/pre-step', async ({ turn, signal }, next) => {
@@ -372,25 +381,37 @@ export function installAppCreatorMode(
         state.turn = turn
         delete state.steeredDigest
         delete state.failedDigest
-        if (await ensureBound(state, signal)) {
-          state.turnBaseline = await snapshotAppWorkspace(state.cwd, signal)
-          state.lastApplied ??= state.turnBaseline
-        }
+        delete state.guardFailure
+        await ensureBound(state, signal)
+        state.turnBaseline = await snapshotAppWorkspace(state.cwd, signal)
       }
       return await next()
     }))
     disposers.push(agent.ctx.on('agent/turn-stopping', async ({ signal }) => {
-      if (!await ensureBound(state, signal) || state.turnBaseline === undefined) return
       let current: AppWorkspaceSnapshot
+      let persistedState: Awaited<ReturnType<AppConversationHostRegistry['applyState']>>
       try {
+        await ensureBound(state, signal)
+        if (state.turnBaseline === undefined) {
+          throw new Error('Creator apply guard has no turn baseline.')
+        }
         current = await snapshotAppWorkspace(state.cwd, signal)
+        persistedState = await registry.applyState(state.cwd, signal)
       } catch (error) {
-        ctx.logger.warn(`deepdeck App apply guard could not inspect ${state.cwd}: ${errorMessage(error)}`)
-        return
+        const failure = `DeepDeck App apply guard failed closed for ${state.cwd}: ${errorMessage(error)}`
+        ctx.logger.warn(failure)
+        if (state.guardFailure !== failure) {
+          state.guardFailure = failure
+          steer(agent, `${failure}. Do not finish or claim the App was updated; repair or report this concrete blocker.`)
+          return
+        }
+        throw new Error(failure)
       }
+      const effectiveDigest = persistedState.pendingRestartDigest ?? persistedState.appliedDigest
+      const changedThisTurn = current.digest !== state.turnBaseline.digest
+      const differsFromApplied = effectiveDigest !== undefined && current.digest !== effectiveDigest
       if (
-        current.digest === state.turnBaseline.digest
-        || current.digest === state.lastApplied?.digest
+        (!changedThisTurn && !differsFromApplied)
         || current.digest === state.failedDigest
       ) return
       if (state.steeredDigest !== current.digest) {
@@ -421,7 +442,7 @@ export function installAppCreatorMode(
   }
 
   const sync = (agent: CreatorAgent): void => {
-    if (ctx.agentPresets.composedPreset(agent.ctx) === 'cordis') attach(agent)
+    if (registry.isCreatorSource(agent.session.header.cwd?.trim() ?? '')) attach(agent)
     else detach(agent)
   }
 
@@ -432,22 +453,60 @@ export function installAppCreatorMode(
   })
   const stopDisposed = ctx.on('agent/disposed', ({ agent }) => { detach(agent) })
   const stopSessionEvent = ctx.on('session/event', (session, event) => {
+    if (event.type === 'turn/start') {
+      const agent = ctx.agents.get(session.id)
+      if (agent !== undefined) sync(agent)
+      return
+    }
     if (event.type !== 'turn/end') return
     const state = sessions.get(session)
     if (state === undefined || !state.pendingRestart || state.restartDispatchStarted) return
     state.restartDispatchStarted = true
     void Promise.resolve().then(async () => {
-      await ctx.sessions.flush(session)
+      if (!await ctx.sessions.flush(session)) {
+        throw new Error('Creator session could not be durably flushed; refusing to restart.')
+      }
       await registry.restartCreator(state.cwd)
     }).catch((error: unknown) => {
       ctx.logger.warn(`deepdeck App restart after turn flush failed: ${errorMessage(error)}`)
     })
   })
-  return () => {
+  const dispose = () => {
     stopSessionEvent()
     stopDisposed()
     stopPresetSelected()
     stopCreated()
     for (const stop of [...registrations]) stop()
   }
+  return Object.assign(dispose, {
+    assertReady: async (
+      sessionId: string,
+      appId: string,
+      signal?: AbortSignal,
+    ): Promise<AppCreatorReadyResult> => {
+      const agent = ctx.agents.get(sessionId)
+      if (agent === undefined) throw new Error('Creator Agent is not active.')
+      sync(agent)
+      const state = states.get(agent)
+      if (state === undefined) throw new Error('Creator Apply guard is not attached to this App source.')
+      if (ctx.agentPresets.composedPreset(agent.ctx) !== 'cordis') {
+        throw new Error('Creator Agent did not enter the cordis preset.')
+      }
+      const context = await ensureBound(state, signal)
+      if (context.appId !== appId) throw new Error('Creator Agent is bound to a different App.')
+      return Object.freeze({
+        protocolVersion: APP_CREATOR_PROTOCOL_VERSION,
+        sessionId,
+        appId: context.appId,
+        agentPreset: 'cordis',
+        sourcePackageRoot: context.sourcePackageRoot,
+        tools: [
+          'deepdeck_app_context',
+          'deepdeck_app_apply',
+          'deepdeck_app_rebuild',
+          'deepdeck_app_restart',
+        ] as const,
+      })
+    },
+  })
 }

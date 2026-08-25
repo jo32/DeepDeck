@@ -30,8 +30,16 @@ export interface AppWindowsReloadRequest {
 export interface AppWindowsReloadResult {
   readonly type: typeof APP_WINDOWS_RELOAD_RESULT;
   readonly requestId: string;
+  readonly matched: number;
   readonly reloaded: number;
+  readonly failed: number;
   readonly error?: string;
+}
+
+export interface AppWindowReloadReceipt {
+  readonly matched: number;
+  readonly reloaded: number;
+  readonly failed: number;
 }
 
 export function isAppWindowOpenRequest(message: unknown): message is AppWindowOpenRequest {

@@ -74,9 +74,25 @@ pnpm package:local
 - no Electron-branded resource files or helper metadata;
 - the updater and native identity code exist in `app.asar`;
 - the bundled Harness contains no checkout-bound symlinks;
-- bundled Node can start the complete Web profile with an empty system `PATH` and return an HTTP page.
+- bundled Node can start the complete Web profile with an empty system `PATH` and return an HTTP page;
+- the pinned Open Computer Use package, launcher, license, and platform-native executable are present and runnable.
 
 `pnpm start:packaged` performs this branded package flow and launches DeepDeck. The normal `pnpm start` command uses the raw-Electron development path so routine launches do not rebuild and verify a complete application package; `pnpm start:raw` remains an explicit alias for that path.
+
+## Open Computer Use runtime updates
+
+`.github/workflows/update-computer-use.yml` checks npm daily and on manual
+dispatch for the latest stable `open-computer-use` release. It validates the
+package identity, MIT license, upstream repository, registry tarball origin,
+and published SHA-512 integrity metadata before refreshing the exact dependency
+and `pnpm-lock.yaml`. An update is proposed as a pull request and must pass the
+normal DeepDeck CI before merge.
+
+Production release jobs deliberately continue to install with
+`--frozen-lockfile`. They never resolve a floating `latest` during signing, so
+the reviewed package and checksum in the release tag are exactly the bytes that
+all architecture jobs build. Run `pnpm computer-use:update` to perform the same
+version refresh locally.
 
 ## Production release
 
@@ -89,14 +105,15 @@ The workflow enforces this order:
 
 1. validate tag, app version, fixed identity, HTTPS feed, signing policy, and custom domain;
 2. install with frozen lockfiles, build Harness, run check/test/build;
-3. build natively on Apple Silicon and Intel runners, sign, notarize, staple, and assess each app;
-4. verify the packaged independent runtime and update configuration;
-5. assemble one manifest and verify electron-builder SHA-512/size metadata;
-6. create the draft GitHub Release and upload the same build outputs plus SHA-256 sums;
-7. upload R2 versioned objects with `If-None-Match: *` so a published version cannot be overwritten;
-8. verify R2 metadata, public `HEAD`, `Content-Length`, full SHA-256, and one-byte Range responses;
-9. upload and re-read each `latest-mac.yml` as the final update switch;
-10. publish the GitHub Release.
+3. copy the pinned Open Computer Use launcher and native runtime into the independent client runtime;
+4. build natively on Apple Silicon and Intel runners, sign, verify the nested Open Computer Use signature, notarize, staple, and assess each app;
+5. verify the packaged independent runtime and update configuration;
+6. assemble one manifest and verify electron-builder SHA-512/size metadata;
+7. create the draft GitHub Release and upload the same build outputs plus SHA-256 sums;
+8. upload R2 versioned objects with `If-None-Match: *` so a published version cannot be overwritten;
+9. verify R2 metadata, public `HEAD`, `Content-Length`, full SHA-256, and one-byte Range responses;
+10. upload and re-read each `latest-mac.yml` as the final update switch;
+11. publish the GitHub Release.
 
 Build provenance is attached with GitHub's current [`actions/attest`](https://github.com/actions/attest). Its additional `artifact-metadata: write` permission is required by the official action; all other jobs retain read-only repository permissions until the publish job.
 

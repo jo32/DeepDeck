@@ -6,6 +6,7 @@ import type {} from '../app-settings-contract.js'
 import {
   APP_CONVERSATION_API_PATH,
   APP_CONVERSATION_CHANNEL,
+  APP_CREATOR_PROTOCOL_VERSION,
   APP_CONVERSATION_PAGE_SOURCE,
   APP_CONVERSATION_RUNTIME_SOURCE,
   type AppConversationClientDefinition,
@@ -15,6 +16,7 @@ import {
   type AppConversationPreviewMessage,
   type AppConversationPreparedAction,
   type AppConversationWorkspace,
+  type AppCreatorReadyResult,
   type AppUpdateContext,
 } from '../contracts.js'
 import { AppsSettingsSection, type AppsSettingsSectionInjected } from './AppsSettingsSection.js'
@@ -164,6 +166,88 @@ async function resolveWorkspace(
   return workspace as unknown as AppConversationWorkspace
 }
 
+function validateCreatorReady(value: unknown, sessionId: SessionId, appId: string): AppCreatorReadyResult {
+  if (!isObject(value) || !isObject(value.creator)) {
+    throw new Error('Creator runtime readiness response is invalid')
+  }
+  const creator = value.creator
+  const requiredTools = [
+    'deepdeck_app_context',
+    'deepdeck_app_apply',
+    'deepdeck_app_rebuild',
+    'deepdeck_app_restart',
+  ] as const
+  const tools = Array.isArray(creator.tools) ? creator.tools : undefined
+  if (
+    creator.protocolVersion !== APP_CREATOR_PROTOCOL_VERSION
+    || creator.sessionId !== sessionId
+    || creator.appId !== appId
+    || creator.agentPreset !== 'cordis'
+    || typeof creator.sourcePackageRoot !== 'string'
+    || tools === undefined
+    || !requiredTools.every(tool => tools.includes(tool))
+  ) throw new Error('Creator runtime did not confirm the requested App, preset, and apply guard')
+  return creator as unknown as AppCreatorReadyResult
+}
+
+async function assertCreatorReady(sessionId: SessionId, appId: string): Promise<AppCreatorReadyResult> {
+  const response = await fetch(APP_CONVERSATION_API_PATH, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'creator-ready', sessionId, appId }),
+  })
+  const body: unknown = await response.json()
+  if (!response.ok) {
+    const message = isObject(body) && typeof body.error === 'string' ? body.error : `HTTP ${String(response.status)}`
+    throw new Error(`Creator runtime readiness check failed: ${message}`)
+  }
+  return validateCreatorReady(body, sessionId, appId)
+}
+
+/** Birth (or adopt) the blank App session with its Creator preset in one Host request. */
+async function prepareCreatorSession(
+  ctx: ClientContext,
+  connection: ConnectionHandle,
+  workspace: AppConversationWorkspace,
+  workspaceView: { readonly workspaceId: WorkspaceId; readonly sessionIds?: readonly SessionId[] },
+): Promise<SessionId> {
+  const sessions = ctx.sessions.list.getSnapshot()
+  const archived = 'archivedSessionIds' in sessions && Array.isArray(sessions.archivedSessionIds)
+    ? sessions.archivedSessionIds
+    : []
+  const reusable = workspaceView.sessionIds?.find((id) => {
+    const summary = sessions.byId[id]
+    return summary?.blank === true
+      && summary.cwd === workspace.path
+      && !archived.includes(id)
+  })
+  const created = await connection.api.sessions.create({
+    workspaceId: workspaceView.workspaceId,
+    agentPreset: 'cordis',
+    ...(reusable === undefined
+      ? {}
+      : { sessionId: reusable, reuseWorkspaceBlank: true as const }),
+  })
+  if (!created.result.ok) throw new Error(created.result.error.message)
+  if (created.result.value.agentPreset !== 'cordis') {
+    throw new Error('Host created the App session without the cordis Creator preset')
+  }
+  const sessionId = created.result.value.sessionId
+  ctx.sessions.noteAgentPreset(sessionId, 'cordis')
+  await assertCreatorReady(sessionId, workspace.appId)
+  return sessionId
+}
+
+async function waitForSessionBinding(ctx: ClientContext, sessionId: SessionId): Promise<NonNullable<ReturnType<ClientContext['sessions']['binding']>>> {
+  const startedAt = Date.now()
+  while (Date.now() - startedAt < 5_000) {
+    const binding = ctx.sessions.binding(sessionId)
+    if (binding !== undefined) return binding
+    await delay(25)
+  }
+  throw new Error('Creator session was validated by the Host but did not become available in the Client')
+}
+
 export async function openCreatorSession(
   ctx: ClientContext,
   connection: ConnectionHandle,
@@ -172,16 +256,7 @@ export async function openCreatorSession(
   const workspace = await resolveWorkspace(appId, 'resolve-creator-workspace')
   const known = ctx.workspaces.list.getSnapshot().items.find(item => item.path === workspace.path)
   const workspaceView = known ?? await ctx.workspaces.create({ path: workspace.path })
-  const sessionId = await ctx.workspaces.connectWorkspace(workspaceView.workspaceId as WorkspaceId)
-  const summary = ctx.sessions.list.getSnapshot().byId[sessionId]
-  if (summary === undefined || !summary.blank || summary.cwd !== workspace.path) {
-    throw new Error('unable to prepare a blank Creator session for this App source')
-  }
-  if (summary.agentPreset !== 'cordis') {
-    const selected = await connection.api.agentPresets.select({ sessionId, agentPreset: 'cordis' })
-    if (!selected.result.ok) throw new Error(selected.result.error.message)
-    ctx.sessions.noteAgentPreset(sessionId, selected.result.value.agentPreset)
-  }
+  const sessionId = await prepareCreatorSession(ctx, connection, workspace, workspaceView)
   ctx.sessions.open(sessionId)
 }
 
@@ -227,18 +302,8 @@ export async function dispatchAppUpdateTask(
   ])
   const known = ctx.workspaces.list.getSnapshot().items.find(item => item.path === workspace.path)
   const workspaceView = known ?? await ctx.workspaces.create({ path: workspace.path })
-  const sessionId = await ctx.workspaces.connectWorkspace(workspaceView.workspaceId as WorkspaceId)
-  const summary = ctx.sessions.list.getSnapshot().byId[sessionId]
-  if (summary === undefined || !summary.blank || summary.cwd !== workspace.path) {
-    throw new Error('unable to prepare a blank Agent task for this App update')
-  }
-  if (summary.agentPreset !== 'cordis') {
-    const selected = await connection.api.agentPresets.select({ sessionId, agentPreset: 'cordis' })
-    if (!selected.result.ok) throw new Error(selected.result.error.message)
-    ctx.sessions.noteAgentPreset(sessionId, selected.result.value.agentPreset)
-  }
-  const binding = ctx.sessions.binding(sessionId)
-  if (binding === undefined) throw new Error('App update Agent task is not available')
+  const sessionId = await prepareCreatorSession(ctx, connection, workspace, workspaceView)
+  const binding = await waitForSessionBinding(ctx, sessionId)
   const renamed = await binding.session.rename(`Update ${updateContext.title}`)
   if (!renamed.ok) throw new Error(renamed.error.message)
   const prompted = await binding.session.prompt(
@@ -277,6 +342,11 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
     if (this.definitions.has(id)) throw new Error(`app conversation client '${id}' is already registered`)
     const normalized = { ...definition, id }
     this.definitions.set(id, normalized)
+    void fetch(APP_CONVERSATION_API_PATH, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'client-ready', appId: id }),
+    }).catch(() => {})
     return () => {
       if (this.definitions.get(id) === normalized) this.definitions.delete(id)
     }

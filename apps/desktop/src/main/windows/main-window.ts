@@ -10,6 +10,7 @@ import {
 import type { LoadedBranding } from "../branding.js";
 import { isExternalUrl, isPopupPlaceholder } from "./external-popup.js";
 import { HarnessViewGate } from "./harness-view-gate.js";
+import { HarnessViewReveal } from "./harness-view-reveal.js";
 import { loadWindowState, saveWindowState } from "./window-state.js";
 
 export interface DesktopWindow {
@@ -76,6 +77,29 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   window.contentView.addChildView(splashView);
   window.contentView.addChildView(harnessView);
 
+  const viewReveal = new HarnessViewReveal({
+    stage: () => {
+      harnessView.setVisible(true);
+      splashView.setVisible(true);
+      // Re-adding an existing child makes it topmost. Harness can now paint,
+      // but every intermediate frame remains covered by the native splash.
+      window.contentView.addChildView(splashView);
+    },
+    capture: async () => {
+      await harnessContents.capturePage(undefined, { stayHidden: true });
+    },
+    reveal: () => {
+      splashView.setVisible(false);
+      window.contentView.addChildView(harnessView);
+      harnessContents.focus();
+    },
+    conceal: () => {
+      harnessView.setVisible(false);
+      splashView.setVisible(true);
+      window.contentView.addChildView(splashView);
+    },
+  });
+
   const resizeContentViews = (): void => {
     const [width = 0, height = 0] = window.getContentSize();
     const bounds = { x: 0, y: 0, width, height };
@@ -84,15 +108,8 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   };
   resizeContentViews();
 
-  const revealHarness = (): void => {
-    splashView.setVisible(false);
-    harnessView.setVisible(true);
-    harnessContents.focus();
-  };
-
   const loadSplash = async (): Promise<void> => {
-    harnessView.setVisible(false);
-    splashView.setVisible(true);
+    viewReveal.conceal();
     if (developmentUrl) await splashContents.loadURL(developmentUrl);
     else await splashContents.loadFile(join(import.meta.dirname, "../../renderer/index.html"));
   };
@@ -161,10 +178,10 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   harnessContents.on("did-start-navigation", (details) => {
     if (!details.isMainFrame || details.isSameDocument) return;
     if (!gate.beginDocument(details.url)) return;
-    harnessView.setVisible(false);
+    viewReveal.conceal();
   });
   harnessContents.on("did-finish-load", () => {
-    if (gate.finishDocument(harnessContents.getURL())) revealHarness();
+    if (gate.finishDocument(harnessContents.getURL())) viewReveal.request();
   });
 
   splashContents.setWindowOpenHandler(({ url }) => {
@@ -188,7 +205,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     loadHarness: async (url) => {
       const generation = ++harnessLoadGeneration;
       gate.begin(url);
-      harnessView.setVisible(false);
+      viewReveal.conceal();
       try {
         await harnessContents.loadURL(url);
       } catch (error) {
@@ -199,7 +216,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     loadSplash,
     markHarnessClientReady: (senderId) => {
       if (senderId !== harnessContents.id) return;
-      if (gate.markClientReady(harnessContents.getURL())) revealHarness();
+      if (gate.markClientReady(harnessContents.getURL())) viewReveal.request();
     },
     send: (channel, ...args) => {
       const renderers: WebContents[] = [splashContents, harnessContents];
@@ -210,8 +227,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
     showSplash: () => {
       harnessLoadGeneration += 1;
       gate.suspend();
-      harnessView.setVisible(false);
-      splashView.setVisible(true);
+      viewReveal.conceal();
       splashContents.focus();
     },
   };

@@ -48,6 +48,7 @@ const PLUGINS = Object.freeze([
   "bun-plugin-builder",
   "first-run",
   "app-conversations",
+  "computer-use",
   "dsh-codex-connect",
   "community-market",
 ]);
@@ -431,16 +432,31 @@ async function materializeMissingWorkspacePackages(nodeModules, workspacePackage
   if (copied > 0) console.log(`prepare-runtime: materialized ${copied} pruned workspace packages`);
 }
 
+async function resolveInstalledDependency(issuer, packageName) {
+  let directory = await realpath(issuer);
+  while (true) {
+    const candidate = join(directory, "node_modules", ...packageName.split("/"));
+    if (await pathExists(candidate)) return candidate;
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  return undefined;
+}
+
 async function copyPluginDependencies(source, destination, dependencies) {
-  const pending = Object.keys(dependencies ?? {});
+  const pending = Object.keys(dependencies ?? {}).map((packageName) => ({
+    issuer: source,
+    packageName,
+  }));
   const copied = new Set();
   while (pending.length > 0) {
-    const packageName = pending.pop();
+    const { issuer, packageName } = pending.pop();
     if (!packageName || copied.has(packageName)) continue;
     copied.add(packageName);
-    const dependencySource = join(source, "node_modules", packageName);
-    if (!(await pathExists(dependencySource))) {
-      throw new Error(`Plugin dependency is not installed: ${packageName}`);
+    const dependencySource = await resolveInstalledDependency(issuer, packageName);
+    if (!dependencySource) {
+      throw new Error(`Plugin dependency is not installed for ${issuer}: ${packageName}`);
     }
     const dependencyDestination = join(destination, "node_modules", packageName);
     await mkdir(dirname(dependencyDestination), { recursive: true });
@@ -448,7 +464,12 @@ async function copyPluginDependencies(source, destination, dependencies) {
     const dependencyManifest = JSON.parse(
       await readFile(join(dependencySource, "package.json"), "utf8"),
     );
-    pending.push(...Object.keys(dependencyManifest.dependencies ?? {}));
+    pending.push(
+      ...Object.keys(dependencyManifest.dependencies ?? {}).map((dependencyName) => ({
+        issuer: dependencySource,
+        packageName: dependencyName,
+      })),
+    );
   }
 }
 

@@ -8,6 +8,7 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   esbuild: true
+  open-computer-use: false
   protobufjs: false
   sharp: true
 

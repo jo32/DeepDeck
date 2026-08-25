@@ -48,12 +48,14 @@ async function render(
   draftRev: number,
   composerPhase: ConversationSnapshot["composerPhase"] = "blank",
   sessionOverrides: Partial<ConversationSnapshot> = {},
+  onCompositionReady?: () => void,
 ) {
   await act(async () => {
     root?.render(createElement(HomeHeroArtwork, {
       session: session(composerPhase, sessionOverrides),
       input: { draft: "ship it", imageIds: [], draftRev, phase: "plain" },
       t,
+      onCompositionReady,
     } satisfies HomeHeroArtworkProps));
   });
 }
@@ -93,6 +95,13 @@ afterEach(async () => {
 });
 
 describe("HomeHeroArtwork typing expression", () => {
+  it("reports composition readiness after its mask and fallback commit", async () => {
+    const onCompositionReady = vi.fn();
+    await render(0, "blank", {}, onCompositionReady);
+
+    expect(onCompositionReady).toHaveBeenCalledOnce();
+  });
+
   it("uses doing while the draft changes and returns to auto after the last idle interval", async () => {
     await render(0);
     expect(currentExpression()).toBe("auto");

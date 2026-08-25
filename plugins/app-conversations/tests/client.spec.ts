@@ -16,23 +16,41 @@ describe('app conversation Client registry', () => {
   it('opens an App source Workspace with the cordis Creator preset', async () => {
     const open = vi.fn()
     const noteAgentPreset = vi.fn()
-    const select = vi.fn(async () => ({
-      result: { ok: true, value: { agentPreset: 'cordis' } },
+    const create = vi.fn(async () => ({
+      result: { ok: true, value: { sessionId: 'session-creator', agentPreset: 'cordis' } },
     }))
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
-      workspace: {
-        appId: 'reader',
-        path: '/plugins/reader',
-        title: 'Creator · Reader',
-        workspaceId: 'workspace-creator',
-      },
-    }), { status: 200, headers: { 'content-type': 'application/json' } })))
+    vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { action: string }
+      return new Response(JSON.stringify(request.action === 'creator-ready'
+        ? {
+            creator: {
+              protocolVersion: 2,
+              sessionId: 'session-creator',
+              appId: 'reader',
+              agentPreset: 'cordis',
+              sourcePackageRoot: '/plugins/reader',
+              tools: [
+                'deepdeck_app_context',
+                'deepdeck_app_apply',
+                'deepdeck_app_rebuild',
+                'deepdeck_app_restart',
+              ],
+            },
+          }
+        : {
+            workspace: {
+              appId: 'reader',
+              path: '/plugins/reader',
+              title: 'Creator · Reader',
+              workspaceId: 'workspace-creator',
+            },
+          }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }))
 
     await openCreatorSession({
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
-        create: vi.fn(async () => ({ workspaceId: 'workspace-creator', path: '/plugins/reader' })),
-        connectWorkspace: vi.fn(async () => 'session-creator'),
+        create: vi.fn(async () => ({ workspaceId: 'workspace-creator', path: '/plugins/reader', sessionIds: [] })),
       },
       sessions: {
         list: { getSnapshot: () => ({
@@ -48,19 +66,82 @@ describe('app conversation Client registry', () => {
         noteAgentPreset,
         open,
       },
-    } as never, { api: { agentPresets: { select } } } as never, 'reader')
+    } as never, { api: { sessions: { create } } } as never, 'reader')
 
-    expect(select).toHaveBeenCalledWith({ sessionId: 'session-creator', agentPreset: 'cordis' })
+    expect(create).toHaveBeenCalledWith({ workspaceId: 'workspace-creator', agentPreset: 'cordis' })
     expect(noteAgentPreset).toHaveBeenCalledWith('session-creator', 'cordis')
     expect(open).toHaveBeenCalledWith('session-creator')
+  })
+
+  it('reuses a blank session atomically but refuses to open it without Host guard readiness', async () => {
+    const open = vi.fn()
+    const create = vi.fn(async () => ({
+      result: { ok: true, value: { sessionId: 'session-blank', agentPreset: 'cordis' } },
+    }))
+    vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { action: string }
+      return new Response(JSON.stringify(request.action === 'creator-ready'
+        ? {
+            creator: {
+              protocolVersion: 2,
+              sessionId: 'session-blank',
+              appId: 'reader',
+              agentPreset: 'cordis',
+              sourcePackageRoot: '/plugins/reader',
+              tools: ['deepdeck_app_context'],
+            },
+          }
+        : {
+            workspace: {
+              appId: 'reader',
+              path: '/plugins/reader',
+              title: 'Creator · Reader',
+              workspaceId: 'workspace-creator',
+            },
+          }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }))
+
+    await expect(openCreatorSession({
+      workspaces: {
+        list: { getSnapshot: () => ({
+          items: [{
+            workspaceId: 'workspace-creator',
+            path: '/plugins/reader',
+            sessionIds: ['session-blank'],
+          }],
+        }) },
+      },
+      sessions: {
+        list: { getSnapshot: () => ({
+          archivedSessionIds: [],
+          byId: {
+            'session-blank': {
+              id: 'session-blank',
+              blank: true,
+              cwd: '/plugins/reader',
+            },
+          },
+        }) },
+        noteAgentPreset: vi.fn(),
+        open,
+      },
+    } as never, { api: { sessions: { create } } } as never, 'reader'))
+      .rejects.toThrow('did not confirm')
+    expect(create).toHaveBeenCalledWith({
+      workspaceId: 'workspace-creator',
+      sessionId: 'session-blank',
+      reuseWorkspaceBlank: true,
+      agentPreset: 'cordis',
+    })
+    expect(open).not.toHaveBeenCalled()
   })
 
   it('dispatches a dedicated cordis Agent task with source provenance and diff-first instructions', async () => {
     const prompt = vi.fn(async () => ({ ok: true }))
     const rename = vi.fn(async () => ({ ok: true }))
     const open = vi.fn()
-    const select = vi.fn(async () => ({
-      result: { ok: true, value: { agentPreset: 'cordis' } },
+    const create = vi.fn(async () => ({
+      result: { ok: true, value: { sessionId: 'session-update', agentPreset: 'cordis' } },
     }))
     vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as { action: string }
@@ -73,7 +154,23 @@ describe('app conversation Client registry', () => {
               workspaceId: 'workspace-update',
             },
           }
-        : {
+        : request.action === 'creator-ready'
+          ? {
+              creator: {
+                protocolVersion: 2,
+                sessionId: 'session-update',
+                appId: 'reader',
+                agentPreset: 'cordis',
+                sourcePackageRoot: '/plugins/reader',
+                tools: [
+                  'deepdeck_app_context',
+                  'deepdeck_app_apply',
+                  'deepdeck_app_rebuild',
+                  'deepdeck_app_restart',
+                ],
+              },
+            }
+          : {
             updateContext: {
               appId: 'reader',
               title: 'Reader',
@@ -88,8 +185,7 @@ describe('app conversation Client registry', () => {
     await dispatchAppUpdateTask({
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
-        create: vi.fn(async () => ({ workspaceId: 'workspace-update', path: '/plugins/reader' })),
-        connectWorkspace: vi.fn(async () => 'session-update'),
+        create: vi.fn(async () => ({ workspaceId: 'workspace-update', path: '/plugins/reader', sessionIds: [] })),
       },
       sessions: {
         list: { getSnapshot: () => ({
@@ -106,7 +202,7 @@ describe('app conversation Client registry', () => {
         binding: () => ({ session: { rename, prompt } }),
         open,
       },
-    } as never, { api: { agentPresets: { select } } } as never, 'reader')
+    } as never, { api: { sessions: { create } } } as never, 'reader')
 
     expect(rename).toHaveBeenCalledWith('Update Reader')
     expect(prompt).toHaveBeenCalledWith([

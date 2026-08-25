@@ -19,6 +19,7 @@ import {
   isAppWindowOpenRequest,
   isAppWindowsReloadRequest,
   isSameOriginHttpUrl,
+  type AppWindowReloadReceipt,
   type AppWindowsReloadResult,
 } from "../windows/app-window-request.js";
 
@@ -99,7 +100,7 @@ export interface HarnessProcessOptions {
   /** Receives validated-open candidates; the desktop shell owns origin checks and window creation. */
   onAppWindowOpenRequest?: (url: string) => void;
   /** Reloads matching secondary App windows and resolves after their pages finish loading. */
-  onAppWindowsReloadRequest?: (url: string) => Promise<number>;
+  onAppWindowsReloadRequest?: (url: string) => Promise<AppWindowReloadReceipt>;
   /** Restores the primary window when an app preview navigates to its canonical Session. */
   onMainWindowFocusRequest?: () => void;
 }
@@ -371,17 +372,18 @@ export class HarnessProcess {
             }
           };
           if (!readyUrl) {
-            reply({ reloaded: 0, error: "DeepDeck Harness is not ready." });
+            reply({ matched: 0, reloaded: 0, failed: 0, error: "DeepDeck Harness is not ready." });
             return;
           }
           const target = new URL(message.path, readyUrl).href;
           if (!isSameOriginHttpUrl(target, readyUrl)) {
-            reply({ reloaded: 0, error: "App window reload target must be same-origin." });
+            reply({ matched: 0, reloaded: 0, failed: 0, error: "App window reload target must be same-origin." });
             return;
           }
-          void (this.options.onAppWindowsReloadRequest?.(target) ?? Promise.resolve(0))
-            .then(reloaded => reply({ reloaded }))
-            .catch((error: unknown) => reply({ reloaded: 0, error: errorMessage(error) }));
+          void (this.options.onAppWindowsReloadRequest?.(target)
+            ?? Promise.resolve({ matched: 0, reloaded: 0, failed: 0 }))
+            .then(receipt => reply(receipt))
+            .catch((error: unknown) => reply({ matched: 0, reloaded: 0, failed: 0, error: errorMessage(error) }));
           return;
         }
         if (isAppMainWindowFocusRequest(message)) {

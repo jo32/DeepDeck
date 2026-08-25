@@ -162,7 +162,24 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
       }),
     ]);
     clearTimeout(bootTimeout);
-    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    const deadline = Date.now() + 15_000;
+    let response;
+    let lastFetchError;
+    while (Date.now() < deadline) {
+      if (child.exitCode !== null || child.signalCode !== null) {
+        throw new Error(`Bundled Harness exited after announcing readiness:\n${output}`);
+      }
+      try {
+        response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
+        break;
+      } catch (error) {
+        lastFetchError = error;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    if (!response) {
+      throw new Error(`Bundled Harness readiness endpoint was unreachable: ${String(lastFetchError)}\n${output}`);
+    }
     if (!response.ok) throw new Error(`Bundled Harness readiness endpoint returned HTTP ${response.status}`);
   } catch (error) {
     if (child && exitPromise) await stopChild(child, exitPromise);
@@ -192,6 +209,7 @@ const requiredRuntimePaths = [
   join(runtimeRoot, "cordis.patch.yml"),
 ];
 let bundledBun;
+let bundledComputerUse;
 for (const plugin of manifest.plugins) {
   const root = pluginRoot(runtimeRoot, plugin);
   const pluginManifestPath = join(root, "package.json");
@@ -212,6 +230,30 @@ for (const plugin of manifest.plugins) {
       bundledBun = join(root, "node_modules", "bun", "bin", "bun.exe");
       requiredRuntimePaths.push(bundledBun);
     }
+    if (plugin === "computer-use") {
+      const pinnedVersion = pluginManifest.dependencies?.["open-computer-use"];
+      const dependencyRoot = join(root, "node_modules", "open-computer-use");
+      const dependencyManifest = JSON.parse(await readFile(join(dependencyRoot, "package.json"), "utf8"));
+      if (dependencyManifest.version !== pinnedVersion) {
+        throw new Error(
+          `Bundled Open Computer Use ${String(dependencyManifest.version)} does not match pin ${String(pinnedVersion)}`,
+        );
+      }
+      const nativeRuntime = manifest.platform === "darwin"
+        ? join(dependencyRoot, "dist", "Open Computer Use.app", "Contents", "MacOS", "OpenComputerUse")
+        : manifest.platform === "win32"
+          ? join(dependencyRoot, "dist", "windows", manifest.architecture === "arm64" ? "arm64" : "amd64", "open-computer-use.exe")
+          : join(dependencyRoot, "dist", "linux", manifest.architecture === "arm64" ? "arm64" : "amd64", "open-computer-use");
+      bundledComputerUse = {
+        launcher: join(dependencyRoot, "bin", "open-computer-use"),
+        version: pinnedVersion,
+      };
+      requiredRuntimePaths.push(
+        join(dependencyRoot, "LICENSE"),
+        bundledComputerUse.launcher,
+        nativeRuntime,
+      );
+    }
   }
 }
 for (const required of requiredRuntimePaths) {
@@ -228,6 +270,11 @@ if (pnpmVersion.trim() !== "11.7.0") throw new Error(`Bundled pnpm returned ${JS
 if (!bundledBun) throw new Error("Runtime manifest omitted the Bun plugin builder");
 const bunVersion = await run(bundledBun, ["--version"]);
 if (bunVersion.trim() !== BUN_VERSION) throw new Error(`Bundled Bun returned ${JSON.stringify(bunVersion.trim())}`);
+if (!bundledComputerUse) throw new Error("Runtime manifest omitted the Computer Use plugin");
+const computerUseVersion = await run(nodeBinary, [bundledComputerUse.launcher, "--version"]);
+if (computerUseVersion.trim() !== bundledComputerUse.version) {
+  throw new Error(`Bundled Open Computer Use returned ${JSON.stringify(computerUseVersion.trim())}`);
+}
 await verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli);
 console.log(
   `verify-runtime: DeepDeck ${manifest.applicationVersion}, Node ${manifest.nodeVersion}, ${manifest.platform}-${manifest.architecture}`,

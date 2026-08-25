@@ -13,12 +13,8 @@ import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './column
 import type { createLayoutStore } from './stores.ts'
 import { DesktopChrome } from './DesktopChrome.tsx'
 import { scheduleDesktopFrameReveal } from './desktop-runtime.ts'
+import type { BrandCompositionLedger } from './brand-composition.ts'
 import css from './desktop-chrome.module.css'
-
-export interface BrandCompositionLedger {
-  isReady: () => boolean
-  subscribe: (listener: () => void) => () => void
-}
 
 export interface AppFrameInjected {
   startSession: () => void

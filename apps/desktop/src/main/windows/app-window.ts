@@ -1,4 +1,5 @@
 import { BaseWindow, WebContentsView } from "electron";
+import type { AppWindowReloadReceipt } from "./app-window-request.js";
 
 /**
  * Secondary application windows requested by the Harness child.
@@ -10,7 +11,7 @@ import { BaseWindow, WebContentsView } from "electron";
  */
 export interface AppWindowManager {
   open(url: string): void;
-  reload(url: string): Promise<number>;
+  reload(url: string): Promise<AppWindowReloadReceipt>;
   dispose(): void;
 }
 
@@ -80,7 +81,7 @@ export function createAppWindowManager(): AppWindowManager {
         if (!window.isDestroyed()) window.destroy();
       });
     },
-    async reload(url: string): Promise<number> {
+    async reload(url: string): Promise<AppWindowReloadReceipt> {
       const target = new URL(url);
       const candidates = [...views].filter(([window, view]) => {
         if (window.isDestroyed() || view.webContents.isDestroyed()) return false;
@@ -109,7 +110,12 @@ export function createAppWindowManager(): AppWindowManager {
         view.webContents.once("did-fail-load", failedPage);
         view.webContents.reloadIgnoringCache();
       })));
-      return results.filter(Boolean).length;
+      const reloaded = results.filter(Boolean).length;
+      return Object.freeze({
+        matched: results.length,
+        reloaded,
+        failed: results.length - reloaded,
+      });
     },
     dispose(): void {
       for (const window of [...windows]) {

@@ -1,4 +1,4 @@
-import { mkdtemp, realpath } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -45,6 +45,10 @@ describe('app conversation Host registry', () => {
   })
 
   it('lists rebuild availability and delegates one reviewed Bun hot update', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'deepdeck-app-conversations-'))
+    const source = join(home, 'reader')
+    await mkdir(source)
+    await writeFile(join(source, 'index.ts'), 'export const reader = true\n')
     const preview = vi.fn(async () => ({
       previewId: '11111111-1111-4111-8111-111111111111',
       packageName: '@fixture/reader',
@@ -58,16 +62,16 @@ describe('app conversation Host registry', () => {
       buildLog: 'built reader\n',
     }))
     const discard = vi.fn(async () => {})
-    const reloadAppWindows = vi.fn(async () => 2)
+    const reloadAppWindows = vi.fn(async () => ({ matched: 3, reloaded: 2, failed: 1 }))
     const registry = new DefaultAppConversationHostRegistry({
       create: vi.fn(async () => ({ id: 'unused', path: '/unused', title: 'unused' })),
-    }, '/tmp/deepdeck-test-home', { preview, hotUpdate, discard }, undefined, reloadAppWindows)
+    }, home, { preview, hotUpdate, discard }, undefined, reloadAppWindows)
     registry.register({
       id: 'reader',
       title: 'Reader',
       workspaceSlug: 'reader',
       packageName: '@fixture/reader',
-      sourcePackageRoot: '/tmp/reader',
+      sourcePackageRoot: source,
       appWindowPath: '/apps/custom-reader',
     })
 
@@ -88,8 +92,11 @@ describe('app conversation Host registry', () => {
       packageName: '@fixture/reader',
       completedAt: '2026-08-23T03:00:00.000Z',
       hostReloaded: true,
+      hostRuntime: 'confirmed',
       clientReload: 'not-observed',
+      appWindowsMatched: 3,
       appWindowsReloaded: 2,
+      appWindowsFailed: 1,
       buildLog: 'built reader\n',
     })
     expect(result.durationMs).toBeGreaterThanOrEqual(0)

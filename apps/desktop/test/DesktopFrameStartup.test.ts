@@ -4,6 +4,9 @@ import {
   DESKTOP_FRAME_MOTION_RESUME_MS,
   scheduleDesktopFrameReveal,
 } from "../../../plugins/desktop-chrome/src/client/desktop-runtime.ts";
+import {
+  BrandCompositionController,
+} from "../../../plugins/desktop-chrome/src/client/brand-composition.ts";
 
 const styles = readFileSync(
   new URL("../../../plugins/desktop-chrome/src/client/desktop-chrome.module.css", import.meta.url),
@@ -54,7 +57,21 @@ describe("desktop frame startup handoff", () => {
     );
   });
 
-  it("waits for the branded slot composition before revealing Harness", () => {
+  it("publishes the committed branded composition exactly once", () => {
+    const composition = new BrandCompositionController();
+    const listener = vi.fn();
+    const unsubscribe = composition.subscribe(listener);
+
+    expect(composition.isReady()).toBe(false);
+    composition.markReady();
+    composition.markReady();
+    expect(composition.isReady()).toBe(true);
+    expect(listener).toHaveBeenCalledOnce();
+
+    unsubscribe();
+  });
+
+  it("waits for the committed branded composition before revealing Harness", () => {
     expect(frameSource).toContain("useSyncExternalStore(");
     expect(frameSource).toContain("if (!brandCompositionReady) return");
     expect(frameSource).toContain("scheduleDesktopFrameReveal(");

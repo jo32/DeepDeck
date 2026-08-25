@@ -1,3 +1,5 @@
+import { createHash, randomUUID } from 'node:crypto'
+import { realpathSync } from 'node:fs'
 import { mkdir, realpath } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { homedir } from 'node:os'
@@ -16,13 +18,16 @@ import {
   type AppSettingsDescriptor,
   type AppUninstallResult,
   type AppUpdateContext,
+  type AppWindowReloadReceipt,
 } from './contracts.js'
+import { AppApplyStateStore } from './app-apply-state.js'
 import {
   DeepDeckAppPackageManager,
   type AppInstallerPnpm,
   type AppInstallerProfile,
 } from './app-installer.js'
 import { installAppCreatorMode } from './creator-tools.js'
+import { snapshotAppWorkspace } from './creator-state.js'
 
 type JsonObject = Record<string, unknown>
 
@@ -51,7 +56,7 @@ interface AppConversationHostContext {
   readonly desktopPnpm: AppInstallerPnpm
   readonly desktopActions: {
     requestRestart(): Promise<void>
-    reloadAppWindows?(path: string): Promise<number>
+    reloadAppWindows?(path: string): Promise<AppWindowReloadReceipt>
   }
   readonly agentPresets: {
     composedPreset(agentContext: Context): string | undefined
@@ -126,6 +131,32 @@ function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function canonicalPath(path: string): string {
+  const absolute = resolve(path)
+  try {
+    return realpathSync(absolute)
+  } catch {
+    return absolute
+  }
+}
+
+const PROCESS_GENERATION_KEY = Symbol.for('deepdeck.app-apply.process-generation')
+
+/** Stable across Cordis/plugin HMR, new only when the Harness process is new. */
+function runtimeProcessGeneration(): string {
+  const processGlobal = globalThis as typeof globalThis & { [PROCESS_GENERATION_KEY]?: string }
+  const existing = processGlobal[PROCESS_GENERATION_KEY]
+  if (existing !== undefined) return existing
+  const created = randomUUID()
+  Object.defineProperty(processGlobal, PROCESS_GENERATION_KEY, {
+    value: created,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  })
+  return created
+}
+
 function normalizedDefinition(definition: AppConversationHostDefinition): AppConversationHostDefinition {
   const id = definition.id.trim()
   const title = definition.title.trim()
@@ -167,13 +198,20 @@ function normalizedDefinition(definition: AppConversationHostDefinition): AppCon
 export class DefaultAppConversationHostRegistry implements AppConversationHostRegistry {
   private readonly definitions = new Map<string, AppConversationHostDefinition>()
   private readonly sourceDefinitions = new Map<string, Pick<AppConversationHostDefinition, 'packageName' | 'sourcePackageRoot'>>()
+  private readonly applyQueues = new Map<string, Promise<void>>()
+  private readonly clientGenerations = new Map<string, number>()
+  private readonly clientWaiters = new Map<string, Set<() => void>>()
 
   constructor(
     private readonly workspaceRegistry: AppConversationHostContext['workspaceRegistry'],
     private readonly home = homedir(),
     private readonly builder?: AppBunBuilderService,
     private readonly packages?: DeepDeckAppPackageManager,
-    private readonly reloadAppWindows?: (path: string) => Promise<number>,
+    private readonly reloadAppWindows?: (path: string) => Promise<AppWindowReloadReceipt>,
+    private readonly stateStore = new AppApplyStateStore(
+      join(process.env.DSH_HOME ?? join(home, '.dsh'), 'deepdeck', 'app-apply-state.json'),
+      runtimeProcessGeneration(),
+    ),
   ) {}
 
   register(rawDefinition: AppConversationHostDefinition): () => void {
@@ -195,6 +233,11 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
       })
     }
     this.definitions.set(definition.id, definition)
+    void this.stateStore.promoteRestarted(
+      definition.id,
+      definition.packageName,
+      definition.sourcePackageRoot,
+    ).catch(() => {})
     return () => {
       if (this.definitions.get(definition.id) === definition) this.definitions.delete(definition.id)
     }
@@ -232,6 +275,13 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     }
   }
 
+  isCreatorSource(cwd: string): boolean {
+    const source = canonicalPath(cwd)
+    return [...this.definitions.values()].some(
+      definition => canonicalPath(definition.sourcePackageRoot) === source,
+    )
+  }
+
   async creatorContext(cwd: string, signal?: AbortSignal): Promise<AppCreatorContext> {
     const definition = await this.definitionForSource(cwd, signal)
     const descriptor = await this.describe(definition, signal)
@@ -242,7 +292,43 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
       sourcePackageRoot: definition.sourcePackageRoot,
       rebuildAvailable: descriptor.rebuildAvailable,
       ...(descriptor.rebuildReason === undefined ? {} : { rebuildReason: descriptor.rebuildReason }),
+      applyState: await this.stateStore.get(
+        definition.id,
+        definition.packageName,
+        definition.sourcePackageRoot,
+      ),
     }
+  }
+
+  async applyState(cwd: string, signal?: AbortSignal) {
+    const definition = await this.definitionForSource(cwd, signal)
+    return await this.stateStore.get(
+      definition.id,
+      definition.packageName,
+      definition.sourcePackageRoot,
+    )
+  }
+
+  async changedFilesSinceApply(
+    cwd: string,
+    currentFiles: Readonly<Record<string, string>>,
+    signal?: AbortSignal,
+  ) {
+    const definition = await this.definitionForSource(cwd, signal)
+    return await this.stateStore.changedFiles(
+      definition.id,
+      definition.packageName,
+      definition.sourcePackageRoot,
+      currentFiles,
+    )
+  }
+
+  noteClientReady(appId: string): void {
+    const id = appId.trim().toLowerCase()
+    if (!this.definitions.has(id)) throw new Error(`unknown app conversation '${appId}'`)
+    this.clientGenerations.set(id, (this.clientGenerations.get(id) ?? 0) + 1)
+    for (const wake of this.clientWaiters.get(id) ?? []) wake()
+    this.clientWaiters.delete(id)
   }
 
   async list(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]> {
@@ -272,8 +358,18 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
 
   async rebuild(appId: string, signal?: AbortSignal): Promise<AppRebuildResult> {
     const definition = this.definition(appId)
+    return await this.serializeApply(definition.id, async () => await this.rebuildNow(definition, signal))
+  }
+
+  private async rebuildNow(
+    definition: AppConversationHostDefinition,
+    signal?: AbortSignal,
+  ): Promise<AppRebuildResult> {
+    signal?.throwIfAborted()
     if (this.builder === undefined) throw new Error('Bun Builder is unavailable.')
     const startedAt = Date.now()
+    const applyId = randomUUID()
+    const clientGeneration = this.clientGenerations.get(definition.id)
     let preview: AppBuildPreview | undefined
     try {
       preview = await this.builder.preview({ sourceDirectory: definition.sourcePackageRoot }, signal)
@@ -288,24 +384,62 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         confirmation: preview.confirmation,
         ...(signal === undefined ? {} : { signal }),
       })
-      let appWindowsReloaded = 0
+      let appWindows: AppWindowReloadReceipt = { matched: 0, reloaded: 0, failed: 0 }
       let appWindowsReloadError: string | undefined
-      if (this.reloadAppWindows !== undefined) {
-        try {
-          appWindowsReloaded = await this.reloadAppWindows(definition.appWindowPath ?? `/apps/${definition.id}`)
-        } catch (error) {
-          appWindowsReloadError = errorMessage(error)
-        }
-      }
-      return {
-        appId,
+      const [clientReload] = await Promise.all([
+        clientGeneration === undefined
+          ? Promise.resolve(false)
+          : this.waitForClientReady(definition.id, clientGeneration, signal),
+        this.reloadAppWindows === undefined
+          ? Promise.resolve()
+          : this.reloadAppWindows(definition.appWindowPath ?? `/apps/${definition.id}`).then(
+              receipt => { appWindows = receipt },
+              error => { appWindowsReloadError = errorMessage(error) },
+            ),
+      ])
+      // The build already succeeded. Finalize its durable receipt even if the
+      // initiating request disconnects while runtime acknowledgements run.
+      const snapshot = await snapshotAppWorkspace(definition.sourcePackageRoot)
+      const outputRevision = createHash('sha256')
+        .update(definition.packageName).update('\0')
+        .update(applyId).update('\0')
+        .update(snapshot.digest)
+        .digest('hex')
+      const hostRuntime = result.hostReloaded ? 'confirmed' as const : 'not-confirmed' as const
+      const clientRuntime = clientReload ? 'confirmed' as const : 'not-observed' as const
+      const userActionRequired = !result.hostReloaded
+        ? 'verify-host-runtime' as const
+        : clientReload || appWindows.reloaded > 0
+          ? null
+          : 'reopen-app-window' as const
+      await this.stateStore.recordApplied({
+        appId: definition.id,
         packageName: result.packageName,
+        sourcePackageRoot: definition.sourcePackageRoot,
+        sourceDigest: snapshot.digest,
+        sourceFiles: Object.fromEntries(snapshot.files),
+        applyId,
+        appliedAt: result.completedAt,
+        outputRevision,
+      })
+      return {
+        appId: definition.id,
+        packageName: result.packageName,
+        applyId,
+        sourceDigest: snapshot.digest,
+        outputRevision,
         completedAt: result.completedAt,
         durationMs: Date.now() - startedAt,
+        buildSucceeded: true,
         hostReloaded: result.hostReloaded,
-        clientReload: 'not-observed',
-        appWindowsReloaded,
+        hostRuntime,
+        clientReload: clientRuntime,
+        clientRuntime,
+        appWindowsMatched: appWindows.matched,
+        appWindowsReloaded: appWindows.reloaded,
+        appWindowsFailed: appWindows.failed,
         ...(appWindowsReloadError === undefined ? {} : { appWindowsReloadError }),
+        userActionRequired,
         buildLog: result.buildLog,
       }
     } finally {
@@ -319,8 +453,17 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
 
   async validateCreator(cwd: string, signal?: AbortSignal): Promise<AppBuildValidationResult> {
     const definition = await this.definitionForSource(cwd, signal)
+    return await this.serializeApply(definition.id, async () => await this.validateCreatorNow(definition, signal))
+  }
+
+  private async validateCreatorNow(
+    definition: AppConversationHostDefinition,
+    signal?: AbortSignal,
+  ): Promise<AppBuildValidationResult> {
+    signal?.throwIfAborted()
     if (this.builder === undefined) throw new Error('Bun Builder is unavailable.')
     const startedAt = Date.now()
+    const applyId = randomUUID()
     let preview: AppBuildPreview | undefined
     try {
       preview = await this.builder.preview({ sourceDirectory: definition.sourcePackageRoot }, signal)
@@ -332,11 +475,35 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         confirmation: preview.confirmation,
         ...(signal === undefined ? {} : { signal }),
       })
+      // A successful structural build must always become a durable queued
+      // revision; caller cancellation cannot turn it back into "unknown".
+      const snapshot = await snapshotAppWorkspace(definition.sourcePackageRoot)
+      const outputRevision = createHash('sha256')
+        .update(definition.packageName).update('\0')
+        .update(applyId).update('\0')
+        .update(snapshot.digest)
+        .digest('hex')
+      await this.stateStore.recordRestartQueued({
+        appId: definition.id,
+        packageName: result.packageName,
+        sourcePackageRoot: definition.sourcePackageRoot,
+        sourceDigest: snapshot.digest,
+        sourceFiles: Object.fromEntries(snapshot.files),
+        applyId,
+        appliedAt: result.completedAt,
+        outputRevision,
+      })
       return {
         appId: definition.id,
         packageName: result.packageName,
+        applyId,
+        sourceDigest: snapshot.digest,
+        outputRevision,
         completedAt: result.completedAt,
         durationMs: Date.now() - startedAt,
+        buildSucceeded: true,
+        runtimeRestart: 'queued-after-turn-flush',
+        userActionRequired: 'restart-pending',
         installLog: result.logs.install,
         buildLog: result.logs.build,
       }
@@ -361,6 +528,45 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     if (this.packages === undefined) throw new Error('App package manager is unavailable.')
     const definition = this.definition(appId)
     return await this.packages.uninstall(definition.packageName, definition.sourcePackageRoot, signal)
+  }
+
+  private async serializeApply<T>(appId: string, operation: () => Promise<T>): Promise<T> {
+    const previous = this.applyQueues.get(appId) ?? Promise.resolve()
+    const result = previous.then(operation)
+    const settled = result.then(() => undefined, () => undefined)
+    this.applyQueues.set(appId, settled)
+    try {
+      return await result
+    } finally {
+      if (this.applyQueues.get(appId) === settled) this.applyQueues.delete(appId)
+    }
+  }
+
+  private async waitForClientReady(
+    appId: string,
+    previousGeneration: number,
+    signal?: AbortSignal,
+  ): Promise<boolean> {
+    if ((this.clientGenerations.get(appId) ?? 0) > previousGeneration) return true
+    return await new Promise<boolean>((resolve) => {
+      let settled = false
+      const finish = (value: boolean): void => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        signal?.removeEventListener('abort', aborted)
+        waiters.delete(ready)
+        if (waiters.size === 0) this.clientWaiters.delete(appId)
+        resolve(value)
+      }
+      const ready = (): void => finish((this.clientGenerations.get(appId) ?? 0) > previousGeneration)
+      const aborted = (): void => finish(false)
+      const waiters = this.clientWaiters.get(appId) ?? new Set<() => void>()
+      this.clientWaiters.set(appId, waiters)
+      waiters.add(ready)
+      const timeout = setTimeout(() => finish(false), 3_000)
+      signal?.addEventListener('abort', aborted, { once: true })
+    })
   }
 
   private definition(appId: string): AppConversationHostDefinition {
@@ -523,11 +729,18 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
     () => ctx.reflect.provide('appConversations', registry),
     'deepdeck app conversations: host registry',
   )
+  let creatorMode: ReturnType<typeof installAppCreatorMode> | undefined
   ctx.effect(
-    () => installAppCreatorMode(
-      ctx as unknown as Parameters<typeof installAppCreatorMode>[0],
-      registry,
-    ),
+    () => {
+      creatorMode = installAppCreatorMode(
+        ctx as unknown as Parameters<typeof installAppCreatorMode>[0],
+        registry,
+      )
+      return () => {
+        creatorMode?.()
+        creatorMode = undefined
+      }
+    },
     'deepdeck app conversations: Creator mode tools',
   )
   ctx.effect(() => ctx.webServer.register({
@@ -547,6 +760,30 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
         const body = await readJsonBody(request)
         if (body.action === 'list-apps') {
           sendJson(response, 200, { apps: await registry.list() })
+          return
+        }
+        if (body.action === 'client-ready' && typeof body.appId === 'string') {
+          if (!sameOrigin(request)) {
+            sendJson(response, 403, { error: 'same-origin request required' })
+            return
+          }
+          registry.noteClientReady(body.appId)
+          sendJson(response, 200, { ready: true })
+          return
+        }
+        if (
+          body.action === 'creator-ready'
+          && typeof body.appId === 'string'
+          && typeof body.sessionId === 'string'
+        ) {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          if (creatorMode === undefined) throw new Error('Creator runtime is not active.')
+          sendJson(response, 200, {
+            creator: await creatorMode.assertReady(body.sessionId, body.appId, controller.signal),
+          })
           return
         }
         if (body.action === 'create-app' && typeof body.appId === 'string' && typeof body.title === 'string') {

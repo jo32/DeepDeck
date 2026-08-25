@@ -1,0 +1,23 @@
+- insert:
+    - id: deepdeck-computer-use
+      name: '@deepdeck/dsh-computer-use'
+
+    - id: deepdeck-computer-use-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      # The management plugin clears this after the row mounts when the
+      # persisted setting is enabled. Starting disabled prevents an opted-out
+      # profile from ever spawning the native process during boot.
+      disabled: true
+      inject:
+        - deepdeckComputerUse
+      config:
+        serverName: open-computer-use
+        transport: stdio
+        command: !!js process.execPath
+        args:
+          - !!js ctx.deepdeckComputerUse.launcher
+          - mcp
+        env: {}
+        cwd: !!js ctx.deepdeckComputerUse.root
+        toolCallTimeoutMs: 120000
+        failOnStartupError: false

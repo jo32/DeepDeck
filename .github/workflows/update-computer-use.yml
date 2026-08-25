@@ -1,0 +1,87 @@
+name: Update Open Computer Use
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-open-computer-use
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout with Harness submodule
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.1
+          package-manager-cache: false
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
+
+      - name: Install the reviewed dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve the latest stable Open Computer Use release
+        id: computer-use
+        run: pnpm computer-use:update
+
+      - name: Refresh the reproducible lockfile
+        if: steps.computer-use.outputs.changed == 'true'
+        run: |
+          pnpm install --lockfile-only
+          pnpm install --frozen-lockfile
+
+      - name: Verify the updated Cordis plugin
+        if: steps.computer-use.outputs.changed == 'true'
+        run: |
+          pnpm --filter @deepdeck/dsh-computer-use run check
+          pnpm --filter @deepdeck/dsh-computer-use run test
+          pnpm --filter @deepdeck/dsh-computer-use run build
+
+      - name: Open a reviewed update pull request
+        if: steps.computer-use.outputs.changed == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.computer-use.outputs.version }}
+        run: |
+          set -euo pipefail
+          branch="deps/open-computer-use-v${VERSION}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Update branch already exists: $branch"
+            exit 0
+          fi
+          git switch -c "$branch"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add plugins/computer-use/package.json pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore(computer-use): update to ${VERSION}"
+          git push --set-upstream origin "$branch"
+          gh pr create \
+            --base "${BASE_BRANCH}" \
+            --head "$branch" \
+            --title "chore(computer-use): update to ${VERSION}" \
+            --body "Updates the pinned Open Computer Use runtime to npm latest stable (${VERSION}). The package identity, MIT license, upstream repository, npm tarball origin, and SHA-512 metadata were validated before the lockfile was refreshed. The normal DeepDeck CI remains the merge gate."

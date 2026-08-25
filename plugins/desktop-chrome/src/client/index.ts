@@ -4,7 +4,8 @@ import type { ChatStore, ViewTab } from '@deepseek-ai/dsh-client-ui-conversation
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { PanelActions } from './service.ts'
-import { AppFrame, type BrandCompositionLedger } from './AppFrame.tsx'
+import { AppFrame } from './AppFrame.tsx'
+import { BrandCompositionController } from './brand-composition.ts'
 import {
   DESKTOP_SIDEBAR_LOCALE,
   DesktopSidebar,
@@ -27,8 +28,6 @@ import { installArchiveSessionContinuity } from './archive-session-continuity.ts
 
 export const inject = ['slots', 'theme', 'workspaces', 'sessions', 'locale']
 
-const HOME_HERO_ENTRY_ID = 'deepdeck-home-hero'
-
 function chatStoreFromHeader(entries: readonly StoredEntry[]): ChatStore {
   const entry = entries.find(candidate => candidate.store !== undefined)
   if (entry?.store === undefined) {
@@ -46,11 +45,7 @@ export function apply(ctx: ClientContext): void {
   )
 
   const layout = new DesktopLayoutController()
-  const brandComposition: BrandCompositionLedger = {
-    isReady: () => ctx.slots.entries('conversation.input.dock')
-      .some(entry => entry.options.id === HOME_HERO_ENTRY_ID),
-    subscribe: listener => ctx.slots.subscribe('conversation.input.dock', listener),
-  }
+  const brandComposition = new BrandCompositionController()
   const apps = {
     count: () => ctx.slots.entries('sidebar.apps').length,
     subscribe: (listener: () => void) => ctx.slots.subscribe('sidebar.apps', listener),
@@ -64,6 +59,10 @@ export function apply(ctx: ClientContext): void {
     zh: sessionMetricsZh,
     en: sessionMetricsEn,
   }), 'deepdeck desktop: session metrics dictionaries')
+  ctx.effect(
+    () => ctx.reflect.provide('deepdeckBrandComposition', brandComposition),
+    'deepdeck desktop: branded frame readiness',
+  )
 
   ctx.effect(() => {
     const disposeService = ctx.reflect.provide('layout', layout)
