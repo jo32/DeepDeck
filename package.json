@@ -39,7 +39,7 @@
     "start:packaged": "pnpm package:local && node scripts/run-packaged-desktop.mjs"
   },
   "dependencies": {
-    "dsh-codex-connect": "0.1.0-alpha.4.14"
+    "dsh-codex-connect": "0.1.0-alpha.4.19"
   },
   "devDependencies": {
     "pnpm": "11.7.0"

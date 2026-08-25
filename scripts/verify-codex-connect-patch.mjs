@@ -5,9 +5,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const expectedPackageVersion = "0.1.0-alpha.4.14";
-const expectedDshVersion = "0.1.1-rc.1";
-const expectedReactRange = "^19.1.1";
+const expectedPackageVersion = "0.1.0-alpha.4.19";
+const expectedDshVersion = "0.1.1-rc.2";
+const expectedReactRange = "^18.2.0 || ^19.1.1";
 const expectedPiAiVersion = "0.82.1";
 const staleDshVersions = ["0.1.0-rc.7", "0.1.0-rc.8"];
 const textExtensions = new Set([".d.ts", ".js", ".json", ".md", ".yaml", ".yml"]);
@@ -61,7 +61,7 @@ if (manifest.peerDependencies?.["@earendil-works/pi-ai"] !== expectedPiAiVersion
   fail("pi-ai peer contract drifted");
 }
 if (compatibility.dshPluginApi?.version !== expectedDshVersion) {
-  fail("compatibility.json does not declare Harness 0.1.1-rc.1");
+  fail("compatibility.json does not declare Harness 0.1.1-rc.2");
 }
 
 const textFiles = await collectTextFiles(packageRoot);
@@ -82,10 +82,10 @@ if (claimsConfigurableProvider) {
 
 const plugin = await import(pathToFileURL(join(packageRoot, manifest.main ?? "lib/index.js")).href);
 if (plugin.SUPPORTED_DSH_PLUGIN_API_VERSION !== expectedDshVersion) {
-  fail("compiled doctor contract does not report Harness 0.1.1-rc.1");
+  fail("compiled doctor contract does not report Harness 0.1.1-rc.2");
 }
 if (plugin.COMPATIBILITY_CONTRACT?.dshPluginApi?.version !== expectedDshVersion) {
-  fail("compiled compatibility contract does not report Harness 0.1.1-rc.1");
+  fail("compiled compatibility contract does not report Harness 0.1.1-rc.2");
 }
 
 const report = plugin.evaluateCompatibility({
@@ -100,7 +100,7 @@ if (report.status !== "compatible") fail(`compiled compatibility evaluation retu
 
 const installedReport = await plugin.detectCompatibility();
 if (installedReport.status !== "compatible") {
-  fail(`installed 0.1.1-rc.1 dependency detection returned ${installedReport.status}`);
+  fail(`installed 0.1.1-rc.2 dependency detection returned ${installedReport.status}`);
 }
 
 console.log(

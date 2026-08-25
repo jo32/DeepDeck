@@ -1,5 +1,5 @@
 /**
- * 0.1.1-rc.1-compatible client bundle preset for DeepDeck plugins that live outside
+ * 0.1.1-rc.2-compatible client bundle preset for DeepDeck plugins that live outside
  * the Harness repository's two-level package workspace layout.
  */
 import { existsSync, globSync, readFileSync } from 'node:fs'
@@ -230,7 +230,7 @@ function clientConfig(id: string): UserConfig {
   }
 }
 
-/** Build one external DeepDeck plugin using the 0.1.1-rc.1 dynamic-client contract. */
+/** Build one external DeepDeck plugin using the 0.1.1-rc.2 dynamic-client contract. */
 export function deepdeckClientBundle(id: string, libEntries: readonly string[]): UserConfig[] {
   return [libraryConfig(id, libEntries), clientConfig(id)]
 }

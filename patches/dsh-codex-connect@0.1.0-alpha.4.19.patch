@@ -1,0 +1,14 @@
+diff --git a/package.json b/package.json
+index 76bd0ee..1aee468 100644
+--- a/package.json
++++ b/package.json
+@@ -116,8 +116,8 @@
+     "@deepseek-ai/dsh-settings": "0.1.1-rc.2",
+     "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
+     "@deepseek-ai/dsh-web": "0.1.1-rc.2",
+     "@deepseek-ai/schemastery": "^3.18.1-rc.1",
+-    "react": "^18.2.0"
++    "react": "^18.2.0 || ^19.1.1"
+   },
+   "devDependencies": {
+     "@earendil-works/pi-ai": "0.82.1",
