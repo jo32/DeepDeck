@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Entry, Loader } from '@deepseek-ai/cordis-plugin-loader'
 import type { SettingsNamespace, SettingsScope } from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
 import {
   COMPUTER_USE_MCP_ENTRY_ID,
@@ -21,7 +22,9 @@ export {
 } from './contracts.ts'
 
 export const name = 'deepdeck-computer-use'
-export const inject = ['loader', 'settings']
+export const inject = ['loader', 'settings', 'tools']
+
+const COMPUTER_USE_TOOL_PREFIX = 'mcp__open-computer-use__'
 
 export interface ComputerUseHostContext extends Context {
   readonly loader: Loader
@@ -71,8 +74,8 @@ export type SpawnComputerUseProcess = (
  * Ask the bundled macOS app to check its own TCC permissions. Upstream's
  * `doctor` command exits without UI when everything is granted and presents
  * its native onboarding window only when Accessibility or Screen Recording is
- * missing. One check is made per enabled period so duplicate Cordis lifecycle
- * events cannot produce duplicate windows.
+ * missing. One check is made per enabled period so concurrent tool calls cannot
+ * produce duplicate windows.
  */
 export class ComputerUsePermissionOnboarding {
   private checkedForCurrentEnable = false
@@ -134,6 +137,11 @@ export class ComputerUsePermissionOnboarding {
   }
 }
 
+/** Match only tools registered by this plugin's MCP server namespace. */
+export function isComputerUseToolName(name: string): boolean {
+  return name.startsWith(COMPUTER_USE_TOOL_PREFIX)
+}
+
 /** Resolve a sibling row inside the same nested Cordis loader tree. */
 export function resolveSiblingLoaderEntryId(
   currentEntryId: string | undefined,
@@ -182,7 +190,10 @@ export async function apply(
   )
   const syncPreference = (enabled: boolean): Promise<void> => {
     runtime.enabled = enabled
-    onboarding.sync(enabled, runtime)
+    // Disabling cancels and rearms onboarding. Enabling must remain silent:
+    // permissions are requested only when an agent actually invokes a
+    // Computer Use tool.
+    if (!enabled) onboarding.sync(false, runtime)
     return gate.setEnabled(enabled)
   }
 
@@ -218,7 +229,16 @@ export async function apply(
     'computer-use: gate MCP loader entry from settings',
   )
   ctx.effect(
+    () => ctx.on('tools/pre-execute', async (exec, next) => {
+      if (runtime.enabled && isComputerUseToolName(exec.name)) {
+        onboarding.sync(true, runtime)
+      }
+      return next()
+    }),
+    'computer-use: request permissions on first tool call',
+  )
+  ctx.effect(
     () => () => onboarding.dispose(),
-    'computer-use: stop permission check on plugin disposal',
+    'computer-use: stop permission onboarding on plugin disposal',
   )
 }

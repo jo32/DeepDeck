@@ -25,6 +25,7 @@
       "@deepseek-ai/cordis": ["../../vendor/deepseek-harness/vendor/cordis/lib/types/index.d.ts"],
       "@deepseek-ai/cordis-plugin-loader": ["../../vendor/deepseek-harness/vendor/loader/lib/types/index.d.ts"],
       "@deepseek-ai/dsh-settings": ["../../vendor/deepseek-harness/packages/settings/settings/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-tools": ["../../vendor/deepseek-harness/packages/core/tools/lib/types/index.d.ts"],
       "@deepseek-ai/schemastery": ["../../vendor/deepseek-harness/vendor/schemastery/lib/types/index.d.ts"],
       "@deepseek-ai/dsh-client-runtime/client": ["../../vendor/deepseek-harness/packages/client/runtime/lib/types/client/index.d.ts"],
       "@deepseek-ai/dsh-client-locale/client": ["../../vendor/deepseek-harness/packages/client/locale/lib/types/client/index.d.ts"],

@@ -48,7 +48,8 @@
     "react": "^18.2.0 || ^19.0.0"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-settings": "0.1.1-rc.2"
+    "@deepseek-ai/dsh-settings": "0.1.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.1.1-rc.2"
   },
   "files": [
     "lib/index.js",

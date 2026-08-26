@@ -7,6 +7,7 @@ import {
   ComputerUseSettingsSchema,
   ComputerUseLoaderGate,
   ComputerUsePermissionOnboarding,
+  isComputerUseToolName,
   resolveSiblingLoaderEntryId,
 } from './index.ts'
 
@@ -39,6 +40,12 @@ describe('ComputerUseLoaderGate', () => {
       'include:deepdeck-computer-use',
       COMPUTER_USE_MCP_ENTRY_ID,
     )).toBe('include:deepdeck-computer-use-mcp')
+  })
+
+  it('recognizes only tools from the Open Computer Use MCP namespace', () => {
+    expect(isComputerUseToolName('mcp__open-computer-use__get_app_state')).toBe(true)
+    expect(isComputerUseToolName('mcp__another-server__get_app_state')).toBe(false)
+    expect(isComputerUseToolName('computer-use')).toBe(false)
   })
 
   it('leaves the default-enabled MCP entry running', async () => {
@@ -89,12 +96,16 @@ describe('ComputerUseLoaderGate', () => {
     expect(fake.update).toHaveBeenCalledTimes(2)
   })
 
-  it('globally observes the sibling MCP row and enables it after mount', async () => {
+  it('enables the MCP row silently and requests permissions on first tool use', async () => {
     const entry: FakeEntry & { options: FakeEntry['options'] & { id?: string } } = {
       options: { disabled: true },
     }
     let mounted = false
     let onEntryInit: ((entry: typeof entry) => void) | undefined
+    let onToolPreExecute: ((
+      exec: { name: string },
+      next: () => Promise<{ kind: 'allow' }>,
+    ) => Promise<{ kind: 'allow' }>) | undefined
     const update = vi.fn(async (_id: string, options: { disabled?: boolean }) => {
       entry.options = { ...entry.options, ...options }
     })
@@ -120,8 +131,13 @@ describe('ComputerUseLoaderGate', () => {
       },
       provide: vi.fn(),
       effect: vi.fn((factory: () => unknown) => factory()),
-      on: vi.fn((event: string, listener: (next: typeof entry) => void) => {
-        if (event === 'loader/entry-init') onEntryInit = listener
+      on: vi.fn((event: string, listener: never) => {
+        if (event === 'loader/entry-init') {
+          onEntryInit = listener as (next: typeof entry) => void
+        }
+        if (event === 'tools/pre-execute') {
+          onToolPreExecute = listener as typeof onToolPreExecute
+        }
         return () => {}
       }),
       root: { logger: undefined },
@@ -145,10 +161,24 @@ describe('ComputerUseLoaderGate', () => {
       )
     })
     expect(entry.options.disabled).toBe(false)
+    expect(onboarding.sync).not.toHaveBeenCalled()
+
+    const next = vi.fn(async () => ({ kind: 'allow' as const }))
+    await onToolPreExecute?.(
+      { name: 'mcp__another-server__get_app_state' },
+      next,
+    )
+    expect(onboarding.sync).not.toHaveBeenCalled()
+
+    await onToolPreExecute?.(
+      { name: 'mcp__open-computer-use__get_app_state' },
+      next,
+    )
     expect(onboarding.sync).toHaveBeenCalledWith(
       true,
       expect.objectContaining({ enabled: true }),
     )
+    expect(next).toHaveBeenCalledTimes(2)
   })
 })
 
