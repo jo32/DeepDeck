@@ -7,6 +7,7 @@ import {
   ComputerUseSettingsSchema,
   ComputerUseLoaderGate,
   ComputerUsePermissionOnboarding,
+  COMPUTER_USE_DISABLE_APP_AGENT_PROXY_ENV,
   isComputerUseToolName,
   resolveSiblingLoaderEntryId,
 } from './index.ts'
@@ -96,7 +97,7 @@ describe('ComputerUseLoaderGate', () => {
     expect(fake.update).toHaveBeenCalledTimes(2)
   })
 
-  it('enables the MCP row silently and requests permissions on first tool use', async () => {
+  it('enables the MCP row silently and waits for permissions on first tool use', async () => {
     const entry: FakeEntry & { options: FakeEntry['options'] & { id?: string } } = {
       options: { disabled: true },
     }
@@ -110,8 +111,10 @@ describe('ComputerUseLoaderGate', () => {
       entry.options = { ...entry.options, ...options }
     })
     const watch = vi.fn(() => () => {})
+    let finishDoctor: (() => void) | undefined
+    const doctor = new Promise<void>(resolve => { finishDoctor = resolve })
     const onboarding = {
-      sync: vi.fn(),
+      sync: vi.fn((enabled: boolean) => enabled ? doctor : Promise.resolve()),
       dispose: vi.fn(),
     }
     const ctx = {
@@ -170,14 +173,20 @@ describe('ComputerUseLoaderGate', () => {
     )
     expect(onboarding.sync).not.toHaveBeenCalled()
 
-    await onToolPreExecute?.(
+    const toolExecution = onToolPreExecute?.(
       { name: 'mcp__open-computer-use__get_app_state' },
       next,
     )
-    expect(onboarding.sync).toHaveBeenCalledWith(
-      true,
-      expect.objectContaining({ enabled: true }),
-    )
+    await vi.waitFor(() => {
+      expect(onboarding.sync).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({ enabled: true }),
+      )
+    })
+    expect(next).toHaveBeenCalledOnce()
+
+    finishDoctor?.()
+    await toolExecution
     expect(next).toHaveBeenCalledTimes(2)
   })
 })
@@ -187,6 +196,7 @@ describe('ComputerUsePermissionOnboarding', () => {
     enabled: true,
     root: '/runtime/computer-use',
     launcher: '/runtime/computer-use/bin/open-computer-use',
+    agentTempDirectory: '/tmp/deepdeck-open-computer-use',
   }
 
   function fakeChild(): ChildProcess {
@@ -199,7 +209,7 @@ describe('ComputerUsePermissionOnboarding', () => {
     return child
   }
 
-  it('runs doctor once per enabled period on macOS', () => {
+  it('runs a standalone doctor once per enabled period on macOS', async () => {
     const child = fakeChild()
     const spawnProcess = vi.fn(() => child)
     const onboarding = new ComputerUsePermissionOnboarding(
@@ -207,26 +217,31 @@ describe('ComputerUsePermissionOnboarding', () => {
       'darwin',
     )
 
-    onboarding.sync(true, runtime)
-    onboarding.sync(true, runtime)
+    const first = onboarding.sync(true, runtime)
+    const duplicate = onboarding.sync(true, runtime)
 
     expect(spawnProcess).toHaveBeenCalledOnce()
     expect(spawnProcess).toHaveBeenCalledWith(
       process.execPath,
       [runtime.launcher, 'doctor'],
-      {
+      expect.objectContaining({
         cwd: runtime.root,
+        env: expect.objectContaining({
+          TMPDIR: runtime.agentTempDirectory,
+          [COMPUTER_USE_DISABLE_APP_AGENT_PROXY_ENV]: '1',
+        }),
         stdio: 'ignore',
         windowsHide: true,
-      },
+      }),
     )
 
     child.emit('exit', 0, null)
-    onboarding.sync(true, runtime)
+    await Promise.all([first, duplicate])
+    await onboarding.sync(true, runtime)
     expect(spawnProcess).toHaveBeenCalledOnce()
 
-    onboarding.sync(false, runtime)
-    onboarding.sync(true, runtime)
+    await onboarding.sync(false, runtime)
+    void onboarding.sync(true, runtime)
     expect(spawnProcess).toHaveBeenCalledTimes(2)
   })
 
@@ -237,21 +252,39 @@ describe('ComputerUsePermissionOnboarding', () => {
       'win32',
     )
 
-    onboarding.sync(true, runtime)
+    void onboarding.sync(true, runtime)
 
     expect(spawnProcess).not.toHaveBeenCalled()
   })
 
-  it('stops an in-flight permission check when disabled', () => {
+  it('stops and resolves an in-flight permission check when disabled', async () => {
     const child = fakeChild()
     const onboarding = new ComputerUsePermissionOnboarding(
       vi.fn(() => child),
       'darwin',
     )
 
-    onboarding.sync(true, runtime)
-    onboarding.sync(false, runtime)
+    const pending = onboarding.sync(true, runtime)
+    await onboarding.sync(false, runtime)
+    await pending
 
     expect(child.kill).toHaveBeenCalledOnce()
+  })
+
+  it('waits for doctor to close before completing the enable check', async () => {
+    const child = fakeChild()
+    const onboarding = new ComputerUsePermissionOnboarding(
+      vi.fn(() => child),
+      'darwin',
+    )
+    let completed = false
+
+    const pending = onboarding.sync(true, runtime).then(() => { completed = true })
+    await Promise.resolve()
+    expect(completed).toBe(false)
+
+    child.emit('exit', 0, null)
+    await pending
+    expect(completed).toBe(true)
   })
 })

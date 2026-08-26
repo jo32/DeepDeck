@@ -122,6 +122,9 @@ await verifyHelpers(join(contents, "Frameworks"));
 await assertNoElectronFiles(resources);
 
 const requireFromDesktop = createRequire(join(desktopRoot, "package.json"));
+const {
+  COMPUTER_USE_PACKAGED_IDENTITY,
+} = requireFromDesktop("./build/computer-use-identity.cjs");
 const { listPackage } = requireFromDesktop("@electron/asar");
 const asarFiles = new Set(listPackage(join(resources, "app.asar")));
 for (const required of [
@@ -152,6 +155,34 @@ await execFileAsync(
   [join(workspaceRoot, "scripts", "verify-runtime.mjs"), `--root=${resources}`],
   { maxBuffer: 2 * 1024 * 1024 },
 );
+
+const computerUseApp = join(appPath, COMPUTER_USE_PACKAGED_IDENTITY.relativeBundlePath);
+const computerUseInfo = join(computerUseApp, "Contents", "Info.plist");
+for (const [key, value] of Object.entries({
+  CFBundleIdentifier: COMPUTER_USE_PACKAGED_IDENTITY.bundleIdentifier,
+  CFBundleName: COMPUTER_USE_PACKAGED_IDENTITY.bundleName,
+  CFBundleDisplayName: COMPUTER_USE_PACKAGED_IDENTITY.bundleName,
+  CFBundleExecutable: COMPUTER_USE_PACKAGED_IDENTITY.executableName,
+  OpenComputerUseAppVariant: COMPUTER_USE_PACKAGED_IDENTITY.bundleVariant,
+})) {
+  assertEqual(await plistValue(computerUseInfo, key), value, `Computer Use ${key}`);
+}
+
+if (options.production) {
+  async function signingTeam(path) {
+    const { stderr } = await execFileAsync("/usr/bin/codesign", ["-dvv", path]);
+    const team = /^TeamIdentifier=(.+)$/m.exec(stderr)?.[1]?.trim();
+    if (!team) throw new Error(`Signed bundle has no TeamIdentifier: ${path}`);
+    return team;
+  }
+
+  const [deepDeckTeam, computerUseTeam] = await Promise.all([
+    signingTeam(appPath),
+    signingTeam(computerUseApp),
+  ]);
+  assertEqual(computerUseTeam, deepDeckTeam, "Computer Use signing team");
+  await execFileAsync("/usr/bin/codesign", ["--verify", "--deep", "--strict", "--verbose=2", computerUseApp]);
+}
 
 const executableStat = await lstat(join(contents, "MacOS", "DeepDeck"));
 if ((executableStat.mode & 0o111) === 0) throw new Error("DeepDeck executable is not executable");

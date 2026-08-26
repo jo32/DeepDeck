@@ -17,7 +17,10 @@
         args:
           - !!js ctx.deepdeckComputerUse.launcher
           - mcp
-        env: {}
+        # open-computer-use uses TMPDIR for its app-agent socket. Scope it to
+        # DeepDeck so other clients cannot terminate this runtime's agent.
+        env:
+          TMPDIR: !!js ctx.deepdeckComputerUse.agentTempDirectory
         cwd: !!js ctx.deepdeckComputerUse.root
         toolCallTimeoutMs: 120000
         failOnStartupError: false

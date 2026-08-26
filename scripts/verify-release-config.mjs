@@ -56,6 +56,12 @@ if (builder.appId !== "com.jo32.deepdeck") throw new Error("electron-builder app
 if (builder.productName !== "DeepDeck" || builder.executableName !== "DeepDeck") {
   throw new Error("electron-builder product and executable names must be DeepDeck");
 }
+if (builder.afterPack !== "build/after-pack.cjs") {
+  throw new Error("Production packaging must rewrite nested app identities before signing");
+}
+if (builder.afterSign !== "build/after-sign.cjs") {
+  throw new Error("Production packaging must verify nested app signatures before notarization");
+}
 if (builder.forceCodeSigning !== true || builder.mac?.hardenedRuntime !== true || builder.mac?.notarize !== true) {
   throw new Error("Production macOS packaging must require signing, hardened runtime, and notarization");
 }

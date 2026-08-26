@@ -12,4 +12,6 @@ export interface ComputerUseRuntime {
   readonly root: string
   /** Absolute JavaScript launcher shipped by open-computer-use. */
   readonly launcher: string
+  /** Dedicated temp root that isolates DeepDeck's native app-agent socket. */
+  readonly agentTempDirectory: string
 }

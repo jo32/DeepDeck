@@ -151,8 +151,17 @@ jobs:
           fi
           computer_use_app="$app/Contents/Resources/plugins/computer-use/node_modules/open-computer-use/dist/Open Computer Use.app"
           test -d "$computer_use_app"
+          computer_use_info="$computer_use_app/Contents/Info.plist"
+          computer_use_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$computer_use_info")"
+          computer_use_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$computer_use_info")"
+          test "$computer_use_id" = "com.ifuryst.opencomputeruse.dev"
+          test "$computer_use_name" = "DeepDeck Computer Use"
           codesign --verify --deep --strict --verbose=2 "$computer_use_app"
           codesign --verify --deep --strict --verbose=2 "$app"
+          app_team="$(codesign -dvv "$app" 2>&1 | awk -F= '$1 == "TeamIdentifier" { print $2; exit }')"
+          computer_use_team="$(codesign -dvv "$computer_use_app" 2>&1 | awk -F= '$1 == "TeamIdentifier" { print $2; exit }')"
+          test -n "$app_team"
+          test "$computer_use_team" = "$app_team"
           xcrun stapler validate "$app"
           if command -v syspolicy_check >/dev/null 2>&1; then
             syspolicy_check distribution "$app"
