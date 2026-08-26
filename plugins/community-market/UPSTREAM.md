@@ -3,9 +3,9 @@
 This plugin is vendored from `dsh-community-market/` in
 [`anywhere-labs/deepseek-harness-desktop`](https://github.com/anywhere-labs/deepseek-harness-desktop).
 
-- Upstream commit: `6074088f5b660206e404b3591fab51fb99c69add`
-- Imported directory tree: `7b8dc5070efd52112fde672dba28f7d599d9bc8e`
-- Imported on: `2026-08-19`
+- Upstream commit: `681ba66091fc5b1e827650137f69b3ee4c435922`
+- Imported directory tree: `588534faa15dc75943328d9fab172104b67d5dcf`
+- Imported on: `2026-08-27`
 
 DeepDeck-specific changes are limited to pnpm workspace scripts and the local
 `cordis.patch.yml` bundle declaration used by DeepDeck's runtime assembler.

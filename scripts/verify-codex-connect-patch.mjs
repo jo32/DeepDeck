@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const expectedPackageVersion = "0.1.0-alpha.4.19";
+const expectedPackageVersion = "0.1.0-alpha.4.20";
 const expectedDshVersion = "0.1.1-rc.2";
 const expectedReactRange = "^18.2.0 || ^19.1.1";
 const expectedPiAiVersion = "0.82.1";

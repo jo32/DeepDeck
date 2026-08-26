@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.19";
+const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.20";
 const DSH_PLUGIN_API_VERSION = "0.1.1-rc.2";
 const REACT_PEER_RANGE = "^18.2.0 || ^19.1.1";
 const BUN_VERSION = "1.4.0";

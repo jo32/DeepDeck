@@ -146,7 +146,7 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-sandbox-policy@0.1.1-rc.2'
   - '@deepseek-ai/dsh-shell@0.1.1-rc.2'
   - '@deepseek-ai/dsh-subprocess@0.1.1-rc.2'
-  - dsh-codex-connect@0.1.0-alpha.4.19
+  - dsh-codex-connect@0.1.0-alpha.4.20
   - '@deepseek-ai/dsh-client-ui-attachment@0.1.1-rc.2'
   - '@deepseek-ai/dsh-client-ui-conversation@0.1.1-rc.2'
   - '@deepseek-ai/dsh-client-ui-input-trigger@0.1.1-rc.2'
@@ -162,7 +162,7 @@ packageExtensions:
   '@deepseek-ai/dsh-client-ui-primitives@0.1.1-rc.2':
     dependencies:
       '@types/react': 18.3.31
-  'dsh-codex-connect@0.1.0-alpha.4.19':
+  'dsh-codex-connect@0.1.0-alpha.4.20':
     peerDependencies:
       react: ^18.2.0 || ^19.1.1
 
@@ -173,4 +173,4 @@ peerDependencyRules:
     'dsh-codex-connect>react': ^19.1.1
 
 patchedDependencies:
-  dsh-codex-connect@0.1.0-alpha.4.19: patches/dsh-codex-connect@0.1.0-alpha.4.19.patch
+  dsh-codex-connect@0.1.0-alpha.4.20: patches/dsh-codex-connect@0.1.0-alpha.4.20.patch
