@@ -172,7 +172,7 @@ overrides:
 packageExtensionsChecksum: sha256-gEk3RD65T5+l69MeSUIFedRAhXapukd3lTrn6tzhR9o=
 
 patchedDependencies:
-  dsh-codex-connect@0.1.0-alpha.4.20: f095506b065f28729243895eab4fccaf1390b05de77b55606ed574e8700224cc
+  dsh-codex-connect@0.1.0-alpha.4.20: 6da44eac79a5dbfe8b927fd58dcaf482a85cbe306216e8c8bc52ddce97171054
 
 importers:
 
@@ -180,7 +180,7 @@ importers:
     dependencies:
       dsh-codex-connect:
         specifier: 0.1.0-alpha.4.20
-        version: 0.1.0-alpha.4.20(patch_hash=f095506b065f28729243895eab4fccaf1390b05de77b55606ed574e8700224cc)(015a410bba220136eae219664518c8d9)
+        version: 0.1.0-alpha.4.20(patch_hash=6da44eac79a5dbfe8b927fd58dcaf482a85cbe306216e8c8bc52ddce97171054)(015a410bba220136eae219664518c8d9)
     devDependencies:
       pnpm:
         specifier: 12.0.0
@@ -6904,7 +6904,7 @@ snapshots:
 
   dotenv@16.6.1: {}
 
-  dsh-codex-connect@0.1.0-alpha.4.20(patch_hash=f095506b065f28729243895eab4fccaf1390b05de77b55606ed574e8700224cc)(015a410bba220136eae219664518c8d9):
+  dsh-codex-connect@0.1.0-alpha.4.20(patch_hash=6da44eac79a5dbfe8b927fd58dcaf482a85cbe306216e8c8bc52ddce97171054)(015a410bba220136eae219664518c8d9):
     dependencies:
       '@deepseek-ai/cordis': 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
       '@deepseek-ai/dsh-agent': 0.1.1-rc.2(c1537a8836b04097f168b024f1e38d85)
