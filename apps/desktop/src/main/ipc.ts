@@ -9,6 +9,7 @@ import type { DesktopUpdateService } from "./update-service.js";
 export interface DesktopIpcHooks {
   onHarnessClientReady(senderId: number): void;
   onInstallUpdate(): DesktopUpdateStatus;
+  onTelemetryScreen(screen: unknown): boolean;
 }
 
 export function registerIpc(
@@ -36,6 +37,7 @@ export function registerIpc(
     }
     return harness.getStatus();
   });
+  ipcMain.handle(channels.telemetryScreen, (_event, screen: unknown) => hooks.onTelemetryScreen(screen));
   ipcMain.handle(channels.updatesGet, () => updates.getStatus());
   ipcMain.handle(channels.updatesDownload, () => updates.download());
   ipcMain.handle(channels.updatesInstall, () => hooks.onInstallUpdate());
@@ -45,6 +47,7 @@ export function registerIpc(
     ipcMain.removeHandler(channels.brandingGet);
     ipcMain.removeHandler(channels.runtimeGet);
     ipcMain.removeHandler(channels.runtimeRestart);
+    ipcMain.removeHandler(channels.telemetryScreen);
     ipcMain.removeHandler(channels.updatesGet);
     ipcMain.removeHandler(channels.updatesDownload);
     ipcMain.removeHandler(channels.updatesInstall);

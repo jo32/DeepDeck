@@ -41,13 +41,21 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000
 const BUILD_TIMEOUT_MS = 10 * 60 * 1000
 const PACK_TIMEOUT_MS = 2 * 60 * 1000
 const PREVIEW_TTL_MS = 30 * 60 * 1000
-const OMITTED_DIRECTORIES = new Set(['.git', 'node_modules'])
+const PREBUILT_BUILD_LABEL = 'Prebuilt package (no build script)'
+const OMITTED_DIRECTORIES = new Set(['.git', '.pnpm-store', 'node_modules'])
 
 type JsonObject = Record<string, unknown>
 
 export interface BunBuildPreviewInput {
   readonly sourceDirectory: string
   readonly packageSubdirectory?: string
+}
+
+/** Lightweight source metadata used by settings surfaces; never snapshots the source tree. */
+export interface BunBuildInspection {
+  readonly packageName: string
+  readonly hotUpdateAvailable: boolean
+  readonly hotUpdateReason?: string
 }
 
 export interface BunBuildRequest {
@@ -76,6 +84,7 @@ export interface BunHotReloadAdapter {
 export interface BunPluginBuilderService {
   isStatePath(path: string): boolean
   status(signal?: AbortSignal): Promise<BunBuilderRuntimeStatus>
+  inspect(input: BunBuildPreviewInput, signal?: AbortSignal): Promise<BunBuildInspection>
   preview(input: BunBuildPreviewInput, signal?: AbortSignal): Promise<BunBuildPreview>
   build(input: BunBuildRequest): Promise<BunBuildResult>
   buildSource(input: BunBuildRequest): Promise<BunSourceBuildResult>
@@ -116,7 +125,7 @@ export interface BunPluginBuilderOptions {
 interface PackagePlan {
   readonly packageName: string
   readonly version: string
-  readonly buildScript: string
+  readonly buildScript?: string
   readonly packageKind: 'plugin' | 'bundle'
   readonly bundlePatch?: string
   readonly hostEntry: string
@@ -283,10 +292,16 @@ function parsePackagePlan(value: unknown): PackagePlan {
   ) throw new Error('package version is not an exact semantic version')
 
   const scripts = isObject(value.scripts) ? value.scripts : {}
-  const buildScript = scripts.build
-  if (typeof buildScript !== 'string' || buildScript.trim().length === 0 || buildScript.length > 4096 || buildScript.includes('\0')) {
-    throw new Error('package must declare one bounded build script')
+  const rawBuildScript = scripts.build
+  if (rawBuildScript !== undefined && (
+    typeof rawBuildScript !== 'string'
+    || rawBuildScript.trim().length === 0
+    || rawBuildScript.length > 4096
+    || rawBuildScript.includes('\0')
+  )) {
+    throw new Error('package build script is invalid')
   }
+  const buildScript = typeof rawBuildScript === 'string' ? rawBuildScript : undefined
 
   const dsh = isObject(value.dsh) ? value.dsh : {}
   let bundlePatch: string | undefined
@@ -307,7 +322,7 @@ function parsePackagePlan(value: unknown): PackagePlan {
   return {
     packageName,
     version,
-    buildScript,
+    ...(buildScript === undefined ? {} : { buildScript }),
     packageKind: bundlePatch === undefined ? 'plugin' : 'bundle',
     ...(bundlePatch === undefined ? {} : { bundlePatch }),
     hostEntry,
@@ -497,6 +512,43 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
     }
   }
 
+  async inspect(input: BunBuildPreviewInput, signal?: AbortSignal): Promise<BunBuildInspection> {
+    this.assertOpen()
+    signal?.throwIfAborted()
+    if (!isAbsolute(input.sourceDirectory) || input.sourceDirectory.includes('\0')) {
+      throw new Error('source directory must be an absolute local path')
+    }
+    const suppliedSource = resolve(input.sourceDirectory)
+    const suppliedInfo = await lstat(suppliedSource)
+    if (!suppliedInfo.isDirectory() || suppliedInfo.isSymbolicLink()) {
+      throw new Error('source directory must be a real directory, not a symbolic link')
+    }
+    const sourceDirectory = await realpath(suppliedSource)
+    if (isInside(sourceDirectory, this.stateRoot) || isInside(this.stateRoot, sourceDirectory)) {
+      throw new Error('source directory overlaps the builder state directory')
+    }
+    const packageSubdirectory = validatePackageSubdirectory(input.packageSubdirectory)
+    const sourcePackageRoot = packageSubdirectory.length === 0
+      ? sourceDirectory
+      : resolve(sourceDirectory, ...packageSubdirectory.split('/'))
+    if (!isInside(sourceDirectory, sourcePackageRoot)) {
+      throw new Error('package subdirectory escaped the source directory')
+    }
+    const plan = parsePackagePlan(await readJson(join(sourcePackageRoot, 'package.json')))
+    if (plan.bundlePatch !== undefined) {
+      await regularFile(join(sourcePackageRoot, plan.bundlePatch), 'dsh.bundle.patch')
+    }
+    signal?.throwIfAborted()
+    const hotUpdate = this.hotReload === undefined
+      ? { available: false, reason: 'Cordis HMR is unavailable in this runtime.' }
+      : await this.hotReload.inspect(this.hotUpdateTarget(plan, sourcePackageRoot))
+    return Object.freeze({
+      packageName: plan.packageName,
+      hotUpdateAvailable: hotUpdate.available,
+      ...(hotUpdate.reason === undefined ? {} : { hotUpdateReason: hotUpdate.reason }),
+    })
+  }
+
   async preview(input: BunBuildPreviewInput, signal?: AbortSignal): Promise<BunBuildPreview> {
     this.assertOpen()
     signal?.throwIfAborted()
@@ -528,6 +580,7 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
       if (plan.bundlePatch !== undefined) {
         await regularFile(join(packageRoot, plan.bundlePatch), 'dsh.bundle.patch')
       }
+      if (plan.buildScript === undefined) await this.validatePackageAt(packageRoot, plan)
       const rootManifest = join(snapshotRoot, 'package.json')
       const installRoot = packageRoot !== snapshotRoot && await exists(rootManifest) ? snapshotRoot : packageRoot
       const frozenInstall = await exists(join(installRoot, 'bun.lock')) || await exists(join(installRoot, 'bun.lockb'))
@@ -543,7 +596,8 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
         packageName: plan.packageName,
         version: plan.version,
         packageSubdirectory,
-        buildScript: plan.buildScript,
+        buildScript: plan.buildScript ?? PREBUILT_BUILD_LABEL,
+        buildRequired: plan.buildScript !== undefined,
         packageKind: plan.packageKind,
         ...(plan.bundlePatch === undefined ? {} : { bundlePatch: plan.bundlePatch }),
         confirmation: `${plan.packageName}@${plan.version}`,
@@ -551,7 +605,9 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
         hotUpdateAvailable: hotUpdate.available,
         ...(hotUpdate.reason === undefined ? {} : { hotUpdateReason: hotUpdate.reason }),
         warnings: Object.freeze([
-          'The package build script executes local code with your user permissions.',
+          ...(plan.buildScript === undefined
+            ? ['No build script is declared; the reviewed prebuilt Host and Client entries will be used.']
+            : ['The package build script executes local code with your user permissions.']),
           'Dependency lifecycle scripts are disabled during Bun install and pack.',
           ...(plan.packageKind === 'plugin'
             ? ['This package relies on an external profile or bundle patch to mount it.']
@@ -614,14 +670,16 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
       logs.install = install.output
       if (install.exitCode !== 0 || install.timedOut || install.signal !== null) throw stageFailure('install', install)
 
-      const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
-        cwd: job.packageRoot,
-        environment,
-        timeoutMs: BUILD_TIMEOUT_MS,
-        signal,
-      })
-      logs.build = build.output
-      if (build.exitCode !== 0 || build.timedOut || build.signal !== null) throw stageFailure('build', build)
+      if (job.plan.buildScript !== undefined) {
+        const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
+          cwd: job.packageRoot,
+          environment,
+          timeoutMs: BUILD_TIMEOUT_MS,
+          signal,
+        })
+        logs.build = build.output
+        if (build.exitCode !== 0 || build.timedOut || build.signal !== null) throw stageFailure('build', build)
+      }
       await this.validateBuiltPackage(job)
 
       const inspectPack = await this.processRunner(
@@ -726,14 +784,16 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
       logs.install = install.output
       if (install.exitCode !== 0 || install.timedOut || install.signal !== null) throw stageFailure('install', install)
 
-      const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
-        cwd: job.sourcePackageRoot,
-        environment,
-        timeoutMs: BUILD_TIMEOUT_MS,
-        signal,
-      })
-      logs.build = build.output
-      if (build.exitCode !== 0 || build.timedOut || build.signal !== null) throw stageFailure('build', build)
+      if (job.plan.buildScript !== undefined) {
+        const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
+          cwd: job.sourcePackageRoot,
+          environment,
+          timeoutMs: BUILD_TIMEOUT_MS,
+          signal,
+        })
+        logs.build = build.output
+        if (build.exitCode !== 0 || build.timedOut || build.signal !== null) throw stageFailure('build', build)
+      }
       await this.validatePackageAt(job.sourcePackageRoot, job.plan)
       job.state = 'complete'
       return Object.freeze({
@@ -788,14 +848,16 @@ export class DeepDeckBunPluginBuilder implements BunPluginBuilderService {
       const cacheRoot = join(this.stateRoot, 'cache')
       await mkdir(cacheRoot, { recursive: true, mode: 0o700 })
       const environment = await childEnvironment(this.environment, this.bunBinary, cacheRoot)
-      const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
-        cwd: job.sourcePackageRoot,
-        environment,
-        timeoutMs: BUILD_TIMEOUT_MS,
-        signal,
-      })
-      buildLog = build.output
-      if (build.exitCode !== 0 || build.timedOut || build.signal !== null) throw stageFailure('build', build)
+      if (job.plan.buildScript !== undefined) {
+        const build = await this.processRunner(this.bunBinary, ['run', 'build'], {
+          cwd: job.sourcePackageRoot,
+          environment,
+          timeoutMs: BUILD_TIMEOUT_MS,
+          signal,
+        })
+        buildLog = build.output
+        if (build.exitCode !== 0 || build.timedOut || build.signal !== null) throw stageFailure('build', build)
+      }
       await this.validatePackageAt(job.sourcePackageRoot, job.plan)
       await this.hotReload.reload(target)
       job.state = 'complete'

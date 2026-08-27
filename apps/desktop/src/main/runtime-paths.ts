@@ -65,7 +65,7 @@ export function resolveDesktopRuntimePaths(
           path: join(options.resourcesPath, "plugins", "agent-preset-sections"),
         },
         {
-          packageName: "@deepdeck/dsh-community-market-desktop-bridge",
+          packageName: "@deepdeck/dsh-app-market-desktop-bridge",
           path: join(options.resourcesPath, "plugins", "marketplace-desktop-bridge"),
         },
         {
@@ -85,13 +85,18 @@ export function resolveDesktopRuntimePaths(
           path: join(options.resourcesPath, "plugins", "computer-use"),
         },
         {
-          packageName: "dsh-codex-connect",
-          path: join(options.resourcesPath, "harness", "node_modules", "dsh-codex-connect"),
-          presetBundle: true,
+          packageName: "@deepdeck/dsh-provider-aware-web",
+          path: join(
+            options.resourcesPath,
+            "harness",
+            "node_modules",
+            "@deepdeck",
+            "dsh-provider-aware-web",
+          ),
         },
         {
-          packageName: "dsh-community-market",
-          path: join(options.resourcesPath, "harness", "node_modules", "dsh-community-market"),
+          packageName: "dsh-codex-connect",
+          path: join(options.resourcesPath, "harness", "node_modules", "dsh-codex-connect"),
           presetBundle: true,
         },
       ],
@@ -147,7 +152,7 @@ export function resolveDesktopRuntimePaths(
         ),
       },
       {
-        packageName: "@deepdeck/dsh-community-market-desktop-bridge",
+        packageName: "@deepdeck/dsh-app-market-desktop-bridge",
         path: environmentValue(
           environment,
           "DEEPDECK_MARKETPLACE_DESKTOP_BRIDGE_PLUGIN",
@@ -187,20 +192,19 @@ export function resolveDesktopRuntimePaths(
         ),
       },
       {
+        packageName: "@deepdeck/dsh-provider-aware-web",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_PROVIDER_AWARE_WEB_PLUGIN",
+          join(workspaceRepository, "plugins", "provider-aware-web"),
+        ),
+      },
+      {
         packageName: "dsh-codex-connect",
         path: environmentValue(
           environment,
           "DEEPDECK_CODEX_CONNECT_PLUGIN",
           join(workspaceRepository, "node_modules", "dsh-codex-connect"),
-        ),
-        presetBundle: true,
-      },
-      {
-        packageName: "dsh-community-market",
-        path: environmentValue(
-          environment,
-          "DEEPDECK_COMMUNITY_MARKET_PLUGIN",
-          join(workspaceRepository, "plugins", "community-market"),
         ),
         presetBundle: true,
       },

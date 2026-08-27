@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   access,
   cp,
@@ -19,6 +19,7 @@ import { unzip } from 'fflate'
 import type {
   AppCreateResult,
   AppInstallPreview,
+  AppInstallPluginKind,
   AppInstallResult,
   AppInstallSourceKind,
   AppUninstallResult,
@@ -45,6 +46,7 @@ interface AppBuilderPreview {
   readonly packageKind: 'plugin' | 'bundle'
   readonly confirmation: string
   readonly buildScript: string
+  readonly buildRequired?: boolean
   readonly frozenInstall: boolean
   readonly warnings: readonly string[]
 }
@@ -57,7 +59,10 @@ interface AppBuilderSourceResult {
 }
 
 export interface AppInstallerBuilder {
-  preview(input: { readonly sourceDirectory: string }, signal?: AbortSignal): Promise<AppBuilderPreview>
+  preview(input: {
+    readonly sourceDirectory: string
+    readonly packageSubdirectory?: string
+  }, signal?: AbortSignal): Promise<AppBuilderPreview>
   buildSource(input: {
     readonly previewId: string
     readonly confirmation: string
@@ -102,6 +107,16 @@ export interface AppInstallerPnpm {
 interface AppManifestIdentity {
   readonly appId: string
   readonly title: string
+  readonly pluginKind: AppInstallPluginKind
+  readonly packageName: string
+}
+
+export interface AppInstallSourceInput {
+  readonly source: string
+  readonly packageSubdirectory?: string
+  readonly catalogItemId?: string
+  readonly expectedPackageName?: string
+  readonly displayName?: string
 }
 
 interface ManagedPreview {
@@ -110,18 +125,28 @@ interface ManagedPreview {
   readonly stagingRoot?: string
   readonly sourceRoot: string
   readonly finalDirectory: string
+  readonly finalPackageDirectory: string
   readonly existingManagedDirectory: boolean
   readonly source: string
+  readonly catalogItemId?: string
 }
 
 interface AppSourceReceipt {
   readonly schemaVersion: 1
   readonly appId: string
   readonly packageName: string
+  readonly pluginKind?: AppInstallPluginKind
   readonly sourceKind: AppInstallSourceKind
   readonly source: string
   readonly sourceDirectory: string
   readonly installedAt: string
+  readonly catalogItemId?: string
+}
+
+export interface AppPackageInventory {
+  readonly catalogItemIds: ReadonlySet<string>
+  readonly packageNames: ReadonlySet<string>
+  readonly repositoryUrls: ReadonlySet<string>
 }
 
 interface ProcessOutcome {
@@ -230,6 +255,19 @@ function validatedSource(value: string): string {
     throw new Error('安装地址无效。')
   }
   return source
+}
+
+function validatedPackageSubdirectory(value: string | undefined): string {
+  const subdirectory = value?.trim() ?? ''
+  if (subdirectory.length === 0) return ''
+  if (
+    subdirectory.length > 240
+    || subdirectory.includes('\\')
+    || subdirectory.startsWith('/')
+    || subdirectory.endsWith('/')
+    || subdirectory.split('/').some(segment => segment === '.' || segment === '..' || segment.length === 0)
+  ) throw new Error('插件包子目录无效。')
+  return subdirectory
 }
 
 function parsedOnlineUrl(source: string): URL | undefined {
@@ -376,10 +414,13 @@ async function extractZip(bytes: Uint8Array, destination: string): Promise<void>
   }
 }
 
-async function locateRepositoryRoot(source: string): Promise<string> {
+async function locateRepositoryRoot(source: string, packageSubdirectory = ''): Promise<string> {
   let current = source
   for (let depth = 0; depth < 4; depth += 1) {
-    if (await exists(join(current, 'package.json'))) return await realpath(current)
+    const packageRoot = packageSubdirectory.length === 0
+      ? current
+      : join(current, ...packageSubdirectory.split('/'))
+    if (await exists(join(packageRoot, 'package.json'))) return await realpath(current)
     const entries = (await readdir(current, { withFileTypes: true }))
       .filter(entry => entry.name !== '__MACOSX' && entry.name !== '.DS_Store')
     if (entries.length !== 1 || entries[0]?.isDirectory() !== true) break
@@ -388,20 +429,78 @@ async function locateRepositoryRoot(source: string): Promise<string> {
   throw new Error('没有在安装源根目录中找到插件仓库 package.json。')
 }
 
-async function readAppIdentity(sourceRoot: string): Promise<AppManifestIdentity> {
+async function discoverPackageSubdirectory(sourceRoot: string, expectedPackageName: string): Promise<string> {
+  const pending: Array<{ readonly path: string; readonly segments: readonly string[] }> = [{ path: sourceRoot, segments: [] }]
+  const matches: string[] = []
+  let visited = 0
+  while (pending.length > 0) {
+    const current = pending.shift()!
+    visited += 1
+    if (visited > 2_000) throw new Error('插件仓库包含过多目录，无法安全定位目录声明的包。')
+    try {
+      const bytes = await readFile(join(current.path, 'package.json'))
+      if (bytes.byteLength <= 1024 * 1024) {
+        const manifest: unknown = JSON.parse(bytes.toString('utf8'))
+        if (isObject(manifest) && manifest.name === expectedPackageName) {
+          matches.push(current.segments.join('/'))
+        }
+      }
+    } catch (cause) {
+      const code = isObject(cause) && typeof cause.code === 'string' ? cause.code : undefined
+      if (code !== 'ENOENT' && !(cause instanceof SyntaxError)) throw cause
+    }
+    if (current.segments.length >= 4) continue
+    const entries = await readdir(current.path, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isDirectory() || ['.git', '.pnpm-store', 'node_modules'].includes(entry.name)) continue
+      pending.push({
+        path: join(current.path, entry.name),
+        segments: [...current.segments, entry.name],
+      })
+    }
+  }
+  if (matches.length === 0) throw new Error('仓库中没有找到 dshfind 声明的插件包。')
+  if (matches.length > 1) throw new Error('仓库中存在多个同名插件包，无法确定安装目标。')
+  return matches[0]!
+}
+
+function managedPluginId(packageName: string): string {
+  const stem = packageName.split('/').at(-1)!
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, '-')
+    .replaceAll(/^-+|-+$/gu, '')
+    .slice(0, 40)
+    .replaceAll(/-+$/gu, '') || 'plugin'
+  const digest = createHash('sha256').update(packageName).digest('hex').slice(0, 10)
+  return `plugin-${stem}-${digest}`
+}
+
+async function readPluginIdentity(sourceRoot: string, displayName?: string): Promise<AppManifestIdentity> {
   const bytes = await readFile(join(sourceRoot, 'package.json'))
   if (bytes.byteLength > 1024 * 1024) throw new Error('插件 package.json 过大。')
   const value: unknown = JSON.parse(bytes.toString('utf8'))
-  if (!isObject(value) || !isObject(value.dsh) || !isObject(value.dsh.app)) {
-    throw new Error('该插件没有声明 dsh.app，不能从 Apps 安装。')
+  if (!isObject(value) || typeof value.name !== 'string' || !PACKAGE_NAME_PATTERN.test(value.name)) {
+    throw new Error('插件 package.json 缺少规范包名。')
   }
-  const appId = value.dsh.app.id
-  const title = value.dsh.app.title
-  if (typeof appId !== 'string' || !APP_ID_PATTERN.test(appId)) throw new Error('插件 dsh.app.id 无效。')
-  if (typeof title !== 'string' || title.trim().length === 0 || title.length > 120) {
-    throw new Error('插件 dsh.app.title 无效。')
+  const app = isObject(value.dsh) && isObject(value.dsh.app) ? value.dsh.app : undefined
+  if (app !== undefined) {
+    const appId = app.id
+    const title = app.title
+    if (typeof appId !== 'string' || !APP_ID_PATTERN.test(appId)) throw new Error('插件 dsh.app.id 无效。')
+    if (typeof title !== 'string' || title.trim().length === 0 || title.length > 120) {
+      throw new Error('插件 dsh.app.title 无效。')
+    }
+    return { appId, title: title.trim(), pluginKind: 'app', packageName: value.name }
   }
-  return { appId, title: title.trim() }
+  const title = displayName?.trim()
+    || (typeof value.displayName === 'string' ? value.displayName.trim() : '')
+    || value.name
+  return {
+    appId: managedPluginId(value.name),
+    title: Array.from(title).slice(0, 120).join(''),
+    pluginKind: 'plugin',
+    packageName: value.name,
+  }
 }
 
 async function copyLocalRepository(source: string, destination: string): Promise<void> {
@@ -470,6 +569,40 @@ function profilePackageState(
   }
 }
 
+function normalizedRepositorySource(source: string): string | undefined {
+  try {
+    const url = new URL(source)
+    if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'github.com') return undefined
+    return `${url.origin}${url.pathname}`.toLowerCase().replace(/\.git$/u, '').replace(/\/$/u, '')
+  } catch {
+    return undefined
+  }
+}
+
+function parsedSourceReceipt(value: unknown, expectedAppId?: string): AppSourceReceipt {
+  if (!isObject(value)
+    || value.schemaVersion !== 1
+    || typeof value.appId !== 'string'
+    || !APP_ID_PATTERN.test(value.appId)
+    || expectedAppId !== undefined && value.appId !== expectedAppId
+    || typeof value.packageName !== 'string'
+    || !PACKAGE_NAME_PATTERN.test(value.packageName)
+    || typeof value.source !== 'string'
+    || typeof value.sourceDirectory !== 'string'
+    || typeof value.installedAt !== 'string'
+    || value.pluginKind !== undefined && value.pluginKind !== 'app' && value.pluginKind !== 'plugin'
+    || value.catalogItemId !== undefined && (
+      typeof value.catalogItemId !== 'string'
+      || value.catalogItemId.length === 0
+      || value.catalogItemId.length > 160
+      || !/^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$/u.test(value.catalogItemId)
+    )
+    || !['git-repository', 'remote-zip', 'local-zip', 'local-directory'].includes(String(value.sourceKind))) {
+    throw new Error('插件安装来源记录无效。')
+  }
+  return value as unknown as AppSourceReceipt
+}
+
 /** Host-only App source acquisition, build, profile link, and removal boundary. */
 export class DeepDeckAppPackageManager {
   private readonly builder: AppInstallerBuilder
@@ -513,11 +646,21 @@ export class DeepDeckAppPackageManager {
     }
   }
 
-  async preview(sourceValue: string, signal?: AbortSignal): Promise<AppInstallPreview> {
+  async preview(sourceValue: string | AppInstallSourceInput, signal?: AbortSignal): Promise<AppInstallPreview> {
     return await this.runExclusive(async () => {
       await this.purgeExpired()
       signal?.throwIfAborted()
-      const source = validatedSource(sourceValue)
+      const input = typeof sourceValue === 'string' ? { source: sourceValue } : sourceValue
+      const source = validatedSource(input.source)
+      let packageSubdirectory = validatedPackageSubdirectory(input.packageSubdirectory)
+      if (input.expectedPackageName !== undefined && !PACKAGE_NAME_PATTERN.test(input.expectedPackageName)) {
+        throw new Error('目录声明的插件包名无效。')
+      }
+      if (input.catalogItemId !== undefined && (
+        input.catalogItemId.length === 0
+        || input.catalogItemId.length > 160
+        || !/^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$/u.test(input.catalogItemId)
+      )) throw new Error('目录插件 ID 无效。')
       const previewId = randomUUID()
       const stagingRoot = join(this.pluginRoot, '.staging', previewId)
       let sourceRoot: string
@@ -535,7 +678,7 @@ export class DeepDeckAppPackageManager {
             sourceKind = 'remote-zip'
             const extracted = join(stagingRoot, 'archive')
             await extractZip(archive, extracted)
-            sourceRoot = await locateRepositoryRoot(extracted)
+            sourceRoot = await locateRepositoryRoot(extracted, packageSubdirectory)
           } else {
             sourceKind = 'git-repository'
             const cloned = join(stagingRoot, 'repository')
@@ -547,7 +690,9 @@ export class DeepDeckAppPackageManager {
             if (outcome.exitCode !== 0 || outcome.signal !== null || outcome.timedOut) {
               throw new Error(`无法 clone 插件仓库：${outcome.output.trim() || 'git clone failed'}`)
             }
-            sourceRoot = await locateRepositoryRoot(cloned)
+            sourceRoot = packageSubdirectory.length === 0 && input.expectedPackageName !== undefined
+              ? await realpath(cloned)
+              : await locateRepositoryRoot(cloned, packageSubdirectory)
           }
         } else {
           if (!isAbsolute(source)) throw new Error('本地安装地址必须是绝对路径。')
@@ -558,7 +703,9 @@ export class DeepDeckAppPackageManager {
             const canonicalPluginRoot = await realpath(this.pluginRoot).catch(() => this.pluginRoot)
             if (isImmediateChild(canonicalPluginRoot, canonical) && basename(canonical) !== '.staging') {
               sourceKind = 'local-directory'
-              sourceRoot = await locateRepositoryRoot(canonical)
+              sourceRoot = packageSubdirectory.length === 0 && input.expectedPackageName !== undefined
+                ? canonical
+                : await locateRepositoryRoot(canonical, packageSubdirectory)
               ownedStaging = false
             } else {
               sourceKind = 'local-directory'
@@ -576,7 +723,9 @@ export class DeepDeckAppPackageManager {
               } else {
                 await copyLocalRepository(canonical, copied)
               }
-              sourceRoot = await locateRepositoryRoot(copied)
+              sourceRoot = packageSubdirectory.length === 0 && input.expectedPackageName !== undefined
+                ? await realpath(copied)
+                : await locateRepositoryRoot(copied, packageSubdirectory)
             }
           } else {
             sourceKind = 'local-zip'
@@ -585,19 +734,36 @@ export class DeepDeckAppPackageManager {
             await mkdir(stagingRoot, { recursive: true, mode: 0o700 })
             const extracted = join(stagingRoot, 'archive')
             await extractZip(bytes, extracted)
-            sourceRoot = await locateRepositoryRoot(extracted)
+            sourceRoot = await locateRepositoryRoot(extracted, packageSubdirectory)
           }
         }
 
-        const identity = await readAppIdentity(sourceRoot)
-        const builder = await this.builder.preview({ sourceDirectory: sourceRoot }, signal)
+        if (packageSubdirectory.length === 0 && input.expectedPackageName !== undefined) {
+          packageSubdirectory = await discoverPackageSubdirectory(sourceRoot, input.expectedPackageName)
+        }
+        const sourcePackageRoot = packageSubdirectory.length === 0
+          ? sourceRoot
+          : resolve(sourceRoot, ...packageSubdirectory.split('/'))
+        if (!isInside(sourceRoot, sourcePackageRoot)) throw new Error('插件包子目录越界。')
+        const identity = await readPluginIdentity(sourcePackageRoot, input.displayName)
+        const builder = await this.builder.preview({
+          sourceDirectory: sourceRoot,
+          ...(packageSubdirectory.length === 0 ? {} : { packageSubdirectory }),
+        }, signal)
         builderPreview = builder
-        if (builder.packageKind !== 'bundle') throw new Error('该 App 插件没有声明可安装的 dsh.bundle。')
+        if (builder.packageKind !== 'bundle') throw new Error('该插件没有声明可安装的 dsh.bundle。')
         if (!PACKAGE_NAME_PATTERN.test(builder.packageName)) throw new Error('插件包名无效。')
+        if (builder.packageName !== identity.packageName) throw new Error('插件清单和构建计划的包名不一致。')
+        if (input.expectedPackageName !== undefined && builder.packageName !== input.expectedPackageName) {
+          throw new Error('仓库中的插件包名与 dshfind 目录不一致。')
+        }
         const manifest = await profileManifest(this.profile)
         const profileState = profilePackageState(manifest, builder.packageName)
         if (profileState.bundled) throw new Error(`当前 profile 已加载 ${builder.packageName}。`)
         const finalDirectory = ownedStaging ? join(this.pluginRoot, identity.appId) : sourceRoot
+        const finalPackageDirectory = packageSubdirectory.length === 0
+          ? finalDirectory
+          : resolve(finalDirectory, ...packageSubdirectory.split('/'))
         if (ownedStaging && await exists(finalDirectory)) {
           throw new Error(`插件目录已存在：${finalDirectory}。可直接输入该目录重新安装。`)
         }
@@ -605,12 +771,14 @@ export class DeepDeckAppPackageManager {
           previewId,
           appId: identity.appId,
           title: identity.title,
+          pluginKind: identity.pluginKind,
           packageName: builder.packageName,
           version: builder.version,
           sourceKind,
           profileAction: profileState.dependency ? 'repair' : 'install',
-          sourceDirectory: finalDirectory,
+          sourceDirectory: finalPackageDirectory,
           buildScript: builder.buildScript,
+          buildMode: builder.buildRequired === false ? 'prebuilt' : 'source-build',
           frozenInstall: builder.frozenInstall,
           warnings: builder.warnings,
           expiresAt: new Date(this.now() + PREVIEW_TTL_MS).toISOString(),
@@ -621,8 +789,10 @@ export class DeepDeckAppPackageManager {
           ...(ownedStaging ? { stagingRoot } : {}),
           sourceRoot,
           finalDirectory,
+          finalPackageDirectory,
           existingManagedDirectory: !ownedStaging,
           source,
+          ...(input.catalogItemId === undefined ? {} : { catalogItemId: input.catalogItemId }),
         })
         return publicPreview
       } catch (cause) {
@@ -663,7 +833,7 @@ export class DeepDeckAppPackageManager {
         }
         recoveryId = randomUUID()
         const handle = await this.pnpm.runPluginInstall(
-          ['add', '--save-exact', `link:${preview.finalDirectory}`],
+          ['add', '--save-exact', `link:${preview.finalPackageDirectory}`],
           this.profile.dir,
           {
             packageName: preview.builder.packageName,
@@ -682,10 +852,12 @@ export class DeepDeckAppPackageManager {
           schemaVersion: 1,
           appId: preview.public.appId,
           packageName: preview.builder.packageName,
+          pluginKind: preview.public.pluginKind,
           sourceKind: preview.public.sourceKind,
           source: preview.source,
-          sourceDirectory: preview.finalDirectory,
+          sourceDirectory: preview.finalPackageDirectory,
           installedAt: new Date(this.now()).toISOString(),
+          ...(preview.catalogItemId === undefined ? {} : { catalogItemId: preview.catalogItemId }),
         })
         this.previews.delete(previewId)
         await this.builder.discard(preview.builder.previewId).catch(() => {})
@@ -693,9 +865,10 @@ export class DeepDeckAppPackageManager {
         return Object.freeze({
           appId: preview.public.appId,
           title: preview.public.title,
+          pluginKind: preview.public.pluginKind,
           packageName: preview.builder.packageName,
           version: preview.builder.version,
-          sourceDirectory: preview.finalDirectory,
+          sourceDirectory: preview.finalPackageDirectory,
           profileAction: preview.public.profileAction,
           completedAt: new Date(this.now()).toISOString(),
           installLog: build.logs.install,
@@ -728,6 +901,41 @@ export class DeepDeckAppPackageManager {
     this.previews.delete(previewId)
     await this.builder.discard(preview.builder.previewId).catch(() => {})
     if (preview.stagingRoot !== undefined) await rm(preview.stagingRoot, { recursive: true, force: true })
+  }
+
+  async inventory(): Promise<AppPackageInventory> {
+    const manifest = await profileManifest(this.profile)
+    const packageNames = new Set<string>()
+    for (const packageName of Object.keys(profileDependencies(manifest))) {
+      if (PACKAGE_NAME_PATTERN.test(packageName)) packageNames.add(packageName)
+    }
+    for (const packageName of profileBundles(manifest)) {
+      if (typeof packageName === 'string' && PACKAGE_NAME_PATTERN.test(packageName)) packageNames.add(packageName)
+    }
+    const catalogItemIds = new Set<string>()
+    const repositoryUrls = new Set<string>()
+    const directory = join(this.pluginRoot, '.deepdeck', 'sources')
+    let filenames: readonly string[] = []
+    try {
+      filenames = (await readdir(directory, { withFileTypes: true }))
+        .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+        .map(entry => entry.name)
+    } catch (cause) {
+      const code = isObject(cause) && typeof cause.code === 'string' ? cause.code : undefined
+      if (code !== 'ENOENT') throw cause
+    }
+    for (const filename of filenames) {
+      try {
+        const receipt = parsedSourceReceipt(JSON.parse(await readFile(join(directory, filename), 'utf8')) as unknown)
+        if (!packageNames.has(receipt.packageName)) continue
+        if (receipt.catalogItemId !== undefined) catalogItemIds.add(receipt.catalogItemId)
+        const repository = normalizedRepositorySource(receipt.source)
+        if (repository !== undefined) repositoryUrls.add(repository)
+      } catch {
+        // A corrupt legacy receipt must not make the entire read-only catalog unavailable.
+      }
+    }
+    return { catalogItemIds, packageNames, repositoryUrls }
   }
 
   async uninstallAvailability(packageName: string): Promise<{ readonly available: boolean; readonly reason?: string }> {
@@ -863,17 +1071,7 @@ export class DeepDeckAppPackageManager {
       if (code === 'ENOENT') return undefined
       throw cause
     }
-    if (!isObject(value)
-      || value.schemaVersion !== 1
-      || value.appId !== appId
-      || typeof value.packageName !== 'string'
-      || typeof value.source !== 'string'
-      || typeof value.sourceDirectory !== 'string'
-      || typeof value.installedAt !== 'string'
-      || !['git-repository', 'remote-zip', 'local-zip', 'local-directory'].includes(String(value.sourceKind))) {
-      throw new Error('插件安装来源记录无效。')
-    }
-    return value as unknown as AppSourceReceipt
+    return parsedSourceReceipt(value, appId)
   }
 
   private async writeSourceReceipt(receipt: AppSourceReceipt): Promise<void> {

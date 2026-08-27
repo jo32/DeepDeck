@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { isAbsolute, join } from 'node:path'
-import { DeepDeckCommunityMarketPlugins } from './plugins.js'
 import {
-  DeepDeckCommunityMarketPnpm,
-  resolveCommunityMarketProfile,
+  DeepDeckAppInstallPnpm,
+  resolveAppInstallProfile,
   resolveDshHome,
 } from './runtime.js'
 
@@ -12,7 +11,7 @@ declare const process: {
   readonly execPath: string
   readonly env: NodeJS.ProcessEnv
   readonly pid: number
-  readonly send?: (message: CommunityMarketDesktopMessage) => boolean
+  readonly send?: (message: MarketplaceDesktopMessage) => boolean
   on?(event: 'message', listener: (message: unknown) => void): void
   off?(event: 'message', listener: (message: unknown) => void): void
 }
@@ -24,16 +23,13 @@ interface HostContext {
   }
 }
 
-export const name = 'deepdeck-community-market-desktop-bridge'
+export const name = 'deepdeck-app-market-desktop-bridge'
 export const MARKETPLACE_RESTART_REQUEST = 'dsh-market:restart' as const
-export const COMMUNITY_MARKET_RESTART_REQUEST = 'dsh-community-market:restart' as const
-export const COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST = 'dsh-community-market:open-terminal' as const
 export const APP_WINDOWS_RELOAD_REQUEST = 'deepdeck:reload-app-windows' as const
 export const APP_WINDOWS_RELOAD_RESULT = 'deepdeck:reload-app-windows-result' as const
 
-export type CommunityMarketDesktopMessage =
-  | { readonly type: typeof COMMUNITY_MARKET_RESTART_REQUEST }
-  | { readonly type: typeof COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST }
+export type MarketplaceDesktopMessage =
+  | { readonly type: typeof MARKETPLACE_RESTART_REQUEST }
   | { readonly type: typeof APP_WINDOWS_RELOAD_REQUEST; readonly requestId: string; readonly path: string }
 
 export interface AppWindowsReloadResponse {
@@ -51,7 +47,7 @@ export interface AppWindowReloadReceipt {
   readonly failed: number
 }
 
-type SendToDesktop = (message: CommunityMarketDesktopMessage) => boolean
+type SendToDesktop = (message: MarketplaceDesktopMessage) => boolean
 
 export interface MarketplaceRestartService {
   schedule(): {
@@ -76,7 +72,7 @@ export function createMarketplaceRestartService(
   }
 }
 
-export interface CommunityMarketDesktopServicesOptions {
+export interface MarketplaceDesktopServicesOptions {
   readonly environment?: NodeJS.ProcessEnv
   readonly nodeBinary?: string
   readonly cliPath?: string
@@ -85,15 +81,15 @@ export interface CommunityMarketDesktopServicesOptions {
   readonly subscribe?: (listener: (message: unknown) => void) => () => void
 }
 
-export function createCommunityMarketDesktopServices(
-  options: CommunityMarketDesktopServicesOptions = {},
-): Readonly<Record<'desktopProfiles' | 'desktopPnpm' | 'desktopPlugins' | 'desktopActions', unknown>> {
+export function createMarketplaceDesktopServices(
+  options: MarketplaceDesktopServicesOptions = {},
+): Readonly<Record<'desktopProfiles' | 'desktopPnpm' | 'desktopActions', unknown>> {
   const environment = options.environment ?? process.env
   const homeDir = resolveDshHome(environment)
-  const profile = resolveCommunityMarketProfile(environment)
+  const profile = resolveAppInstallProfile(environment)
   const cliPath = options.cliPath ?? process.argv[1]
   if (cliPath === undefined || !isAbsolute(cliPath)) {
-    throw new Error('DeepDeck could not resolve the Harness CLI for Community Market')
+    throw new Error('DeepDeck could not resolve the Harness CLI for App installs')
   }
   const send = options.send ?? process.send?.bind(process)
   const defer = options.defer ?? setTimeout
@@ -107,24 +103,19 @@ export function createCommunityMarketDesktopServices(
   let restartRequested = false
   return Object.freeze({
     desktopProfiles: Object.freeze({ current: profile }),
-    desktopPnpm: new DeepDeckCommunityMarketPnpm(
+    desktopPnpm: new DeepDeckAppInstallPnpm(
       profile,
       homeDir,
       options.nodeBinary ?? process.execPath,
       cliPath,
       join(homeDir, 'deepdeck', 'community-market-install-recovery.json'),
     ),
-    desktopPlugins: new DeepDeckCommunityMarketPlugins(profile.dir),
     desktopActions: Object.freeze({
-      openTerminal: (): void => {
-        if (send === undefined) throw new Error('DeepDeck terminal requires a desktop IPC parent')
-        send({ type: COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST })
-      },
       requestRestart: async (): Promise<void> => {
         if (restartRequested) return
         if (send === undefined) throw new Error('DeepDeck restart requires a desktop IPC parent')
         restartRequested = true
-        defer(() => { send({ type: COMMUNITY_MARKET_RESTART_REQUEST }) }, 100)
+        defer(() => { send({ type: MARKETPLACE_RESTART_REQUEST }) }, 100)
       },
       reloadAppWindows: async (path: string): Promise<AppWindowReloadReceipt> => {
         if (send === undefined) throw new Error('DeepDeck App window reload requires a desktop IPC parent')
@@ -169,9 +160,9 @@ export function createCommunityMarketDesktopServices(
   })
 }
 
-/** Provide the Desktop capabilities consumed by the upstream Community Market. */
+/** Provide the Desktop capabilities consumed by the Apps installer and builder. */
 export function apply(ctx: HostContext): void {
-  const services = createCommunityMarketDesktopServices()
+  const services = createMarketplaceDesktopServices()
   ctx.effect(() => {
     const dispose = Object.entries(services).map(([serviceName, service]) => (
       ctx.reflect.provide(serviceName, service)
@@ -179,5 +170,5 @@ export function apply(ctx: HostContext): void {
     return () => {
       for (const release of dispose.reverse()) release()
     }
-  }, 'deepdeck community market: desktop capabilities')
+  }, 'deepdeck app market: desktop capabilities')
 }

@@ -74,6 +74,38 @@ export interface AppSettingsDescriptor {
   readonly uninstallReason?: string
 }
 
+export interface AppMarketRepository {
+  readonly url: string
+  readonly subdirectory?: string
+}
+
+/** One validated App or plugin catalog row after profile reconciliation. */
+export interface AppMarketItem {
+  readonly id: string
+  readonly name: string
+  readonly displayName: string
+  readonly summary: string
+  readonly description?: string
+  readonly homepage?: string
+  readonly latestVersion?: string
+  readonly license?: string
+  readonly categories: readonly string[]
+  readonly keywords: readonly string[]
+  readonly repository: AppMarketRepository
+  readonly packageName?: string
+  readonly publisher?: string
+  readonly updatedAt?: string
+  readonly installed: boolean
+}
+
+export interface AppMarketPage {
+  readonly items: readonly AppMarketItem[]
+  readonly nextCursor?: string
+  readonly total?: number
+}
+
+export type AppMarketKind = 'apps' | 'plugins'
+
 /** Trusted source provenance supplied to a dedicated Creator update task. */
 export interface AppUpdateContext {
   readonly appId: string
@@ -165,10 +197,13 @@ export type AppInstallSourceKind =
 
 export type AppInstallProfileAction = 'install' | 'repair'
 
+export type AppInstallPluginKind = 'app' | 'plugin'
+
 export interface AppInstallPreview {
   readonly previewId: string
   readonly appId: string
   readonly title: string
+  readonly pluginKind: AppInstallPluginKind
   readonly packageName: string
   readonly version: string
   readonly sourceKind: AppInstallSourceKind
@@ -177,6 +212,7 @@ export interface AppInstallPreview {
   /** Canonical managed repository directory used after installation. */
   readonly sourceDirectory: string
   readonly buildScript: string
+  readonly buildMode: 'source-build' | 'prebuilt'
   readonly frozenInstall: boolean
   readonly warnings: readonly string[]
   readonly expiresAt: string
@@ -185,6 +221,7 @@ export interface AppInstallPreview {
 export interface AppInstallResult {
   readonly appId: string
   readonly title: string
+  readonly pluginKind: AppInstallPluginKind
   readonly packageName: string
   readonly version: string
   readonly sourceDirectory: string
@@ -271,6 +308,7 @@ export interface AppConversationHostRegistry {
   ): Promise<readonly string[] | undefined>
   noteClientReady(appId: string): void
   list(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]>
+  inspectList(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]>
   updateContext(appId: string, signal?: AbortSignal): Promise<AppUpdateContext>
   rebuild(appId: string, signal?: AbortSignal): Promise<AppRebuildResult>
   rebuildCreator(cwd: string, signal?: AbortSignal): Promise<AppRebuildResult>

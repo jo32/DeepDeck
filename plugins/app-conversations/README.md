@@ -6,10 +6,13 @@ can either stream preview state or open the Session directly in the main window.
 App content and Session logs live in ordinary Workspace directories under
 `~/DeepDeck/Apps`. Credentials remain owned by the app's credential service.
 
-The same Host registry owns the standalone **Apps** settings section. An App
-registers its canonical package name and local source root; the section renders
-one card per App, projects any App-owned settings contribution through
-`settings.apps.item`, and exposes a Rebuild button. Rebuild identities and paths
+The same Host registry owns the standalone **Store** settings section. Its
+**Apps** tab discovers GitHub repositories that opt in with the `deepdeck`
+topic and then verifies their root `package.json` declares `dsh.app`, while
+**Plugins** keeps the ordinary dshfind catalog.
+The **Config** tab renders one card per loaded App, projects any App-owned
+settings contribution through `settings.apps.item`, and exposes update,
+rebuild, uninstall, and manual-install controls. Rebuild identities and paths
 never come from the browser: the Host passes the registered source to Bun
 Builder, which runs the reviewed build script and asks Cordis HMR to replace the
 active Host and Client outputs.

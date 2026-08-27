@@ -1,5 +1,5 @@
 {
-  "name": "@deepdeck/dsh-community-market-desktop-bridge",
+  "name": "@deepdeck/dsh-app-market-desktop-bridge",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -2,18 +2,17 @@ import { describe, expect, it } from 'vitest'
 import {
   APP_WINDOWS_RELOAD_REQUEST,
   APP_WINDOWS_RELOAD_RESULT,
-  COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST,
-  COMMUNITY_MARKET_RESTART_REQUEST,
-  createCommunityMarketDesktopServices,
-  type CommunityMarketDesktopMessage,
+  createMarketplaceDesktopServices,
+  MARKETPLACE_RESTART_REQUEST,
+  type MarketplaceDesktopMessage,
 } from './index.js'
 
-describe('createCommunityMarketDesktopServices', () => {
-  it('provides the upstream market desktop contract for the web profile', async () => {
-    const messages: CommunityMarketDesktopMessage[] = []
+describe('createMarketplaceDesktopServices', () => {
+  it('provides the Apps installer desktop contract for the web profile', async () => {
+    const messages: MarketplaceDesktopMessage[] = []
     const deferred: Array<() => void> = []
     let receive: ((message: unknown) => void) | undefined
-    const services = createCommunityMarketDesktopServices({
+    const services = createMarketplaceDesktopServices({
       environment: { DSH_HOME: '/tmp/deepdeck-market-test' },
       nodeBinary: '/runtime/node',
       cliPath: '/runtime/cli.js',
@@ -38,7 +37,6 @@ describe('createCommunityMarketDesktopServices', () => {
     }) as {
       desktopProfiles: { current: { name: string; dir: string } }
       desktopActions: {
-        openTerminal(): void
         requestRestart(): Promise<void>
         reloadAppWindows(path: string): Promise<{ matched: number; reloaded: number; failed: number }>
       }
@@ -49,7 +47,6 @@ describe('createCommunityMarketDesktopServices', () => {
       dir: '/tmp/deepdeck-market-test/profiles/web',
     })
 
-    services.desktopActions.openTerminal()
     await expect(services.desktopActions.reloadAppWindows('/apps/reader')).resolves.toEqual({
       matched: 3,
       reloaded: 2,
@@ -58,21 +55,19 @@ describe('createCommunityMarketDesktopServices', () => {
     await services.desktopActions.requestRestart()
     await services.desktopActions.requestRestart()
     expect(messages).toEqual([
-      { type: COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST },
       { type: APP_WINDOWS_RELOAD_REQUEST, requestId: expect.any(String), path: '/apps/reader' },
     ])
     expect(deferred).toHaveLength(1)
 
     deferred[0]?.()
     expect(messages).toEqual([
-      { type: COMMUNITY_MARKET_OPEN_TERMINAL_REQUEST },
       { type: APP_WINDOWS_RELOAD_REQUEST, requestId: expect.any(String), path: '/apps/reader' },
-      { type: COMMUNITY_MARKET_RESTART_REQUEST },
+      { type: MARKETPLACE_RESTART_REQUEST },
     ])
   })
 
   it('requires an absolute Harness CLI path', () => {
-    expect(() => createCommunityMarketDesktopServices({
+    expect(() => createMarketplaceDesktopServices({
       environment: { DSH_HOME: '/tmp/deepdeck-market-test' },
       cliPath: 'relative/cli.js',
     })).toThrow('could not resolve the Harness CLI')

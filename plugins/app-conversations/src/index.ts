@@ -28,6 +28,8 @@ import {
 } from './app-installer.js'
 import { installAppCreatorMode } from './creator-tools.js'
 import { snapshotAppWorkspace } from './creator-state.js'
+import { DshfindAppMarket } from './app-market.js'
+import { DeepDeckAppStore } from './app-store.js'
 
 type JsonObject = Record<string, unknown>
 
@@ -75,6 +77,7 @@ interface AppBuildPreview {
   readonly version: string
   readonly packageKind: 'plugin' | 'bundle'
   readonly buildScript: string
+  readonly buildRequired?: boolean
   readonly confirmation: string
   readonly frozenInstall: boolean
   readonly warnings: readonly string[]
@@ -82,9 +85,19 @@ interface AppBuildPreview {
   readonly hotUpdateReason?: string
 }
 
+interface AppBuildInspection {
+  readonly packageName: string
+  readonly hotUpdateAvailable: boolean
+  readonly hotUpdateReason?: string
+}
+
 interface AppBunBuilderService {
   isStatePath?(path: string): boolean
-  preview(input: { readonly sourceDirectory: string }, signal?: AbortSignal): Promise<AppBuildPreview>
+  inspect(input: { readonly sourceDirectory: string }, signal?: AbortSignal): Promise<AppBuildInspection>
+  preview(input: {
+    readonly sourceDirectory: string
+    readonly packageSubdirectory?: string
+  }, signal?: AbortSignal): Promise<AppBuildPreview>
   buildSource(input: {
     readonly previewId: string
     readonly confirmation: string
@@ -332,11 +345,23 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
   }
 
   async list(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]> {
-    const rows: AppSettingsDescriptor[] = []
-    for (const definition of [...this.definitions.values()].sort((left, right) => left.title.localeCompare(right.title))) {
-      rows.push(await this.describe(definition, signal))
-    }
-    return rows
+    signal?.throwIfAborted()
+    return [...this.definitions.values()]
+      .sort((left, right) => left.title.localeCompare(right.title))
+      .map(definition => ({
+        id: definition.id,
+        title: definition.title,
+        packageName: definition.packageName,
+        updateAvailable: this.packages !== undefined,
+        rebuildAvailable: this.builder !== undefined,
+        uninstallAvailable: this.packages !== undefined,
+      }))
+  }
+
+  async inspectList(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]> {
+    const definitions = [...this.definitions.values()]
+      .sort((left, right) => left.title.localeCompare(right.title))
+    return await Promise.all(definitions.map(async definition => await this.describe(definition, signal)))
   }
 
   async updateContext(appId: string, signal?: AbortSignal): Promise<AppUpdateContext> {
@@ -620,10 +645,11 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         ...(uninstall.reason === undefined ? {} : { uninstallReason: uninstall.reason }),
       }
     }
-    let preview: AppBuildPreview | undefined
     try {
-      preview = await this.builder.preview({ sourceDirectory: definition.sourcePackageRoot }, signal)
-      if (preview.packageName !== definition.packageName) {
+      // Settings listing must stay lightweight. Rebuild performs the authoritative
+      // frozen-source preview again before any local code can execute.
+      const inspection = await this.builder.inspect({ sourceDirectory: definition.sourcePackageRoot }, signal)
+      if (inspection.packageName !== definition.packageName) {
         throw new Error('the registered App package identity does not match its source')
       }
       return {
@@ -632,12 +658,12 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         packageName: definition.packageName,
         updateAvailable: update.available,
         ...(update.reason === undefined ? {} : { updateReason: update.reason }),
-        rebuildAvailable: preview.hotUpdateAvailable,
+        rebuildAvailable: inspection.hotUpdateAvailable,
         uninstallAvailable: uninstall.available,
         ...(uninstall.reason === undefined ? {} : { uninstallReason: uninstall.reason }),
-        ...(preview.hotUpdateAvailable
+        ...(inspection.hotUpdateAvailable
           ? {}
-          : { rebuildReason: preview.hotUpdateReason ?? 'This App cannot be rebuilt in place.' }),
+          : { rebuildReason: inspection.hotUpdateReason ?? 'This App cannot be rebuilt in place.' }),
       }
     } catch (error) {
       return {
@@ -651,8 +677,6 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
         uninstallAvailable: uninstall.available,
         ...(uninstall.reason === undefined ? {} : { uninstallReason: uninstall.reason }),
       }
-    } finally {
-      if (preview !== undefined) await this.builder.discard(preview.previewId).catch(() => {})
     }
   }
 }
@@ -712,6 +736,8 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
     pnpm: ctx.desktopPnpm,
     requestRestart: async () => await ctx.desktopActions.requestRestart(),
   })
+  const appStore = new DeepDeckAppStore()
+  const pluginMarket = new DshfindAppMarket()
   const registry = new DefaultAppConversationHostRegistry(
     ctx.workspaceRegistry,
     homedir(),
@@ -759,7 +785,32 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
       try {
         const body = await readJsonBody(request)
         if (body.action === 'list-apps') {
-          sendJson(response, 200, { apps: await registry.list() })
+          sendJson(response, 200, { apps: await registry.list(controller.signal) })
+          return
+        }
+        if (body.action === 'inspect-apps') {
+          sendJson(response, 200, { apps: await registry.inspectList(controller.signal) })
+          return
+        }
+        if (
+          body.action === 'list-market'
+          && (body.kind === 'apps' || body.kind === 'plugins')
+          && typeof body.query === 'string'
+          && (body.cursor === undefined || typeof body.cursor === 'string')
+        ) {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          const inventory = await packages.inventory()
+          sendJson(response, 200, {
+            market: await (body.kind === 'apps' ? appStore : pluginMarket).list(
+              body.query,
+              body.cursor,
+              inventory,
+              controller.signal,
+            ),
+          })
           return
         }
         if (body.action === 'client-ready' && typeof body.appId === 'string') {
@@ -813,6 +864,25 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
             return
           }
           sendJson(response, 200, { installPreview: await packages.preview(body.source, controller.signal) })
+          return
+        }
+        if (body.action === 'preview-market-install' && typeof body.itemId === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          const item = await pluginMarket.resolve(body.itemId, controller.signal)
+          sendJson(response, 200, {
+            installPreview: await packages.preview({
+              source: item.repository.url,
+              ...(item.repository.subdirectory === undefined
+                ? {}
+                : { packageSubdirectory: item.repository.subdirectory }),
+              catalogItemId: item.id,
+              ...(item.packageName === undefined ? {} : { expectedPackageName: item.packageName }),
+              displayName: item.displayName,
+            }, controller.signal),
+          })
           return
         }
         if (body.action === 'install' && typeof body.previewId === 'string') {
@@ -878,7 +948,9 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
         }
         sendJson(response, 400, { error: 'unknown action' })
       } catch (error) {
-        sendJson(response, 400, { error: errorMessage(error) })
+        if (!response.writableEnded && !response.destroyed) {
+          sendJson(response, 400, { error: errorMessage(error) })
+        }
       }
     },
   }), 'deepdeck app conversations: host route')

@@ -9,6 +9,7 @@ import { registerIpc } from "./ipc.js";
 import { configureNativeApplicationIdentity } from "./native-identity.js";
 import type { DesktopRuntimePaths } from "./runtime-paths.js";
 import { readThemeSource } from "./theme-preference.js";
+import { createDesktopTelemetry } from "./vibeloft-telemetry.js";
 import { createUpdateInstaller } from "./update-installer.js";
 import { shouldForceExitForUpdate } from "./update-quit-policy.js";
 import {
@@ -80,6 +81,8 @@ export async function bootstrapDesktop(
   nativeTheme.themeSource = await readThemeSource(resolveHarnessHome());
   configureNativeApplicationIdentity(branding);
 
+  const telemetry = await createDesktopTelemetry(app);
+
   const appWindows = createAppWindowManager();
   let desktopWindow: DesktopWindow | undefined;
   const focusMainWindow = (): void => {
@@ -101,6 +104,7 @@ export async function bootstrapDesktop(
       // everything else is dropped without surfacing a window.
       const base = harness.getStatus().url;
       if (!base || !isSameOriginHttpUrl(url, base)) return;
+      telemetry.trackScreen("apps");
       appWindows.open(url);
     },
     onAppWindowsReloadRequest: async url => await appWindows.reload(url),
@@ -116,10 +120,14 @@ export async function bootstrapDesktop(
   let prepareToQuitPromise: Promise<void> | undefined;
 
   const prepareToQuit = (): Promise<void> => {
-    prepareToQuitPromise ??= harness.stop()
-      .catch((error: unknown) => {
+    prepareToQuitPromise ??= Promise.all([
+      harness.stop().catch((error: unknown) => {
         console.error("Unable to stop the Harness process cleanly", error);
-      })
+      }),
+      telemetry.close().catch((error: unknown) => {
+        console.error("Unable to flush VibeLoft telemetry", error);
+      }),
+    ])
       .then(() => {
         if (updateCheckTimer) clearTimeout(updateCheckTimer);
         removeStatusListener();
@@ -199,6 +207,7 @@ export async function bootstrapDesktop(
       desktopWindow?.markHarnessClientReady(senderId);
     },
     onInstallUpdate: requestInstallUpdate,
+    onTelemetryScreen: screen => telemetry.trackScreen(screen),
   });
 
   const showStatus = async (status: HarnessRuntimeStatus): Promise<void> => {

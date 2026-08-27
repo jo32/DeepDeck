@@ -493,7 +493,7 @@ export function apply(ctx: ClientContext): void {
   const t = ctx.locale.bind(APP_SETTINGS_NS) as AppsSettingsSectionInjected['t']
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',
-    id: 'apps',
+    id: 'store',
     order: 12,
     label: () => t('nav'),
     locale: APP_SETTINGS_NS,

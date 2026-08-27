@@ -96,7 +96,7 @@ function createHotReloadAdapter(ctx: PluginContext): BunHotReloadAdapter {
           const path = relative(target.sourcePackageRoot, source)
           if (path === '') return true
           const first = path.split(/[\\/]/u)[0]
-          return first !== '.git' && first !== 'node_modules'
+          return first !== '.git' && first !== '.pnpm-store' && first !== 'node_modules'
         },
       })
       const fromPackage = relative(target.sourcePackageRoot, target.hostEntryPath)
@@ -177,6 +177,7 @@ export function apply(ctx: PluginContext): void {
 }
 
 export type {
+  BunBuildInspection,
   BunBuildPreviewInput,
   BunBuildRequest,
   BunHotReloadAdapter,

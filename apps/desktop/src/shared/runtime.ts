@@ -16,6 +16,8 @@ export interface HarnessRuntimeStatus {
   details?: string;
 }
 
+export type DesktopTelemetryScreen = "home" | "apps";
+
 export interface DesktopApi {
   appearance: DesktopAppearanceApi;
   branding: {
@@ -26,6 +28,9 @@ export interface DesktopApi {
     restart(): Promise<HarnessRuntimeStatus>;
     readyForDisplay(): void;
     onStatus(listener: (status: HarnessRuntimeStatus) => void): () => void;
+  };
+  telemetry: {
+    screen(name: DesktopTelemetryScreen): Promise<boolean>;
   };
   updates: DesktopUpdatesApi;
 }

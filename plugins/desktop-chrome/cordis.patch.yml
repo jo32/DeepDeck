@@ -9,14 +9,27 @@
   name: '@deepseek-ai/dsh-client-ui-sidebar'
   disabled: true
 
-# Let whichever single configured provider is usable own web search. Fresh
-# DeepSeek profiles therefore use DeepSeek; ChatGPT onboarding enables the
-# Codex search provider without leaving this row pinned to a missing key.
+# DeepDeck owns the Settings shell so sections can contribute product-specific
+# navigation semantics such as the Store storefront glyph. Feature-owned
+# settings sections remain ordinary Cordis slot contributions.
+- id: ui-settings-general
+  name: '@deepseek-ai/dsh-client-ui-settings-general'
+  disabled: true
+
+# The include patch dialect treats `name` as a match guard, not a replacement.
+# Disable the stock service here; DeepDeck's replacement is inserted below.
 - id: web
   name: '@deepseek-ai/dsh-web'
-  config: {}
+  disabled: true
 
 - insert:
+    # Follow the provider used by the current Agent request. This keeps
+    # DeepSeek search for DeepSeek sessions while ChatGPT-backed sessions use
+    # Codex Connect's OpenAI Responses web_search implementation.
+    - id: deepdeck-provider-aware-web
+      name: '@deepdeck/dsh-provider-aware-web'
+      config: {}
+
     - id: deepdeck-desktop-chrome
       name: '@deepdeck/dsh-client-ui-desktop-chrome'
 
@@ -26,8 +39,8 @@
     - id: deepdeck-agent-preset-sections
       name: '@deepdeck/dsh-client-ui-agent-preset-sections'
 
-    - id: deepdeck-community-market-desktop-bridge
-      name: '@deepdeck/dsh-community-market-desktop-bridge'
+    - id: deepdeck-app-market-desktop-bridge
+      name: '@deepdeck/dsh-app-market-desktop-bridge'
 
     - id: deepdeck-bun-plugin-builder
       name: '@deepdeck/dsh-bun-plugin-builder'
@@ -67,8 +80,7 @@
     - id: llm-openai-codex
       name: 'dsh-codex-connect'
       config:
-        enableSearch: false
+        # Register the provider at startup; the provider-aware web seam invokes
+        # it only for ChatGPT-backed sessions.
+        enableSearch: true
         enableImageTool: false
-
-    - id: community-market
-      name: 'dsh-community-market'

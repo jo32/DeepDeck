@@ -33,6 +33,24 @@ async function pluginRepository(path: string): Promise<void> {
   }, null, 2)}\n`)
 }
 
+async function ordinaryPluginRepository(path: string): Promise<void> {
+  const plugin = join(path, 'packages', 'ordinary')
+  await mkdir(plugin, { recursive: true })
+  await writeFile(join(plugin, 'cordis.patch.yml'), '[]\n')
+  await writeFile(join(plugin, 'package.json'), `${JSON.stringify({
+    name: '@fixture/ordinary',
+    version: '2.0.0',
+    main: 'lib/index.js',
+    exports: { '.': './lib/index.js', './client': './lib/client.js' },
+    displayName: 'Ordinary Fixture',
+    dsh: {
+      bundle: { patch: './cordis.patch.yml' },
+      client: { platform: 'web' },
+    },
+    scripts: { build: 'fixture-build' },
+  }, null, 2)}\n`)
+}
+
 function completedHandle(output = ''): AppInstallerPnpmHandle {
   const stdout = new PassThrough()
   const stderr = new PassThrough()
@@ -126,6 +144,82 @@ function builder() {
 }
 
 describe('DeepDeckAppPackageManager', () => {
+  it('installs an ordinary DSH bundle from a catalog monorepo package', async () => {
+    const paths = await fixture()
+    const monorepo = join(paths.root, 'ordinary-monorepo')
+    await ordinaryPluginRepository(monorepo)
+    const build = {
+      preview: vi.fn(async () => ({
+        previewId: '44444444-4444-4444-8444-444444444444',
+        packageName: '@fixture/ordinary',
+        version: '2.0.0',
+        packageKind: 'bundle' as const,
+        confirmation: '@fixture/ordinary@2.0.0',
+        buildScript: 'fixture-build',
+        frozenInstall: true,
+        warnings: [],
+      })),
+      buildSource: vi.fn(async (input: { readonly previewId: string }) => ({
+        previewId: input.previewId,
+        packageName: '@fixture/ordinary',
+        version: '2.0.0',
+        sourcePackageRoot: '/reviewed/source/packages/ordinary',
+        logs: { install: '', build: 'built ordinary plugin\n' },
+      })),
+      discard: vi.fn(async () => {}),
+    }
+    const runPluginInstall = vi.fn(async () => {
+      await mutateProfile(paths.profile.dir, '@fixture/ordinary', 'add')
+      return completedHandle('profile linked\n')
+    })
+    const manager = new DeepDeckAppPackageManager({
+      builder: build,
+      profile: paths.profile,
+      pnpm: {
+        runPlugin: vi.fn(),
+        runPluginInstall,
+        rollbackPluginInstall: vi.fn(async () => true),
+        acknowledgeRecoveredInstall: vi.fn(async () => {}),
+      },
+      requestRestart: vi.fn(async () => {}),
+      homeDirectory: paths.home,
+    })
+
+    const preview = await manager.preview({
+      source: monorepo,
+      catalogItemId: 'github:fixture/ordinary',
+      expectedPackageName: '@fixture/ordinary',
+      displayName: 'Ordinary Plugin',
+    })
+    expect(preview).toMatchObject({
+      title: 'Ordinary Plugin',
+      pluginKind: 'plugin',
+      packageName: '@fixture/ordinary',
+      sourceKind: 'local-directory',
+    })
+    expect(build.preview).toHaveBeenCalledWith({
+      sourceDirectory: expect.any(String),
+      packageSubdirectory: 'packages/ordinary',
+    }, undefined)
+
+    const result = await manager.install(preview.previewId)
+    expect(result).toMatchObject({
+      pluginKind: 'plugin',
+      packageName: '@fixture/ordinary',
+      sourceDirectory: expect.stringMatching(/packages\/ordinary$/u),
+      restartRequired: true,
+    })
+    expect(runPluginInstall).toHaveBeenCalledWith(
+      ['add', '--save-exact', `link:${result.sourceDirectory}`],
+      paths.profile.dir,
+      expect.objectContaining({ packageName: '@fixture/ordinary' }),
+      undefined,
+    )
+    const inventory = await manager.inventory()
+    expect(inventory.catalogItemIds).toContain('github:fixture/ordinary')
+    expect(inventory.packageNames).toContain('@fixture/ordinary')
+  })
+
   it('scaffolds, builds, and links a new App into the current profile', async () => {
     const paths = await fixture()
     const build = {

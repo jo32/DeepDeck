@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Button,
   IconPlusOutline16,
@@ -14,6 +14,9 @@ import type {
   AppCreateResult,
   AppInstallPreview,
   AppInstallResult,
+  AppMarketItem,
+  AppMarketKind,
+  AppMarketPage,
   AppRebuildResult,
   AppSettingsDescriptor,
   AppUninstallResult,
@@ -23,8 +26,11 @@ import {
   createApp,
   discardAppInstall,
   installApp,
+  inspectApps,
+  listAppMarket,
   listApps,
   previewAppInstall,
+  previewMarketInstall,
   rebuildApp,
   restartForApps,
   uninstallApp,
@@ -73,6 +79,10 @@ type CreateState =
   | { readonly status: 'complete'; readonly result: AppCreateResult }
   | { readonly status: 'failed'; readonly error: string }
 
+type StoreTab = 'apps' | 'plugins' | 'config'
+
+const STORE_TABS: readonly StoreTab[] = ['apps', 'plugins', 'config']
+
 const APP_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u
 
 function suggestedAppId(title: string): string {
@@ -92,6 +102,9 @@ function messageOf(error: unknown): string {
 }
 
 export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatchUpdate }: AppsSettingsSectionProps): ReactNode {
+  const tabsId = useId()
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const [activeTab, setActiveTab] = useState<StoreTab>('apps')
   const [apps, setApps] = useState<readonly AppSettingsDescriptor[]>()
   const [loadError, setLoadError] = useState<string>()
   const [rebuilds, setRebuilds] = useState<Readonly<Record<string, RebuildState>>>({})
@@ -99,6 +112,12 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
   const [updates, setUpdates] = useState<Readonly<Record<string, CreatorState>>>({})
   const [installSource, setInstallSource] = useState('')
   const [installation, setInstallation] = useState<InstallState>({ status: 'idle' })
+  const [marketQuery, setMarketQuery] = useState('')
+  const [activeMarketQuery, setActiveMarketQuery] = useState('')
+  const [market, setMarket] = useState<AppMarketPage>()
+  const [marketLoading, setMarketLoading] = useState(false)
+  const [marketMoreLoading, setMarketMoreLoading] = useState(false)
+  const [marketError, setMarketError] = useState<string>()
   const [uninstalls, setUninstalls] = useState<Readonly<Record<string, UninstallState>>>({})
   const [restartState, setRestartState] = useState<'idle' | 'running' | 'failed'>('idle')
   const [createOpen, setCreateOpen] = useState(false)
@@ -107,13 +126,58 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
   const [createIdEdited, setCreateIdEdited] = useState(false)
   const [creation, setCreation] = useState<CreateState>({ status: 'idle' })
 
+  const loadMarket = useCallback((
+    kind: AppMarketKind,
+    query: string,
+    cursor?: string,
+    append = false,
+    signal?: AbortSignal,
+  ): void => {
+    if (append) setMarketMoreLoading(true)
+    else {
+      setMarketLoading(true)
+      setMarket(undefined)
+    }
+    setMarketError(undefined)
+    void listAppMarket(kind, query, cursor, signal).then(
+      value => {
+        setActiveMarketQuery(query)
+        setMarket(previous => {
+          if (!append || previous === undefined) return value
+          const items = [...previous.items]
+          const existingIds = new Set(items.map(item => item.id))
+          for (const item of value.items) {
+            if (!existingIds.has(item.id)) items.push(item)
+          }
+          return {
+            items,
+            ...(value.nextCursor === undefined ? {} : { nextCursor: value.nextCursor }),
+            ...(value.total === undefined ? {} : { total: value.total }),
+          }
+        })
+      },
+      error => {
+        if (signal?.aborted !== true) setMarketError(messageOf(error))
+      },
+    ).finally(() => {
+      if (signal?.aborted === true) return
+      if (append) setMarketMoreLoading(false)
+      else setMarketLoading(false)
+    })
+  }, [])
+
   useEffect(() => {
     let active = true
-    void listApps().then(
+    const controller = new AbortController()
+    void listApps(controller.signal).then(
       value => {
         if (!active) return
         setApps(value)
         setLoadError(undefined)
+        void inspectApps(controller.signal).then(
+          inspected => { if (active) setApps(inspected) },
+          () => {},
+        )
       },
       error => {
         if (!active) return
@@ -121,8 +185,20 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
         setLoadError(messageOf(error))
       },
     )
-    return () => { active = false }
+    return () => {
+      active = false
+      controller.abort()
+    }
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'config') return
+    const controller = new AbortController()
+    setMarketQuery('')
+    setActiveMarketQuery('')
+    loadMarket(activeTab, '', undefined, false, controller.signal)
+    return () => { controller.abort() }
+  }, [activeTab, loadMarket])
 
   useEffect(() => {
     if (!createOpen) return
@@ -145,6 +221,25 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
     if (installation.status === 'ready') void discardAppInstall(installation.preview.previewId).catch(() => {})
     setInstallation({ status: 'previewing' })
     void previewAppInstall(installSource).then(
+      preview => { setInstallation({ status: 'ready', preview }) },
+      error => { setInstallation({ status: 'failed', error: messageOf(error) }) },
+    )
+  }
+
+  const searchMarket = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    if (activeTab === 'config' || marketLoading || marketMoreLoading) return
+    loadMarket(activeTab, marketQuery.trim())
+  }
+
+  const previewMarketItem = (item: AppMarketItem): void => {
+    if (item.installed || installation.status === 'previewing' || installation.status === 'installing') return
+    if (installation.status === 'ready') void discardAppInstall(installation.preview.previewId).catch(() => {})
+    setInstallation({ status: 'previewing' })
+    const preview = activeTab === 'apps'
+      ? previewAppInstall(item.repository.url)
+      : previewMarketInstall(item.id)
+    void preview.then(
       preview => { setInstallation({ status: 'ready', preview }) },
       error => { setInstallation({ status: 'failed', error: messageOf(error) }) },
     )
@@ -268,11 +363,13 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
           <h2>{t('title')}</h2>
           <p>{t('subtitle')}</p>
         </div>
-        <Button
-          variant="primary"
-          icon={<IconPlusOutline16 size={16} />}
-          onClick={openCreate}
-        >{t('newApp')}</Button>
+        {activeTab === 'apps' ? (
+          <Button
+            variant="primary"
+            icon={<IconPlusOutline16 size={16} />}
+            onClick={openCreate}
+          >{t('newApp')}</Button>
+        ) : null}
       </header>
       <Modal
         open={createOpen}
@@ -346,7 +443,129 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
           </form>
         )}
       </Modal>
+      <div className={css.tabs} role="tablist" aria-label={t('tabsLabel')}>
+        {STORE_TABS.map((tab, index) => {
+          const selected = tab === activeTab
+          return (
+            <button
+              key={tab}
+              ref={element => { tabRefs.current[index] = element }}
+              id={`${tabsId}-tab-${tab}`}
+              type="button"
+              role="tab"
+              className={css.tab}
+              aria-selected={selected}
+              aria-controls={`${tabsId}-panel`}
+              data-active={selected ? 'true' : undefined}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => { setActiveTab(tab) }}
+              onKeyDown={event => {
+                let nextIndex: number
+                switch (event.key) {
+                  case 'ArrowRight': nextIndex = (index + 1) % STORE_TABS.length; break
+                  case 'ArrowLeft': nextIndex = (index - 1 + STORE_TABS.length) % STORE_TABS.length; break
+                  case 'Home': nextIndex = 0; break
+                  case 'End': nextIndex = STORE_TABS.length - 1; break
+                  default: return
+                }
+                event.preventDefault()
+                const nextTab = STORE_TABS[nextIndex] as StoreTab
+                setActiveTab(nextTab)
+                tabRefs.current[nextIndex]?.focus()
+              }}
+            >{t(tab === 'apps' ? 'appsTab' : tab === 'plugins' ? 'pluginsTab' : 'configTab')}</button>
+          )
+        })}
+      </div>
+      <div
+        id={`${tabsId}-panel`}
+        className={css.panel}
+        role="tabpanel"
+        aria-labelledby={`${tabsId}-tab-${activeTab}`}
+      >
+      {activeTab === 'config' ? (
+        <div className={css.configHeading}>
+          <h3>{t('configTitle')}</h3>
+          <p>{t('configHint')}</p>
+        </div>
+      ) : (
+      <section className={css.marketArea} aria-busy={marketLoading || marketMoreLoading}>
+        <div className={css.marketHeading}>
+          <div>
+            <div className={css.marketTitleLine}>
+              <h3>{t(activeTab === 'apps' ? 'appMarketTitle' : 'pluginMarketTitle')}</h3>
+              <span>{t(activeTab === 'apps' ? 'appMarketSource' : 'pluginMarketSource')}</span>
+            </div>
+            <p>{t(activeTab === 'apps' ? 'appMarketHint' : 'pluginMarketHint')}</p>
+          </div>
+          {market?.total === undefined ? null : (
+            <strong>{market.total} {t(activeTab === 'apps' ? 'appMarketTotal' : 'pluginMarketTotal')}</strong>
+          )}
+        </div>
+        <form className={css.marketSearch} onSubmit={searchMarket}>
+          <input
+            type="search"
+            value={marketQuery}
+            aria-label={t(activeTab === 'apps' ? 'appMarketSearch' : 'pluginMarketSearch')}
+            placeholder={t(activeTab === 'apps' ? 'appMarketSearchPlaceholder' : 'pluginMarketSearchPlaceholder')}
+            disabled={marketLoading || marketMoreLoading}
+            onChange={event => { setMarketQuery(event.target.value) }}
+          />
+          <Button type="submit" variant="primary" disabled={marketLoading || marketMoreLoading}>
+            {marketLoading ? t('marketSearching') : t('marketSearchAction')}
+          </Button>
+        </form>
+        {marketError === undefined ? null : (
+          <div className={css.error} role="alert">
+            <strong>{t(activeTab === 'apps' ? 'appMarketLoadFailed' : 'pluginMarketLoadFailed')}</strong><br />{marketError}
+          </div>
+        )}
+        {marketLoading && market === undefined ? <p className={css.marketEmpty}>{t('marketSearching')}</p> : null}
+        {!marketLoading && market?.items.length === 0 && marketError === undefined ? (
+          <p className={css.marketEmpty}>{t(activeTab === 'apps' ? 'appMarketEmpty' : 'pluginMarketEmpty')}</p>
+        ) : null}
+        <div className={css.marketGrid}>
+          {market?.items.map(item => (
+            <article className={css.marketCard} key={item.id}>
+              <header className={css.marketCardHeader}>
+                <div>
+                  <h4>{item.displayName}</h4>
+                  <span>{item.publisher ?? item.name}</span>
+                </div>
+                {item.latestVersion === undefined ? null : <code>v{item.latestVersion}</code>}
+              </header>
+              <p className={css.marketSummary}>{item.summary}</p>
+              {item.categories.length === 0 ? null : (
+                <div className={css.marketTags}>
+                  {item.categories.slice(0, 4).map(category => <span key={category}>{category}</span>)}
+                </div>
+              )}
+              <footer className={css.marketCardFooter}>
+                <a href={item.repository.url} target="_blank" rel="noreferrer">{t('marketRepository')}</a>
+                <Button
+                  variant={item.installed ? 'outline' : 'primary'}
+                  disabled={item.installed || installation.status === 'previewing' || installation.status === 'installing'}
+                  onClick={() => { previewMarketItem(item) }}
+                >{item.installed ? t('marketInstalled') : t('marketInstall')}</Button>
+              </footer>
+            </article>
+          ))}
+        </div>
+        {market?.nextCursor === undefined ? null : (
+          <div className={css.marketLoadMore}>
+            <Button
+              variant="outline"
+              disabled={marketLoading || marketMoreLoading}
+              onClick={() => { loadMarket(activeTab, activeMarketQuery, market.nextCursor, true) }}
+            >{marketMoreLoading ? t('marketLoadingMore') : t('marketLoadMore')}</Button>
+          </div>
+        )}
+      </section>
+      )}
+      {activeTab === 'config' || installation.status !== 'idle' ? (
       <section className={css.installArea} aria-busy={installation.status === 'previewing' || installation.status === 'installing'}>
+        {activeTab === 'config' ? (
+          <>
         <div className={css.installHeading}>
           <div>
             <h3>{t('installTitle')}</h3>
@@ -369,17 +588,25 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
             disabled={installSource.trim().length === 0 || installation.status === 'previewing' || installation.status === 'installing'}
           >{installation.status === 'previewing' ? t('probing') : t('probeInstall')}</Button>
         </form>
+          </>
+        ) : null}
+        {installation.status === 'previewing' ? <p className={css.marketEmpty}>{t('probing')}</p> : null}
         {installation.status === 'ready' || installation.status === 'installing' ? (
           <div className={css.installPreview}>
             <dl>
               <div><dt>{t('detectedSource')}</dt><dd>{t(installation.preview.sourceKind)}</dd></div>
-              <div><dt>{t('detectedApp')}</dt><dd>{installation.preview.title}</dd></div>
+              <div><dt>{t('detectedPlugin')}</dt><dd>{installation.preview.title}</dd></div>
+              <div><dt>{t('pluginType')}</dt><dd>{t(installation.preview.pluginKind === 'app' ? 'appPlugin' : 'ordinaryPlugin')}</dd></div>
               <div><dt>{t('detectedPackage')}</dt><dd><code>{installation.preview.packageName}@{installation.preview.version}</code></dd></div>
               <div><dt>{t('profileAction')}</dt><dd>{t(installation.preview.profileAction === 'repair' ? 'profileRepair' : 'profileInstall')}</dd></div>
               <div><dt>{t('pluginDirectory')}</dt><dd><code>{installation.preview.sourceDirectory}</code></dd></div>
               <div><dt>{t('buildScript')}</dt><dd><code>{installation.preview.buildScript}</code></dd></div>
             </dl>
-            <p className={css.installWarning}>{t(installation.preview.profileAction === 'repair' ? 'repairWarning' : 'installWarning')}</p>
+            <p className={css.installWarning}>{t(installation.preview.profileAction === 'repair'
+              ? 'repairWarning'
+              : installation.preview.buildMode === 'prebuilt'
+                ? 'prebuiltInstallWarning'
+                : 'installWarning')}</p>
             <div className={css.installActions}>
               <Button variant="ghost" disabled={installation.status === 'installing'} onClick={resetInstall}>{t('cancel')}</Button>
               <Button
@@ -410,6 +637,9 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
         ) : null}
         {restartState === 'failed' ? <div className={css.error} role="alert">{t('restartFailed')}</div> : null}
       </section>
+      ) : null}
+      {activeTab === 'config' ? (
+      <>
       {apps === undefined ? <p className={css.empty}>{t('loading')}</p> : null}
       {loadError === undefined ? null : (
         <div className={css.error} role="alert"><strong>{t('loadFailed')}</strong><br />{loadError}</div>
@@ -529,6 +759,9 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
             </article>
           )
         })}
+      </div>
+      </>
+      ) : null}
       </div>
     </section>
   )

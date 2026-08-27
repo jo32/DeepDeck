@@ -22,6 +22,9 @@ const api: DesktopApi = {
       return () => ipcRenderer.removeListener(channels.runtimeStatus, handler);
     },
   },
+  telemetry: {
+    screen: name => ipcRenderer.invoke(channels.telemetryScreen, name),
+  },
   updates: {
     get: () => ipcRenderer.invoke(channels.updatesGet),
     download: () => ipcRenderer.invoke(channels.updatesDownload),

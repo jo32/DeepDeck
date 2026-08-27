@@ -30,6 +30,10 @@ function actionFrom(init?: RequestInit): string {
   return String((JSON.parse(String(init?.body)) as { action?: unknown }).action)
 }
 
+function bodyFrom(init?: RequestInit): Record<string, unknown> {
+  return JSON.parse(String(init?.body)) as Record<string, unknown>
+}
+
 function button(label: string): HTMLButtonElement | undefined {
   return [...document.querySelectorAll('button')].find(candidate => candidate.textContent === label)
 }
@@ -51,6 +55,110 @@ async function render(overrides: Partial<ComponentProps<typeof AppsSettingsSecti
 }
 
 describe('AppsSettingsSection package controls', () => {
+  it('loads the dshfind market and previews an ordinary DSH plugin install', async () => {
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const action = actionFrom(init)
+      if (action === 'list-apps') return response({ apps: [] })
+      if (action === 'list-market') return response({
+        market: {
+          total: 1,
+          items: [{
+            id: 'github:fixture/ordinary',
+            name: 'ordinary',
+            displayName: 'Ordinary Plugin',
+            summary: 'A standard DSH bundle.',
+            categories: ['utility'],
+            keywords: [],
+            repository: { url: 'https://github.com/fixture/ordinary' },
+            packageName: '@fixture/ordinary',
+            installed: false,
+          }],
+        },
+      })
+      if (action === 'preview-market-install') return response({
+        installPreview: {
+          previewId: 'market-preview-1',
+          appId: 'plugin-ordinary-fixture',
+          title: 'Ordinary Plugin',
+          pluginKind: 'plugin',
+          packageName: '@fixture/ordinary',
+          version: '2.0.0',
+          sourceKind: 'git-repository',
+          profileAction: 'install',
+          sourceDirectory: '/Users/test/DeepDeck/Plugins/plugin-ordinary/packages/ordinary',
+          buildScript: 'pnpm build',
+          frozenInstall: true,
+          warnings: [],
+          expiresAt: '2099-01-01T00:00:00.000Z',
+        },
+      })
+      throw new Error(`unexpected action ${action}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await render()
+
+    await act(async () => { button('pluginsTab')?.click() })
+    await vi.waitFor(() => expect(container?.textContent).toContain('Ordinary Plugin'))
+    await act(async () => { button('marketInstall')?.click() })
+    await vi.waitFor(() => expect(container?.textContent).toContain('@fixture/ordinary@2.0.0'))
+    expect(container?.textContent).toContain('ordinaryPlugin')
+    expect(fetchMock.mock.calls.map(call => actionFrom(call[1]))).toContain('preview-market-install')
+    expect(fetchMock.mock.calls.some(call => bodyFrom(call[1]).kind === 'plugins')).toBe(true)
+  })
+
+  it('opens Apps by default and previews a deepdeck topic repository directly', async () => {
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const body = bodyFrom(init)
+      if (body.action === 'list-apps') return response({ apps: [] })
+      if (body.action === 'list-market') return response({
+        market: {
+          total: 1,
+          items: [{
+            id: 'github:jo32/dsh-nga-reader',
+            name: 'dsh-nga-reader',
+            displayName: 'dsh-nga-reader',
+            summary: 'A DeepDeck NGA reader.',
+            categories: ['deepdeck', 'dsh-plugin'],
+            keywords: ['deepdeck', 'dsh-plugin'],
+            repository: { url: 'https://github.com/jo32/dsh-nga-reader' },
+            publisher: 'jo32',
+            installed: false,
+          }],
+        },
+      })
+      if (body.action === 'preview-install') return response({
+        installPreview: {
+          previewId: 'app-preview-1',
+          appId: 'nga-reader',
+          title: 'NGA Reader',
+          pluginKind: 'app',
+          packageName: '@deepdeck-apps/nga-reader',
+          version: '1.0.0',
+          sourceKind: 'git-repository',
+          profileAction: 'install',
+          sourceDirectory: '/Users/test/DeepDeck/Plugins/nga-reader',
+          buildScript: 'pnpm build',
+          buildMode: 'source-build',
+          frozenInstall: true,
+          warnings: [],
+          expiresAt: '2099-01-01T00:00:00.000Z',
+        },
+      })
+      throw new Error(`unexpected action ${String(body.action)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await render()
+
+    expect(button('appsTab')?.getAttribute('aria-selected')).toBe('true')
+    await vi.waitFor(() => expect(container?.textContent).toContain('dsh-nga-reader'))
+    expect(container?.textContent).toContain('deepdeck')
+    await act(async () => { button('marketInstall')?.click() })
+    await vi.waitFor(() => expect(container?.textContent).toContain('@deepdeck-apps/nga-reader@1.0.0'))
+    const previewCall = fetchMock.mock.calls.find(call => actionFrom(call[1]) === 'preview-install')
+    expect(bodyFrom(previewCall?.[1]).source).toBe('https://github.com/jo32/dsh-nga-reader')
+    expect(fetchMock.mock.calls.some(call => bodyFrom(call[1]).kind === 'apps')).toBe(true)
+  })
+
   it('creates a starter App from the new button and offers to restart', async () => {
     const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const action = actionFrom(init)
@@ -150,6 +258,7 @@ describe('AppsSettingsSection package controls', () => {
     vi.stubGlobal('fetch', fetchMock)
     await render()
 
+    await act(async () => { button('configTab')?.click() })
     const input = container?.querySelector<HTMLInputElement>('input[aria-label="installSource"]')
     expect(input).toBeDefined()
     await act(async () => {
@@ -191,6 +300,7 @@ describe('AppsSettingsSection package controls', () => {
     vi.stubGlobal('fetch', fetchMock)
     await render()
 
+    await act(async () => { button('configTab')?.click() })
     const input = container?.querySelector<HTMLInputElement>('input[aria-label="installSource"]')
     await act(async () => {
       const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
@@ -235,6 +345,7 @@ describe('AppsSettingsSection package controls', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
     await render()
+    await act(async () => { button('configTab')?.click() })
     await vi.waitFor(() => expect(button('uninstall')).toBeDefined())
 
     await act(async () => { button('uninstall')?.click() })
@@ -265,6 +376,7 @@ describe('AppsSettingsSection package controls', () => {
       throw new Error(`unexpected action ${action}`)
     }))
     await render({ dispatchUpdate, close })
+    await act(async () => { button('configTab')?.click() })
     await vi.waitFor(() => expect(button('updateWithAgent')).toBeDefined())
 
     await act(async () => { button('updateWithAgent')?.click() })
@@ -289,6 +401,7 @@ describe('AppsSettingsSection package controls', () => {
       throw new Error('unexpected request')
     }))
     await render({ openCreator })
+    await act(async () => { button('configTab')?.click() })
     await vi.waitFor(() => expect(button('vibeCoding')).toBeDefined())
 
     await act(async () => { button('vibeCoding')?.click() })

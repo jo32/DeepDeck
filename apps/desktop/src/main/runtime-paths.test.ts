@@ -22,7 +22,8 @@ describe("resolveDesktopRuntimePaths", () => {
     expect(paths.workspaceRoot).toBe("/repo/workspace");
     expect(paths.plugins[1]?.path).toBe("/custom/home-hero");
     expect(paths.plugins[7]?.path).toBe("/repo/plugins/computer-use");
-    expect(paths.plugins[8]?.path).toBe("/repo/node_modules/dsh-codex-connect");
+    expect(paths.plugins[8]?.path).toBe("/repo/plugins/provider-aware-web");
+    expect(paths.plugins[9]?.path).toBe("/repo/node_modules/dsh-codex-connect");
   });
 
   it("pins program resources inside the packaged bundle", () => {
@@ -56,15 +57,14 @@ describe("resolveDesktopRuntimePaths", () => {
       "/Applications/DeepDeck.app/Contents/Resources/plugins/first-run",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/app-conversations",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/computer-use",
+      "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/@deepdeck/dsh-provider-aware-web",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-codex-connect",
-      "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-community-market",
     ]);
-    expect(paths.plugins.slice(-2).map((plugin) => ({
+    expect(paths.plugins.slice(-1).map((plugin) => ({
       packageName: plugin.packageName,
       presetBundle: plugin.presetBundle,
     }))).toEqual([
       { packageName: "dsh-codex-connect", presetBundle: true },
-      { packageName: "dsh-community-market", presetBundle: true },
     ]);
   });
 

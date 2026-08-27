@@ -1,18 +1,19 @@
 {
   "name": "@deepseek-harness/desktop",
   "productName": "DeepDeck",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "description": "DeepDeck desktop client",
   "author": "jo32",
   "private": true,
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.main.json && vite build && node scripts/build-preload.mjs",
+    "build": "tsc -p tsconfig.main.json && node scripts/write-vibeloft-telemetry-config.mjs && vite build && node scripts/build-preload.mjs",
     "check": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@vibeloft/telemetry-electron": "0.1.0",
     "electron-updater": "^6.8.9",
     "react": "19.1.1",
     "react-dom": "19.1.1",

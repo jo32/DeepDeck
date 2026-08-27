@@ -55,6 +55,10 @@ describe('app conversation Host registry', () => {
       confirmation: '@fixture/reader@1.0.0',
       hotUpdateAvailable: true,
     }))
+    const inspect = vi.fn(async () => ({
+      packageName: '@fixture/reader',
+      hotUpdateAvailable: true,
+    }))
     const hotUpdate = vi.fn(async () => ({
       packageName: '@fixture/reader',
       completedAt: '2026-08-23T03:00:00.000Z',
@@ -65,7 +69,7 @@ describe('app conversation Host registry', () => {
     const reloadAppWindows = vi.fn(async () => ({ matched: 3, reloaded: 2, failed: 1 }))
     const registry = new DefaultAppConversationHostRegistry({
       create: vi.fn(async () => ({ id: 'unused', path: '/unused', title: 'unused' })),
-    }, home, { preview, hotUpdate, discard }, undefined, reloadAppWindows)
+    }, home, { inspect, preview, hotUpdate, discard }, undefined, reloadAppWindows)
     registry.register({
       id: 'reader',
       title: 'Reader',
@@ -76,6 +80,15 @@ describe('app conversation Host registry', () => {
     })
 
     await expect(registry.list()).resolves.toEqual([{
+      id: 'reader',
+      title: 'Reader',
+      packageName: '@fixture/reader',
+      updateAvailable: false,
+      rebuildAvailable: true,
+      uninstallAvailable: false,
+    }])
+    expect(inspect).not.toHaveBeenCalled()
+    await expect(registry.inspectList()).resolves.toEqual([{
       id: 'reader',
       title: 'Reader',
       packageName: '@fixture/reader',
@@ -104,7 +117,9 @@ describe('app conversation Host registry', () => {
       previewId: '11111111-1111-4111-8111-111111111111',
       confirmation: '@fixture/reader@1.0.0',
     })
-    expect(discard).toHaveBeenCalledTimes(2)
+    expect(inspect).toHaveBeenCalledWith({ sourceDirectory: source }, undefined)
+    expect(preview).toHaveBeenCalledTimes(1)
+    expect(discard).toHaveBeenCalledTimes(1)
     expect(reloadAppWindows).toHaveBeenCalledWith('/apps/custom-reader')
   })
 
@@ -115,10 +130,15 @@ describe('app conversation Host registry', () => {
       confirmation: '@fixture/reader@1.0.0',
       hotUpdateAvailable: true,
     }))
+    const inspect = vi.fn(async () => ({
+      packageName: '@fixture/reader',
+      hotUpdateAvailable: true,
+    }))
     const registry = new DefaultAppConversationHostRegistry({
       create: vi.fn(async () => ({ id: 'unused', path: '/unused', title: 'unused' })),
     }, '/tmp/deepdeck-test-home', {
       isStatePath: path => path.startsWith('/tmp/builder-state/'),
+      inspect,
       preview,
       hotUpdate: vi.fn(async () => ({
         packageName: '@fixture/reader',
@@ -144,8 +164,9 @@ describe('app conversation Host registry', () => {
       packageName: '@fixture/reader',
       sourcePackageRoot: '/tmp/builder-state/hot/reader/stage',
     })
-    await registry.list()
+    await registry.inspectList()
 
-    expect(preview).toHaveBeenCalledWith({ sourceDirectory: '/tmp/reader-source' }, undefined)
+    expect(inspect).toHaveBeenCalledWith({ sourceDirectory: '/tmp/reader-source' }, undefined)
+    expect(preview).not.toHaveBeenCalled()
   })
 })

@@ -6,6 +6,7 @@ import type { DesktopAppNavigationOwnerProps } from './sidebar-contract.js'
 import { BRAND } from './generated-brand.ts'
 import { NewSessionIcon } from './NewSessionIcon.tsx'
 import { DesktopUpdateControl } from './DesktopUpdateControl.tsx'
+import { trackDesktopScreen } from './desktop-runtime.ts'
 import css from './desktop-chrome.module.css'
 
 export const DESKTOP_SIDEBAR_LOCALE = 'deepdeck.desktop.sidebar' as const
@@ -155,7 +156,10 @@ export function DesktopSidebar({ renderSlot, startSession, apps, t }: DesktopSid
               aria-label={t('apps.open')}
               aria-haspopup="dialog"
               aria-expanded={appsOpen}
-              onClick={() => { setAppsOpen(true) }}
+              onClick={() => {
+                trackDesktopScreen('apps')
+                setAppsOpen(true)
+              }}
             >
               <AppsIcon />
               <span>{t('apps.section')}</span>

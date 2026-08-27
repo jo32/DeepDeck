@@ -37,13 +37,12 @@ An exit failure means "not found" only after authentication and network health a
 
 ## 2. Validate locally
 
-Use Node 24 and the pinned pnpm 11.7.0. Run the repository-required validation from the candidate state:
+Use Node 24 and the pinned pnpm 12.0.0. Run the repository-required validation from the candidate state:
 
 ```bash
 corepack enable
-corepack prepare pnpm@11.7.0 --activate
+corepack prepare pnpm@12.0.0 --activate
 pnpm install --frozen-lockfile
-pnpm market:install
 pnpm codex-connect:install
 pnpm harness:install
 pnpm harness:build

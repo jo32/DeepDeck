@@ -511,6 +511,378 @@ main {
   line-height: 1.7;
 }
 
+.story-showcase {
+  background: #f5f6f8;
+}
+
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 78px;
+}
+
+.showcase-card {
+  overflow: hidden;
+  border: 1px solid #dfe1e6;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 44px rgba(24, 32, 52, 0.06);
+}
+
+.showcase-image {
+  overflow: hidden;
+  border-bottom: 1px solid #e5e6ea;
+  background: #edf0f7;
+}
+
+.showcase-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 300ms ease;
+}
+
+.showcase-card:hover .showcase-image img {
+  transform: scale(1.012);
+}
+
+.showcase-card-body {
+  padding: 28px 30px 30px;
+}
+
+.showcase-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: #737984;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  letter-spacing: 0.09em;
+}
+
+.showcase-kicker span:last-child {
+  padding: 5px 8px;
+  border: 1px solid #dce0e8;
+  border-radius: 999px;
+  background: #f7f8fa;
+  color: #4e5c80;
+  white-space: nowrap;
+}
+
+.showcase-card h3 {
+  margin: 22px 0 12px;
+  font-size: 27px;
+  font-weight: 590;
+  letter-spacing: -0.045em;
+}
+
+.showcase-card-body > p {
+  min-height: 76px;
+  margin: 0;
+  color: #676b73;
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.showcase-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.showcase-features li {
+  padding: 7px 9px;
+  border: 1px solid #e2e3e7;
+  border-radius: 6px;
+  color: #666a73;
+  font-size: 10px;
+}
+
+.showcase-actions {
+  display: flex;
+  gap: 24px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #ececef;
+}
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: #111111;
+  font-size: 12px;
+  font-weight: 570;
+}
+
+.text-link span {
+  transition: transform 160ms ease;
+}
+
+.text-link:hover span {
+  transform: translate(2px, -2px);
+}
+
+.showcase-actions .text-link:first-child:hover span {
+  transform: translateY(2px);
+}
+
+.text-link-muted {
+  color: #737780;
+}
+
+.showcase-note {
+  max-width: 690px;
+  margin: 30px 0 0 auto;
+  color: #747881;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.install-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 76px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+  list-style: none;
+}
+
+.install-steps li {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 210px;
+  padding: 26px 24px 28px;
+}
+
+.install-steps li + li {
+  border-left: 1px solid var(--line-strong);
+}
+
+.install-steps li > span {
+  color: #a3a3a3;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+}
+
+.install-steps strong {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 590;
+  letter-spacing: -0.02em;
+}
+
+.install-steps p {
+  margin: 0;
+  color: #787878;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.install-source-card {
+  margin-top: 24px;
+  padding: 35px;
+  border-radius: 16px;
+  background: #0b0b0c;
+  color: #ffffff;
+}
+
+.install-source-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.install-source-card > div:first-child > span {
+  color: #7c8495;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+.install-source-card > div:first-child > p {
+  margin: 0;
+  color: #888b92;
+  font-size: 11px;
+}
+
+.install-source-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 23px;
+}
+
+.install-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px 18px;
+  border: 1px solid #2c2d31;
+  border-radius: 9px;
+  background: #151517;
+}
+
+.install-source-row > div {
+  min-width: 0;
+}
+
+.install-source-row strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 580;
+}
+
+.install-source-row code {
+  display: block;
+  overflow-x: auto;
+  color: #e8e9ed;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.install-source-row > a {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #343438;
+  border-radius: 50%;
+  color: #d2d3d7;
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.install-source-row > a:hover {
+  border-color: #5a5b61;
+  background: #202024;
+}
+
+.install-finish {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 35px;
+  margin-top: 31px;
+}
+
+.install-finish > p {
+  margin: 0;
+  color: #aaaeb7;
+  font-size: 13px;
+}
+
+.install-finish > div {
+  display: flex;
+  gap: 9px;
+}
+
+.install-source-card .button-primary {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #111111;
+}
+
+.install-source-card .button-primary:hover {
+  background: #e8e8e8;
+}
+
+.install-source-card .button-secondary {
+  border-color: #343438;
+  background: transparent;
+  color: #d2d3d7;
+}
+
+.install-source-card .button-secondary:hover {
+  border-color: #5a5b61;
+  background: #18181a;
+}
+
+.developer-install {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  margin-top: 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+}
+
+.developer-install > div,
+.manual-install {
+  padding: 33px 34px;
+}
+
+.developer-install > div {
+  border-right: 1px solid var(--line-strong);
+}
+
+.developer-install > div > span {
+  color: #9a9a9a;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  letter-spacing: 0.09em;
+}
+
+.developer-install h3 {
+  max-width: 410px;
+  margin: 23px 0 13px;
+  font-size: 24px;
+  font-weight: 570;
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+}
+
+.developer-install > div > p {
+  margin: 0 0 25px;
+  color: #757575;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.manual-install summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 570;
+  list-style-position: outside;
+}
+
+.manual-install summary::marker {
+  color: #979797;
+}
+
+.manual-install pre {
+  overflow-x: auto;
+  margin: 24px 0 15px;
+  padding: 18px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  color: #303030;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.manual-install > p {
+  margin: 0;
+  color: #888888;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .story-vibe {
   padding-top: 132px;
   padding-bottom: 0;
@@ -714,6 +1086,33 @@ main {
   .proof-entry {
     width: 68%;
   }
+
+  .install-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .install-steps li:nth-child(3) {
+    border-top: 1px solid var(--line-strong);
+    border-left: 0;
+  }
+
+  .install-steps li:nth-child(4) {
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .install-finish {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .developer-install {
+    grid-template-columns: 1fr;
+  }
+
+  .developer-install > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line-strong);
+  }
 }
 
 @media (max-width: 720px) {
@@ -899,6 +1298,90 @@ main {
   .example-note {
     margin-top: 21px;
     font-size: 12px;
+  }
+
+  .showcase-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-top: 50px;
+  }
+
+  .showcase-card {
+    border-radius: 11px;
+  }
+
+  .showcase-card-body {
+    padding: 23px 21px 24px;
+  }
+
+  .showcase-card-body > p {
+    min-height: 0;
+  }
+
+  .showcase-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .showcase-note {
+    margin-top: 22px;
+    font-size: 12px;
+  }
+
+  .install-steps {
+    grid-template-columns: 1fr;
+    margin-top: 52px;
+  }
+
+  .install-steps li {
+    min-height: 148px;
+    padding: 22px;
+  }
+
+  .install-steps li + li,
+  .install-steps li:nth-child(3),
+  .install-steps li:nth-child(4) {
+    border-top: 1px solid var(--line-strong);
+    border-left: 0;
+  }
+
+  .install-source-card {
+    padding: 24px 20px;
+    border-radius: 11px;
+  }
+
+  .install-source-card > div:first-child,
+  .install-finish {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .install-source-row {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .install-source-row code {
+    font-size: 9px;
+  }
+
+  .install-finish {
+    gap: 25px;
+  }
+
+  .install-finish > div {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .developer-install {
+    border-radius: 11px;
+  }
+
+  .developer-install > div,
+  .manual-install {
+    padding: 26px 22px;
   }
 
   .story-vibe {

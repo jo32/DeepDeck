@@ -1,2 +1,2 @@
-/** Host-only capability bridge; Community Market owns the visible UI. */
+/** Host-only capability bridge; Apps owns the visible market UI. */
 export function apply(): void {}

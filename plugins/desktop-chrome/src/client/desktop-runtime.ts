@@ -2,12 +2,34 @@ interface DesktopRuntimeBridge {
   readyForDisplay?: () => void
 }
 
+type DesktopTelemetryScreen = 'home' | 'apps'
+
+interface DesktopTelemetryBridge {
+  screen?: (name: DesktopTelemetryScreen) => Promise<boolean>
+}
+
+function desktopGlobal(): typeof globalThis & {
+  deepseekDesktop?: {
+    runtime?: DesktopRuntimeBridge
+    telemetry?: DesktopTelemetryBridge
+  }
+} {
+  return globalThis as typeof globalThis & {
+    deepseekDesktop?: {
+      runtime?: DesktopRuntimeBridge
+      telemetry?: DesktopTelemetryBridge
+    }
+  }
+}
+
 /** Notify the Electron host after the real plugin-owned frame has mounted. */
 export function notifyDesktopFrameReady(): void {
-  const desktopGlobal = globalThis as typeof globalThis & {
-    deepseekDesktop?: { runtime?: DesktopRuntimeBridge }
-  }
-  desktopGlobal.deepseekDesktop?.runtime?.readyForDisplay?.()
+  desktopGlobal().deepseekDesktop?.runtime?.readyForDisplay?.()
+}
+
+/** Send only a stable local enum; the Electron main process owns validation. */
+export function trackDesktopScreen(screen: DesktopTelemetryScreen): void {
+  void desktopGlobal().deepseekDesktop?.telemetry?.screen?.(screen).catch(() => {})
 }
 
 type ScheduleTask = (callback: () => void, delayMs: number) => number

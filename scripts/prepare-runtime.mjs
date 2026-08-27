@@ -49,12 +49,17 @@ const PLUGINS = Object.freeze([
   "first-run",
   "app-conversations",
   "computer-use",
+  "provider-aware-web",
   "dsh-codex-connect",
-  "community-market",
 ]);
 
 const HARNESS_PLUGIN_PACKAGES = Object.freeze({
   "dsh-codex-connect": "dsh-codex-connect",
+});
+
+const HARNESS_PLUGIN_DESTINATIONS = Object.freeze({
+  ...HARNESS_PLUGIN_PACKAGES,
+  "provider-aware-web": "@deepdeck/dsh-provider-aware-web",
 });
 
 function pluginSource(pluginName) {
@@ -65,10 +70,7 @@ function pluginSource(pluginName) {
 }
 
 function pluginDestination(pluginName, destinationRoot) {
-  const packageName = HARNESS_PLUGIN_PACKAGES[pluginName];
-  if (pluginName === "community-market") {
-    return join(destinationRoot, "harness", "node_modules", "dsh-community-market");
-  }
+  const packageName = HARNESS_PLUGIN_DESTINATIONS[pluginName];
   return packageName !== undefined
     ? join(destinationRoot, "harness", "node_modules", packageName)
     : join(destinationRoot, "plugins", pluginName);
@@ -316,6 +318,12 @@ async function createRuntimeWorkspace(directory) {
   const workspacePackages = await loadHarnessWorkspacePackages();
   const closure = await runtimeRootDependencies(workspacePackages);
   const { rootDependencies, workspacePackageCount } = closure;
+  const harnessManifest = JSON.parse(
+    await readFile(join(harnessRoot, "package.json"), "utf8"),
+  );
+  if (typeof harnessManifest.packageManager !== "string") {
+    throw new Error("Harness package manager is not declared");
+  }
 
   await writeFile(
     join(directory, "package.json"),
@@ -323,7 +331,7 @@ async function createRuntimeWorkspace(directory) {
       name: "@deepdeck/runtime-workspace",
       private: true,
       type: "module",
-      packageManager: "pnpm@11.7.0",
+      packageManager: harnessManifest.packageManager,
     }, null, 2)}\n`,
   );
   await cp(join(harnessRoot, "pnpm-workspace.yaml"), join(directory, "pnpm-workspace.yaml"));
@@ -476,24 +484,6 @@ async function copyPluginDependencies(source, destination, dependencies) {
 async function copyPlugin(pluginName, destinationRoot) {
   const source = pluginSource(pluginName);
   const destination = pluginDestination(pluginName, destinationRoot);
-  if (pluginName === "community-market") {
-    const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-    await mkdir(dirname(destination), { recursive: true });
-    await run(
-      pnpm,
-      [
-        "--filter",
-        "dsh-community-market",
-        "deploy",
-        "--prod",
-        "--config.inject-workspace-packages=true",
-        "--config.node-linker=hoisted",
-        destination,
-      ],
-      { env: { CI: "true" } },
-    );
-    return;
-  }
   const manifest = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
   const clientExport = manifest.exports?.["./client"];
   const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
@@ -521,7 +511,7 @@ async function copyPlugin(pluginName, destinationRoot) {
 
 async function bundlePnpm(destinationRoot, platform) {
   const require = createRequire(import.meta.url);
-  const pnpmSource = dirname(require.resolve("pnpm"));
+  const pnpmSource = dirname(require.resolve("pnpm/package.json"));
   const pnpmDestination = join(destinationRoot, "runtime", "pnpm");
   const tools = join(destinationRoot, "runtime", "bin");
   await cp(pnpmSource, pnpmDestination, { recursive: true, dereference: true });
@@ -529,14 +519,14 @@ async function bundlePnpm(destinationRoot, platform) {
   if (platform === "win32") {
     await writeFile(
       join(tools, "pnpm.cmd"),
-      '@"%~dp0..\\node\\node.exe" "%~dp0..\\pnpm\\bin\\pnpm.mjs" %*\r\n',
+      '@"%~dp0..\\pnpm\\pnpm.exe" %*\r\n',
     );
     return;
   }
   const launcher = join(tools, "pnpm");
   await writeFile(
     launcher,
-    '#!/bin/sh\ntool_dir=${0%/*}\nexec "$tool_dir/../node/bin/node" "$tool_dir/../pnpm/bin/pnpm.mjs" "$@"\n',
+    '#!/bin/sh\ntool_dir=${0%/*}\nexec "$tool_dir/../pnpm/pnpm" "$@"\n',
   );
   await chmod(launcher, 0o755);
 }

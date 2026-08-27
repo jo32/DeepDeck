@@ -6,7 +6,7 @@
   "description": "DeepDeck desktop client built on DeepSeek Harness",
   "author": "jo32",
   "license": "MIT",
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@12.0.0",
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
@@ -14,35 +14,34 @@
     "web:dev": "pnpm --filter @deepdeck/web dev",
     "web:build": "pnpm --filter @deepdeck/web build",
     "web:check": "pnpm --filter @deepdeck/web check",
-    "bootstrap": "pnpm harness:install && pnpm market:install && pnpm codex-connect:install && pnpm harness:build && pnpm build",
+    "bootstrap": "pnpm harness:install && pnpm codex-connect:install && pnpm harness:build && pnpm build",
     "harness:install": "node scripts/install-harness.mjs",
     "harness:build": "pnpm --dir vendor/deepseek-harness run build",
-    "market:prepare": "node scripts/verify-community-market-source.mjs",
-    "market:install": "pnpm install --frozen-lockfile && pnpm market:prepare",
-    "market:check": "pnpm market:prepare && pnpm --filter dsh-community-market run typecheck",
-    "market:test": "pnpm market:prepare && pnpm --filter dsh-community-market run test",
-    "market:build": "pnpm market:prepare && pnpm --filter dsh-community-market run build",
-    "codex-connect:install": "pnpm install --frozen-lockfile && pnpm --dir vendor/dsh-codex-connect install --frozen-lockfile && pnpm codex-connect:check",
-    "codex-connect:check": "node scripts/verify-codex-connect-patch.mjs && pnpm --dir vendor/dsh-codex-connect run typecheck",
+    "codex-connect:deps": "node scripts/ensure-codex-connect-dependencies.mjs",
+    "codex-connect:install": "pnpm install --frozen-lockfile && pnpm codex-connect:check",
+    "codex-connect:check": "pnpm codex-connect:deps && node scripts/verify-codex-connect-patch.mjs && pnpm --dir vendor/dsh-codex-connect run typecheck",
     "codex-connect:test": "pnpm codex-connect:check && pnpm --dir vendor/dsh-codex-connect run test",
     "codex-connect:build": "pnpm codex-connect:check",
-    "build": "pnpm market:build && pnpm codex-connect:build && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run build && pnpm --filter @deepdeck/dsh-bun-plugin-builder run build && pnpm --filter @deepdeck/dsh-first-run run build && pnpm --filter @deepdeck/dsh-app-conversations run build && pnpm --filter @deepdeck/dsh-computer-use run build && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run build && pnpm --filter @deepdeck/dsh-client-ui-home-hero run build && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run build && pnpm --filter @deepseek-harness/desktop run build && pnpm web:build",
-    "check": "pnpm market:check && pnpm codex-connect:check && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-bun-plugin-builder run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-app-conversations run check && pnpm --filter @deepdeck/dsh-computer-use run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check && pnpm web:check",
-    "test": "pnpm market:test && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-community-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-bun-plugin-builder run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepdeck/dsh-app-conversations run test && pnpm --filter @deepdeck/dsh-computer-use run test && pnpm --filter @deepseek-harness/desktop run test",
+    "build:desktop": "pnpm codex-connect:build && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run build && pnpm --filter @deepdeck/dsh-bun-plugin-builder run build && pnpm --filter @deepdeck/dsh-first-run run build && pnpm --filter @deepdeck/dsh-app-conversations run build && pnpm --filter @deepdeck/dsh-computer-use run build && pnpm --filter @deepdeck/dsh-provider-aware-web run build && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run build && pnpm --filter @deepdeck/dsh-client-ui-home-hero run build && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run build && pnpm --filter @deepseek-harness/desktop run build && node scripts/start-build-cache.mjs record",
+    "build": "pnpm build:desktop && pnpm web:build",
+    "check": "pnpm codex-connect:check && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-bun-plugin-builder run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-app-conversations run check && pnpm --filter @deepdeck/dsh-computer-use run check && pnpm --filter @deepdeck/dsh-provider-aware-web run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check && pnpm web:check",
+    "test:start-cache": "node --test scripts/start-build-cache.test.mjs",
+    "test": "pnpm test:start-cache && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-bun-plugin-builder run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepdeck/dsh-app-conversations run test && pnpm --filter @deepdeck/dsh-computer-use run test && pnpm --filter @deepdeck/dsh-provider-aware-web run test && pnpm --filter @deepseek-harness/desktop run test",
     "computer-use:update": "node scripts/update-computer-use-version.mjs",
     "runtime:prepare": "node scripts/prepare-runtime.mjs",
     "runtime:verify": "node scripts/verify-runtime.mjs",
     "package:local": "pnpm build && pnpm runtime:prepare && node scripts/build-desktop-package.mjs --local && node scripts/verify-desktop-package.mjs --local",
     "package:mac": "pnpm build && pnpm runtime:prepare && node scripts/build-desktop-package.mjs --mac && node scripts/verify-desktop-package.mjs --production",
     "package:verify": "node scripts/verify-desktop-package.mjs --local",
-    "start": "pnpm build && node scripts/run-desktop.mjs",
-    "start:raw": "pnpm build && node scripts/run-desktop.mjs",
+    "start": "node scripts/start-build-cache.mjs ensure && node scripts/run-desktop.mjs",
+    "start:raw": "node scripts/start-build-cache.mjs ensure && node scripts/run-desktop.mjs",
+    "start:rebuild": "pnpm build:desktop && node scripts/run-desktop.mjs",
     "start:packaged": "pnpm package:local && node scripts/run-packaged-desktop.mjs"
   },
   "dependencies": {
     "dsh-codex-connect": "0.1.0-alpha.4.20"
   },
   "devDependencies": {
-    "pnpm": "11.7.0"
+    "pnpm": "12.0.0"
   }
 }

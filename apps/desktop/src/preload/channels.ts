@@ -5,6 +5,7 @@ export const channels = {
   runtimeRestart: "runtime:restart",
   runtimeClientReady: "runtime:client-ready",
   runtimeStatus: "runtime:status",
+  telemetryScreen: "telemetry:screen",
   updatesGet: "updates:get",
   updatesDownload: "updates:download",
   updatesInstall: "updates:install",

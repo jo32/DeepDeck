@@ -1,4 +1,4 @@
-export const name = 'deepdeck-community-market-desktop-bridge-invariant'
+export const name = 'deepdeck-app-market-desktop-bridge-invariant'
 export const inject: readonly string[] = []
 
 /** Host capabilities are scoped to one Cordis generation. */

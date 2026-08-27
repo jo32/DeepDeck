@@ -421,6 +421,10 @@ describe('App source registry', () => {
     await mkdir(source)
     const create = vi.fn(async (path: string, title?: string) => ({ id: 'workspace', path, title: title ?? path }))
     const builder = {
+      inspect: vi.fn(async () => ({
+        packageName: '@deepdeck/reader',
+        hotUpdateAvailable: true,
+      })),
       preview: vi.fn(async () => ({
         previewId: 'preview',
         packageName: '@deepdeck/reader',

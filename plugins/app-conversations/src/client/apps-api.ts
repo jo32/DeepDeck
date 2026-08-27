@@ -3,6 +3,8 @@ import {
   type AppCreateResult,
   type AppInstallPreview,
   type AppInstallResult,
+  type AppMarketKind,
+  type AppMarketPage,
   type AppRebuildResult,
   type AppSettingsDescriptor,
   type AppUninstallResult,
@@ -15,11 +17,12 @@ function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-async function call(body: JsonObject): Promise<JsonObject> {
+async function call(body: JsonObject, signal?: AbortSignal): Promise<JsonObject> {
   const response = await fetch(APP_CONVERSATION_API_PATH, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
+    ...(signal === undefined ? {} : { signal }),
   })
   const value: unknown = await response.json()
   if (!response.ok || !isObject(value)) {
@@ -31,9 +34,15 @@ async function call(body: JsonObject): Promise<JsonObject> {
   return value
 }
 
-export async function listApps(): Promise<readonly AppSettingsDescriptor[]> {
-  const value = await call({ action: 'list-apps' })
+export async function listApps(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]> {
+  const value = await call({ action: 'list-apps' }, signal)
   if (!Array.isArray(value.apps)) throw new Error('Apps response is invalid')
+  return value.apps as AppSettingsDescriptor[]
+}
+
+export async function inspectApps(signal?: AbortSignal): Promise<readonly AppSettingsDescriptor[]> {
+  const value = await call({ action: 'inspect-apps' }, signal)
+  if (!Array.isArray(value.apps)) throw new Error('Apps inspection response is invalid')
   return value.apps as AppSettingsDescriptor[]
 }
 
@@ -52,6 +61,30 @@ export async function rebuildApp(appId: string): Promise<AppRebuildResult> {
 export async function previewAppInstall(source: string): Promise<AppInstallPreview> {
   const value = await call({ action: 'preview-install', source })
   if (!isObject(value.installPreview)) throw new Error('App install preview response is invalid')
+  return value.installPreview as unknown as AppInstallPreview
+}
+
+export async function listAppMarket(
+  kind: AppMarketKind,
+  query: string,
+  cursor?: string,
+  signal?: AbortSignal,
+): Promise<AppMarketPage> {
+  const value = await call({
+    action: 'list-market',
+    kind,
+    query,
+    ...(cursor === undefined ? {} : { cursor }),
+  }, signal)
+  if (!isObject(value.market) || !Array.isArray(value.market.items)) {
+    throw new Error('App market response is invalid')
+  }
+  return value.market as unknown as AppMarketPage
+}
+
+export async function previewMarketInstall(itemId: string): Promise<AppInstallPreview> {
+  const value = await call({ action: 'preview-market-install', itemId })
+  if (!isObject(value.installPreview)) throw new Error('App market install preview response is invalid')
   return value.installPreview as unknown as AppInstallPreview
 }
 

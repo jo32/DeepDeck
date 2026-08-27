@@ -1,0 +1,10 @@
+# The patch dialect cannot replace an entry's module name: `name` is a guard.
+# Disable the stock seam and insert DeepDeck's session-aware selector instead.
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  disabled: true
+
+- insert:
+    - id: deepdeck-provider-aware-web
+      name: '@deepdeck/dsh-provider-aware-web'
+      config: {}

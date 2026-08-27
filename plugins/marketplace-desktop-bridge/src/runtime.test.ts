@@ -3,16 +3,16 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
-  DeepDeckCommunityMarketPnpm,
+  DeepDeckAppInstallPnpm,
   restrictAddedProfileBundles,
-  resolveCommunityMarketProfile,
+  resolveAppInstallProfile,
   resolveDshHome,
 } from './runtime.js'
 
-describe('Community Market runtime paths', () => {
+describe('App installer runtime paths', () => {
   it('resolves DSH_HOME and the web profile consistently', () => {
     expect(resolveDshHome({ DSH_HOME: '~/custom-dsh' })).toBe(join(homedir(), 'custom-dsh'))
-    expect(resolveCommunityMarketProfile({ DSH_HOME: '/tmp/deepdeck-dsh' })).toEqual({
+    expect(resolveAppInstallProfile({ DSH_HOME: '/tmp/deepdeck-dsh' })).toEqual({
       name: 'web',
       dir: '/tmp/deepdeck-dsh/profiles/web',
     })
@@ -20,7 +20,7 @@ describe('Community Market runtime paths', () => {
 
   it('keeps plugin add behind the protected install boundary', () => {
     const profile = { name: 'web', dir: '/tmp/deepdeck-dsh/profiles/web' }
-    const pnpm = new DeepDeckCommunityMarketPnpm(
+    const pnpm = new DeepDeckAppInstallPnpm(
       profile,
       '/tmp/deepdeck-dsh',
       '/runtime/node',
@@ -77,7 +77,7 @@ describe('Community Market runtime paths', () => {
     })}\n`)
 
     try {
-      const first = new DeepDeckCommunityMarketPnpm(
+      const first = new DeepDeckAppInstallPnpm(
         profile,
         root,
         process.execPath,
@@ -92,7 +92,7 @@ describe('Community Market runtime paths', () => {
       await expect(firstHandle.done).resolves.toEqual({ exitCode: 0, signal: null })
       await expect(readFile(statePath, 'utf8')).resolves.toContain('"phase":"awaiting-restart"')
 
-      const second = new DeepDeckCommunityMarketPnpm(
+      const second = new DeepDeckAppInstallPnpm(
         profile,
         root,
         process.execPath,

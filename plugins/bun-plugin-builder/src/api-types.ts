@@ -11,6 +11,7 @@ export interface BunBuildPreview {
   readonly version: string
   readonly packageSubdirectory: string
   readonly buildScript: string
+  readonly buildRequired: boolean
   readonly packageKind: 'plugin' | 'bundle'
   readonly bundlePatch?: string
   readonly confirmation: string

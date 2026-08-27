@@ -29,8 +29,12 @@
     },
     "client": {
       "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-sidebar",
         "@deepseek-ai/dsh-client-ui-theme"
       ],
       "platform": "web"
@@ -38,7 +42,11 @@
   },
   "scripts": {
     "build": "node scripts/generate-brand.mjs && ../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json && ../../vendor/deepseek-harness/node_modules/.bin/tsdown --config tsdown.config.ts",
-    "check": "node scripts/generate-brand.mjs && ../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json --noEmit"
+    "check": "node scripts/generate-brand.mjs && ../../vendor/deepseek-harness/node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "test": "../../vendor/deepseek-harness/node_modules/.bin/vitest run"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.1"
   },
   "peerDependencies": {
     "react": "^18.2.0 || ^19.0.0"

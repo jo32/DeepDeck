@@ -1,8 +1,466 @@
+diff --git a/README.md b/README.md
+index 29729f3c078749ca04dc1d648c496c7b57bf3b17..64706dbaffab1d30aee9a2d096e5a7fb8497ca2f 100644
+--- a/README.md
++++ b/README.md
+@@ -157,7 +157,7 @@ Choose **Use this proxy** only after reviewing a candidate, then click **Save ch
+ 
+ ### Enable only the capability you intend to use
+ 
+-- `enableSearch: true` registers Codex as an available search provider. It does not select the profile's global search route.
++- `enableSearch: true` registers Codex as an available search provider. When selected, it sends the query to the ChatGPT-authenticated Codex Responses endpoint with the hosted `{ type: "web_search" }` tool forced to run. It does not select the profile's global search route.
+ - `enableImageTool: true` enables `view_image` for approved local reads and public-network image fetches on vision-capable models.
+ - `enableImageGeneration: true` enables the prompt-only image generation tool. Use the image generation capability included with your current GPT subscription. Generated images are saved as DSH attachments and shown in the Codex Connect result gallery.
+ 
+@@ -225,7 +225,7 @@ Selecting Codex as the profile's global search route is another explicit change:
+ | `enableImageTool` | `false` | boolean |
+ | `enableImageGeneration` | `false` | boolean |
+ | `searchModel` | `gpt-5.6-sol` | Codex model id |
+-| `searchMode` | `cached` | `cached`, `indexed`, `live` |
++| `searchMode` | `cached` | `cached` or legacy `indexed` disable live access; `live` enables it |
+ | `searchContextSize` | `medium` | `low`, `medium`, `high` |
+ | `searchMaxOutputTokens` | `10000` | positive integer |
+ 
+diff --git a/docs/README.zh.md b/docs/README.zh.md
+index a7141cd531059e44771f763a8e5b75d529fc3f83..5ded432b81e55fead2553ef3f26813b96e5a4c07 100644
+--- a/docs/README.zh.md
++++ b/docs/README.zh.md
+@@ -157,7 +157,7 @@ Codex Connect 默认使用**直连**。代理是可选项，只作用于本插
+ 
+ ### 只开启你准备使用的能力
+ 
+-- `enableSearch: true` 会把 Codex 注册为可选择的搜索提供方，不会把它选为 profile 的全局搜索路由。
++- `enableSearch: true` 会把 Codex 注册为可选择的搜索提供方。选中后，查询会通过 ChatGPT OAuth 发送到 Codex Responses 端点，并强制调用托管的 `{ type: "web_search" }` 工具；它不会自行改动 profile 的全局搜索路由。
+ - `enableImageTool: true` 会为具备视觉能力的模型启用 `view_image`，用于审批后的本地读取和公网图片获取。
+ - `enableImageGeneration: true` 会启用只接受文字描述的图片生成工具。使用你当前 GPT 订阅计划提供的图片生成能力。生成结果会保存为 DSH 附件，并通过 Codex Connect 结果画廊展示。
+ 
+@@ -225,7 +225,7 @@ Codex Connect 默认使用**直连**。代理是可选项，只作用于本插
+ | `enableImageTool` | `false` | boolean |
+ | `enableImageGeneration` | `false` | boolean |
+ | `searchModel` | `gpt-5.6-sol` | Codex model id |
+-| `searchMode` | `cached` | `cached`、`indexed`、`live` |
++| `searchMode` | `cached` | `cached` 与旧版 `indexed` 均关闭实时联网；`live` 开启实时联网 |
+ | `searchContextSize` | `medium` | `low`、`medium`、`high` |
+ | `searchMaxOutputTokens` | `10000` | 正整数 |
+ 
+diff --git a/docs/design.md b/docs/design.md
+index b7694c3bc988641242dc89ce004dcdd7c25996d3..b8c3a453bd5cfe1da04d0a7a7e3ebd95026a03c9 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -16,7 +16,7 @@ The settings routes and CLI reuse the existing OAuth path and route names for mi
+ 
+ ## Search and images
+ 
+-When `enableSearch: true`, the plugin registers its standalone search provider. It does not append a plugin-owned required-on-read Session event because an external package cannot guarantee that its `@deepseek-ai/dsh-session` module instance owns the Host persistence vocabulary; the standard web Tool call and result remain in the Session log. Harness still requires explicit `web.searchProvider: openai-codex` when multiple providers exist. Search responses are mapped to Harness text and citation records.
++When `enableSearch: true`, the plugin registers its standalone search provider. A search uses the ChatGPT-authenticated Codex Responses endpoint and the hosted `{ type: "web_search" }` tool with `tool_choice: "required"`; cited annotations and the requested complete source list are mapped to Harness text and citation records. `cached` and the legacy `indexed` value both set `external_web_access: false`, while `live` sets it to `true`. The standard web Tool call and result remain in the Session log, and Harness still requires explicit `web.searchProvider: openai-codex` when multiple providers exist.
+ 
+ When `enableImageTool: true`, `view_image` is registered only after tools, filesystem, and attachment services are available. Local files remain bounded by the Harness filesystem surface. Remote images allow only credential-free public HTTP(S): all DNS answers must be public unicast, each redirect is revalidated, and each socket is pinned to the validated address to close DNS-rebinding gaps. The tool also checks bounded bytes, accepted media signatures, and current-model image support before saving a Harness attachment.
+ 
+diff --git a/docs/design.zh.md b/docs/design.zh.md
+index 0817da189a048289872a99a8e5645e7e0711f5ea..9977f8795011a602bfe0938a9d2231c6b5501205 100644
+--- a/docs/design.zh.md
++++ b/docs/design.zh.md
+@@ -16,7 +16,7 @@ Host 将 `llm-openai-codex` 注册为插件自有的能力 settings namespace。
+ 
+ ## 搜索与图片
+ 
+-仅当 `enableSearch: true` 时注册 Codex 独立搜索提供方和不含凭据的请求事件。多 provider 环境仍需显式设置 `web.searchProvider: openai-codex`。仅当 `enableImageTool: true` 且 tools、filesystem、attachments 服务存在时注册 `view_image`。本地文件继续受 Harness 文件系统边界与大小限制；远程图片只允许不含凭据的公共 HTTP(S)，所有 DNS 结果必须是公共单播地址，每次重定向都会重新验证，并把实际连接固定到已验证地址以关闭 DNS rebinding 缺口。
++仅当 `enableSearch: true` 时注册 Codex 独立搜索提供方。搜索请求通过 ChatGPT OAuth 发送到 Codex Responses 端点，并以 `tool_choice: "required"` 强制调用托管的 `{ type: "web_search" }` 工具；引用 annotations 与完整来源列表会映射为 Harness 的文本和引用记录。`cached` 与旧版 `indexed` 都会设置 `external_web_access: false`，`live` 则设置为 `true`。多 provider 环境仍需显式设置 `web.searchProvider: openai-codex`。仅当 `enableImageTool: true` 且 tools、filesystem、attachments 服务存在时注册 `view_image`。本地文件继续受 Harness 文件系统边界与大小限制；远程图片只允许不含凭据的公共 HTTP(S)，所有 DNS 结果必须是公共单播地址，每次重定向都会重新验证，并把实际连接固定到已验证地址以关闭 DNS rebinding 缺口。
+ 
+ ## 冲突、诊断与兼容边界
+ 
+diff --git a/lib/bin.js b/lib/bin.js
+index efd3680c1b3bf3174054c06f86c31a0fc6177d42..950b2a91d910093916af2fc6288491ca74cfde09 100755
+--- a/lib/bin.js
++++ b/lib/bin.js
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env node
+-import { At as openAICodexAuthPath, Et as openAICodexAuthStatus, Tt as logoutOpenAICodex, bt as normalizeTrustedOrigin, c as migrateOpenAICodexSearchHistory, j as CODEX_CONNECT_VERSION, k as diagnoseOpenAICodex, wt as loginOpenAICodex, yt as OpenAICodexTrustedOriginsStore } from "./src-B2d5HLN5.js";
++import { At as openAICodexAuthPath, Et as openAICodexAuthStatus, Tt as logoutOpenAICodex, bt as normalizeTrustedOrigin, c as migrateOpenAICodexSearchHistory, j as CODEX_CONNECT_VERSION, k as diagnoseOpenAICodex, wt as loginOpenAICodex, yt as OpenAICodexTrustedOriginsStore } from "./src-GKX6ql9P.js";
+ import { fileURLToPath } from "node:url";
+ import { realpathSync } from "node:fs";
+ import { spawn } from "node:child_process";
+diff --git a/lib/client.js b/lib/client.js
+index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc556e82fbc 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -2831,11 +2831,11 @@ window.__ModuleLoader__.load({
+ 			proxyTestFailed: "Proxy test failed: {reason}.",
+ 			invalidProxyUrl: "Enter an HTTP(S) proxy origin without credentials or a path.",
+ 			enableSearch: "Enable Codex search provider",
+-			enableSearchHelp: "Makes OpenAI Codex available as a search provider. It does not select the global search route.",
++			enableSearchHelp: "Uses the Responses API hosted web_search tool when Codex is selected as the global search provider.",
+ 			searchModel: "Search model",
+ 			searchMode: "Web access",
+-			modeCached: "Cached",
+-			modeIndexed: "Indexed",
++			modeCached: "Cached / indexed",
++			modeIndexed: "Indexed (legacy offline)",
+ 			modeLive: "Live web",
+ 			searchContextSize: "Search context",
+ 			contextLow: "Low",
+@@ -3034,11 +3034,11 @@ window.__ModuleLoader__.load({
+ 			proxyTestFailed: "代理测试失败：{reason}。",
+ 			invalidProxyUrl: "请输入不含凭据或路径的 HTTP(S) 代理 origin。",
+ 			enableSearch: "启用 Codex 搜索提供方",
+-			enableSearchHelp: "让 OpenAI Codex 可被选作搜索提供方，但不会自动改动全局搜索路由。",
++			enableSearchHelp: "当 Codex 被选为全局搜索提供方时，使用 Responses API 托管的 web_search 工具。",
+ 			searchModel: "搜索模型",
+ 			searchMode: "联网方式",
+-			modeCached: "缓存",
+-			modeIndexed: "索引",
++			modeCached: "缓存 / 索引",
++			modeIndexed: "索引（旧版离线模式）",
+ 			modeLive: "实时联网",
+ 			searchContextSize: "搜索上下文",
+ 			contextLow: "低",
+diff --git a/lib/index.d.ts b/lib/index.d.ts
+index a28e41b7ca2dc29dbbef6640ed7be66b75ca8458..386e431725d45aa7c420b8b7ad62f181a07185c5 100644
+--- a/lib/index.d.ts
++++ b/lib/index.d.ts
+@@ -356,17 +356,17 @@ declare const OPENAI_CODEX_SETTINGS_NAMESPACE = "llm-openai-codex";
+ declare const DEFAULT_OPENAI_CODEX_PROXY_URL = "http://127.0.0.1:7890";
+ /** Whether a value is a supported, canonical HTTP(S) proxy origin. */
+ declare function isValidOpenAICodexProxyUrl(value: unknown): value is string;
+-/** Search modes accepted by the Codex standalone search endpoint. */
++/** Search modes retained by Codex Connect; `indexed` is a legacy offline alias. */
+ type OpenAICodexSearchMode = 'cached' | 'indexed' | 'live';
+-/** Search-context sizes accepted by the Codex standalone search endpoint. */
++/** Search-context sizes accepted by the Responses API hosted web-search tool. */
+ type OpenAICodexSearchContextSize = 'low' | 'medium' | 'high';
+-/** Default model used by the standalone search endpoint. */
++/** Default model used by the standalone Responses API search request. */
+ declare const DEFAULT_OPENAI_CODEX_SEARCH_MODEL = "gpt-5.6-sol";
+ /** Default search mode, matching the official local Codex client. */
+ declare const DEFAULT_OPENAI_CODEX_SEARCH_MODE: OpenAICodexSearchMode;
+ /** Default provider search-context size. */
+ declare const DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE: OpenAICodexSearchContextSize;
+-/** Default output budget for the standalone search response. */
++/** Default output budget for the standalone Responses API search response. */
+ declare const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 10000;
+ /** Fully resolved user-editable section presented by Plugin configuration. */
+ interface OpenAICodexSettingsConfig {
+@@ -397,11 +397,15 @@ declare function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsC
+ declare const OPENAI_CODEX_SEARCH_PROVIDER = "openai-codex";
+ /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
+ declare const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
+-/** Standalone search endpoint used by the official Codex client. */
+-declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/alpha/search";
++/** Responses endpoint used by the ChatGPT-authenticated Codex client. */
++declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/responses";
++/** Stable instruction for the provider-owned search-only Responses request. */
++declare const OPENAI_CODEX_SEARCH_INSTRUCTIONS = "Search the web for the user query and return a concise answer grounded in the sources you found.";
+ interface SearchRequestBody {
+-  readonly id: string;
+   readonly model: string;
++  readonly store: false;
++  readonly stream: true;
++  readonly instructions: typeof OPENAI_CODEX_SEARCH_INSTRUCTIONS;
+   readonly input: readonly [{
+     readonly type: 'message';
+     readonly role: 'user';
+@@ -410,17 +414,14 @@ interface SearchRequestBody {
+       readonly text: string;
+     }];
+   }];
+-  readonly commands: {
+-    readonly search_query: readonly [{
+-      readonly q: string;
+-    }];
+-  };
+-  readonly settings: {
++  readonly tools: readonly [{
++    readonly type: 'web_search';
+     readonly search_context_size: OpenAICodexSearchContextSize;
+-    readonly allowed_callers: readonly ['direct'];
+-    readonly external_web_access: boolean | 'indexed';
+-  };
+-  readonly max_output_tokens: number;
++    readonly external_web_access: boolean;
++  }];
++  readonly tool_choice: 'required';
++  readonly parallel_tool_calls: true;
++  readonly include: readonly ['web_search_call.action.sources'];
+ }
+ /** Exact secret-free request recorded before a standalone search dispatch. */
+ interface OpenAICodexSearchRequestRecord {
+@@ -451,10 +452,10 @@ interface OpenAICodexSearchProviderOptions {
+   readonly recordRequest?: (request: OpenAICodexSearchRequestRecord) => void;
+ }
+ /**
+- * Map the standalone endpoint's forward-compatible result DTOs into the dsh
+- * web result. Unknown DTO types and fields are ignored; malformed envelope
+- * fields fail at the network boundary.
+- * @param value - parsed response JSON.
++ * Map a terminal Responses API object into the stable dsh web result.
++ * Cited URLs are ordered first, followed by the complete source list requested
++ * through `include: ["web_search_call.action.sources"]`.
++ * @param value - terminal `response.completed`/`response.incomplete` response.
+  * @returns normalized answer and citeable sources.
+  */
+ declare function mapOpenAICodexSearchResponse(value: unknown): WebSearchResult;
+diff --git a/lib/index.js b/lib/index.js
+index 4080c8d58e1c326f3e761fd84d65bae057243980..dd1189fd111f2867d0897ebba710ec26cb827f3d 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1,2 +1,2 @@
+-import { $ as OPENAI_CODEX_PROXY_PROBE_URL, A as openAICodexConflictMessage, At as openAICodexAuthPath, B as DSH_PLUGIN_API_PACKAGES, C as OpenAICodexTransport, Ct as readOpenAICodexRateLimits, D as IMAGE_GENERATE_TOOL_NAME, Dt as OPENAI_CODEX_AUTH_FILENAME, E as VIEW_IMAGE_TOOL_NAME, Et as openAICodexAuthStatus, F as parseOpenAICodexUpdateResult, G as assessCompatibility, H as SUPPORTED_DSH_PLUGIN_API_VERSION, I as parseOpenAICodexVersion, J as OPENAI_CODEX_PROXY_DETECT_PATH, K as detectCompatibility, L as COMPATIBILITY_CONTRACT, M as OPENAI_CODEX_UPDATE_PATH, N as checkForOpenAICodexUpdate, O as assertNoOpenAICodexProviderConflict, Ot as OPENAI_CODEX_PROVIDER, P as compareOpenAICodexVersions, Q as OPENAI_CODEX_PROXY_PROBE_TIMEOUT_MS, R as COMPATIBILITY_PACKAGES, S as OPENAI_CODEX_TRANSPORT_SERVICE, St as parseOpenAICodexUsage, T as isOpenAICodexTransportError, Tt as logoutOpenAICodex, U as SUPPORTED_NODE_RANGE, V as PI_AI_PACKAGE, W as SUPPORTED_PI_AI_VERSION, X as OPENAI_CODEX_LOCAL_PROXY_CANDIDATES, Y as OPENAI_CODEX_PROXY_TEST_PATH, Z as OPENAI_CODEX_PROXY_CANDIDATE_LIMIT, _ as OPENAI_CODEX_IMAGE_MAX_RESPONSE_BYTES, _t as OPENAI_CODEX_FAST_MODE_MAX_SESSION_ID_LENGTH, a as name, at as DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS, b as OPENAI_CODEX_TRANSPORT_API_VERSION, c as migrateOpenAICodexSearchHistory, ct as DEFAULT_OPENAI_CODEX_SETTINGS, d as OPENAI_CODEX_SEARCH_URL, dt as isValidOpenAICodexProxyUrl, et as OpenAICodexProxyManager, f as OpenAICodexSearchProvider, ft as resolveOpenAICodexProxyUrl, g as OPENAI_CODEX_IMAGE_MAX_ERROR_BYTES, gt as OPENAI_CODEX_FAST_MODE_MAX_SESSIONS, h as OPENAI_CODEX_IMAGE_MAX_COUNT, ht as FastModeRegistry, i as inject, it as DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE, k as diagnoseOpenAICodex, kt as OpenAICodexCredentialStore, l as OPENAI_CODEX_BASE_URL, lt as OPENAI_CODEX_SETTINGS_NAMESPACE, m as OPENAI_CODEX_IMAGE_GENERATION_URL, mt as OPENAI_CODEX_FAST_MODE_PATH, n as OPENAI_CODEX_SETTINGS_NS, nt as listOpenAICodexProxyCandidates, o as OPENAI_CODEX_HISTORY_BACKUP_SUFFIX, ot as DEFAULT_OPENAI_CODEX_SEARCH_MODE, p as mapOpenAICodexSearchResponse, pt as resolveOpenAICodexSettings, q as evaluateCompatibility, r as apply, rt as DEFAULT_OPENAI_CODEX_PROXY_URL, s as OPENAI_CODEX_SEARCH_MODEL_REQUEST_EVENT, st as DEFAULT_OPENAI_CODEX_SEARCH_MODEL, t as Config, tt as detectOpenAICodexProxies, u as OPENAI_CODEX_SEARCH_PROVIDER, ut as decodeOpenAICodexSettings, v as OPENAI_CODEX_IMAGE_PROMPT_MAX_LENGTH, vt as isFastModeSessionId, w as OpenAICodexTransportError, wt as loginOpenAICodex, x as OPENAI_CODEX_TRANSPORT_ERROR_CODES, xt as OPENAI_CODEX_USAGE_URL, y as OPENAI_CODEX_IMAGE_REQUEST_TIMEOUT_MS, z as COMPATIBILITY_SCHEMA_VERSION } from "./src-B2d5HLN5.js";
++import { $ as OPENAI_CODEX_PROXY_PROBE_URL, A as openAICodexConflictMessage, At as openAICodexAuthPath, B as DSH_PLUGIN_API_PACKAGES, C as OpenAICodexTransport, Ct as readOpenAICodexRateLimits, D as IMAGE_GENERATE_TOOL_NAME, Dt as OPENAI_CODEX_AUTH_FILENAME, E as VIEW_IMAGE_TOOL_NAME, Et as openAICodexAuthStatus, F as parseOpenAICodexUpdateResult, G as assessCompatibility, H as SUPPORTED_DSH_PLUGIN_API_VERSION, I as parseOpenAICodexVersion, J as OPENAI_CODEX_PROXY_DETECT_PATH, K as detectCompatibility, L as COMPATIBILITY_CONTRACT, M as OPENAI_CODEX_UPDATE_PATH, N as checkForOpenAICodexUpdate, O as assertNoOpenAICodexProviderConflict, Ot as OPENAI_CODEX_PROVIDER, P as compareOpenAICodexVersions, Q as OPENAI_CODEX_PROXY_PROBE_TIMEOUT_MS, R as COMPATIBILITY_PACKAGES, S as OPENAI_CODEX_TRANSPORT_SERVICE, St as parseOpenAICodexUsage, T as isOpenAICodexTransportError, Tt as logoutOpenAICodex, U as SUPPORTED_NODE_RANGE, V as PI_AI_PACKAGE, W as SUPPORTED_PI_AI_VERSION, X as OPENAI_CODEX_LOCAL_PROXY_CANDIDATES, Y as OPENAI_CODEX_PROXY_TEST_PATH, Z as OPENAI_CODEX_PROXY_CANDIDATE_LIMIT, _ as OPENAI_CODEX_IMAGE_MAX_RESPONSE_BYTES, _t as OPENAI_CODEX_FAST_MODE_MAX_SESSION_ID_LENGTH, a as name, at as DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS, b as OPENAI_CODEX_TRANSPORT_API_VERSION, c as migrateOpenAICodexSearchHistory, ct as DEFAULT_OPENAI_CODEX_SETTINGS, d as OPENAI_CODEX_SEARCH_URL, dt as isValidOpenAICodexProxyUrl, et as OpenAICodexProxyManager, f as OpenAICodexSearchProvider, ft as resolveOpenAICodexProxyUrl, g as OPENAI_CODEX_IMAGE_MAX_ERROR_BYTES, gt as OPENAI_CODEX_FAST_MODE_MAX_SESSIONS, h as OPENAI_CODEX_IMAGE_MAX_COUNT, ht as FastModeRegistry, i as inject, it as DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE, k as diagnoseOpenAICodex, kt as OpenAICodexCredentialStore, l as OPENAI_CODEX_BASE_URL, lt as OPENAI_CODEX_SETTINGS_NAMESPACE, m as OPENAI_CODEX_IMAGE_GENERATION_URL, mt as OPENAI_CODEX_FAST_MODE_PATH, n as OPENAI_CODEX_SETTINGS_NS, nt as listOpenAICodexProxyCandidates, o as OPENAI_CODEX_HISTORY_BACKUP_SUFFIX, ot as DEFAULT_OPENAI_CODEX_SEARCH_MODE, p as mapOpenAICodexSearchResponse, pt as resolveOpenAICodexSettings, q as evaluateCompatibility, r as apply, rt as DEFAULT_OPENAI_CODEX_PROXY_URL, s as OPENAI_CODEX_SEARCH_MODEL_REQUEST_EVENT, st as DEFAULT_OPENAI_CODEX_SEARCH_MODEL, t as Config, tt as detectOpenAICodexProxies, u as OPENAI_CODEX_SEARCH_PROVIDER, ut as decodeOpenAICodexSettings, v as OPENAI_CODEX_IMAGE_PROMPT_MAX_LENGTH, vt as isFastModeSessionId, w as OpenAICodexTransportError, wt as loginOpenAICodex, x as OPENAI_CODEX_TRANSPORT_ERROR_CODES, xt as OPENAI_CODEX_USAGE_URL, y as OPENAI_CODEX_IMAGE_REQUEST_TIMEOUT_MS, z as COMPATIBILITY_SCHEMA_VERSION } from "./src-GKX6ql9P.js";
+ export { COMPATIBILITY_CONTRACT, COMPATIBILITY_PACKAGES, COMPATIBILITY_SCHEMA_VERSION, Config, DEFAULT_OPENAI_CODEX_PROXY_URL, DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE, DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS, DEFAULT_OPENAI_CODEX_SEARCH_MODE, DEFAULT_OPENAI_CODEX_SEARCH_MODEL, DEFAULT_OPENAI_CODEX_SETTINGS, DSH_PLUGIN_API_PACKAGES, FastModeRegistry, FastModeRegistry as OpenAICodexFastModeRegistry, IMAGE_GENERATE_TOOL_NAME, OPENAI_CODEX_AUTH_FILENAME, OPENAI_CODEX_BASE_URL, OPENAI_CODEX_FAST_MODE_MAX_SESSIONS, OPENAI_CODEX_FAST_MODE_MAX_SESSION_ID_LENGTH, OPENAI_CODEX_FAST_MODE_PATH, OPENAI_CODEX_HISTORY_BACKUP_SUFFIX, OPENAI_CODEX_IMAGE_GENERATION_URL, OPENAI_CODEX_IMAGE_MAX_COUNT, OPENAI_CODEX_IMAGE_MAX_ERROR_BYTES, OPENAI_CODEX_IMAGE_MAX_RESPONSE_BYTES, OPENAI_CODEX_IMAGE_PROMPT_MAX_LENGTH, OPENAI_CODEX_IMAGE_REQUEST_TIMEOUT_MS, OPENAI_CODEX_LOCAL_PROXY_CANDIDATES, OPENAI_CODEX_PROVIDER, OPENAI_CODEX_PROXY_CANDIDATE_LIMIT, OPENAI_CODEX_PROXY_DETECT_PATH, OPENAI_CODEX_PROXY_PROBE_TIMEOUT_MS, OPENAI_CODEX_PROXY_PROBE_URL, OPENAI_CODEX_PROXY_TEST_PATH, OPENAI_CODEX_SEARCH_MODEL_REQUEST_EVENT, OPENAI_CODEX_SEARCH_PROVIDER, OPENAI_CODEX_SEARCH_URL, OPENAI_CODEX_SETTINGS_NAMESPACE, OPENAI_CODEX_SETTINGS_NS, OPENAI_CODEX_TRANSPORT_API_VERSION, OPENAI_CODEX_TRANSPORT_ERROR_CODES, OPENAI_CODEX_TRANSPORT_SERVICE, OPENAI_CODEX_UPDATE_PATH, OPENAI_CODEX_USAGE_URL, OpenAICodexCredentialStore, OpenAICodexProxyManager, OpenAICodexSearchProvider, OpenAICodexTransport, OpenAICodexTransportError, PI_AI_PACKAGE, SUPPORTED_DSH_PLUGIN_API_VERSION, SUPPORTED_NODE_RANGE, SUPPORTED_PI_AI_VERSION, VIEW_IMAGE_TOOL_NAME, apply, assertNoOpenAICodexProviderConflict, assessCompatibility, checkForOpenAICodexUpdate, compareOpenAICodexVersions, decodeOpenAICodexSettings, detectCompatibility, detectOpenAICodexProxies, diagnoseOpenAICodex, evaluateCompatibility, inject, isFastModeSessionId, isOpenAICodexTransportError, isValidOpenAICodexProxyUrl, listOpenAICodexProxyCandidates, loginOpenAICodex, logoutOpenAICodex, mapOpenAICodexSearchResponse, migrateOpenAICodexSearchHistory, name, openAICodexAuthPath, openAICodexAuthStatus, openAICodexConflictMessage, parseOpenAICodexUpdateResult, parseOpenAICodexUsage, parseOpenAICodexVersion, readOpenAICodexRateLimits, resolveOpenAICodexProxyUrl, resolveOpenAICodexSettings };
+diff --git a/lib/src-B2d5HLN5.js b/lib/src-GKX6ql9P.js
+similarity index 96%
+rename from lib/src-B2d5HLN5.js
+rename to lib/src-GKX6ql9P.js
+index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a50cacd66 100644
+--- a/lib/src-B2d5HLN5.js
++++ b/lib/src-GKX6ql9P.js
+@@ -1156,13 +1156,13 @@ function normalizeOpenAICodexProxyUrl(value) {
+ function isValidOpenAICodexProxyUrl(value) {
+ 	return normalizeOpenAICodexProxyUrl(value) !== void 0;
+ }
+-/** Default model used by the standalone search endpoint. */
++/** Default model used by the standalone Responses API search request. */
+ const DEFAULT_OPENAI_CODEX_SEARCH_MODEL = "gpt-5.6-sol";
+ /** Default search mode, matching the official local Codex client. */
+ const DEFAULT_OPENAI_CODEX_SEARCH_MODE = "cached";
+ /** Default provider search-context size. */
+ const DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE = "medium";
+-/** Default output budget for the standalone search response. */
++/** Default output budget for the standalone Responses API search response. */
+ const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 1e4;
+ const DEFAULT_OPENAI_CODEX_SETTINGS = Object.freeze({
+ 	models: void 0,
+@@ -3194,15 +3194,13 @@ var OpenAICodexTransport = class extends Service {
+ const OPENAI_CODEX_SEARCH_PROVIDER = OPENAI_CODEX_PROVIDER;
+ /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
+ const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
+-/** Standalone search endpoint used by the official Codex client. */
+-const OPENAI_CODEX_SEARCH_URL = `${OPENAI_CODEX_BASE_URL}/alpha/search`;
+-/** Convert the configured mode to the official endpoint field. */
++/** Responses endpoint used by the ChatGPT-authenticated Codex client. */
++const OPENAI_CODEX_SEARCH_URL = `${OPENAI_CODEX_BASE_URL}/responses`;
++/** Stable instruction for the provider-owned search-only Responses request. */
++const OPENAI_CODEX_SEARCH_INSTRUCTIONS = "Search the web for the user query and return a concise answer grounded in the sources you found.";
++/** Convert the legacy three-way setting to the Responses API live-access flag. */
+ function externalWebAccess(mode) {
+-	switch (mode) {
+-		case "cached": return false;
+-		case "indexed": return "indexed";
+-		case "live": return true;
+-	}
++	return mode === "live";
+ }
+ /** Extract the account id paired with one OAuth access token. */
+ function accountIdFromToken(access) {
+@@ -3237,39 +3235,94 @@ function citeableUrl(value) {
+ 		return;
+ 	}
+ }
++/** Add one citeable, deduplicated source from an opaque Responses DTO. */
++function addSource(sources, seen, item) {
++	const url = citeableUrl(item["url"]);
++	if (url === void 0 || seen.has(url)) return;
++	seen.add(url);
++	const title = optionalString(item, "title");
++	const snippet = optionalString(item, "snippet");
++	sources.push({
++		url,
++		...title === void 0 ? {} : { title },
++		...snippet === void 0 ? {} : { snippet }
++	});
++}
+ /**
+-* Map the standalone endpoint's forward-compatible result DTOs into the dsh
+-* web result. Unknown DTO types and fields are ignored; malformed envelope
+-* fields fail at the network boundary.
+-* @param value - parsed response JSON.
++* Map a terminal Responses API object into the stable dsh web result.
++* Cited URLs are ordered first, followed by the complete source list requested
++* through `include: ["web_search_call.action.sources"]`.
++* @param value - terminal `response.completed`/`response.incomplete` response.
+ * @returns normalized answer and citeable sources.
+ */
+ function mapOpenAICodexSearchResponse(value) {
+-	if (!isRecord(value) || typeof value["output"] !== "string") throw new WebError("OpenAI Codex returned a search response without string output", "WEB_PROVIDER_ERROR");
+-	const output = value["output"];
+-	const rawResults = value["results"];
+-	if (rawResults !== void 0 && !Array.isArray(rawResults)) throw new WebError("OpenAI Codex returned a search response with non-array results", "WEB_PROVIDER_ERROR");
++	if (!isRecord(value) || !Array.isArray(value["output"])) throw new WebError("OpenAI Codex returned a Responses object without array output", "WEB_PROVIDER_ERROR");
++	const output = [];
++	const citedSources = [];
++	const otherSources = [];
++	const cited = /* @__PURE__ */ new Set();
++	const other = /* @__PURE__ */ new Set();
++	for (const item of value["output"]) {
++		if (!isRecord(item)) continue;
++		if (item["type"] === "message" && Array.isArray(item["content"])) {
++			for (const content of item["content"]) {
++				if (!isRecord(content) || content["type"] !== "output_text") continue;
++				const text = optionalString(content, "text");
++				if (text !== void 0) output.push(text);
++				if (!Array.isArray(content["annotations"])) continue;
++				for (const annotation of content["annotations"]) {
++					if (!isRecord(annotation) || annotation["type"] !== "url_citation") continue;
++					addSource(citedSources, cited, annotation);
++				}
++			}
++			continue;
++		}
++		if (item["type"] !== "web_search_call" || !isRecord(item["action"])) continue;
++		const rawSources = item["action"]["sources"];
++		if (!Array.isArray(rawSources)) continue;
++		for (const source of rawSources) if (isRecord(source)) addSource(otherSources, other, source);
++	}
+ 	const sources = [];
+ 	const seen = /* @__PURE__ */ new Set();
+-	for (const item of rawResults ?? []) {
+-		if (!isRecord(item) || item["type"] !== "text_result") continue;
+-		const url = citeableUrl(item["url"]);
+-		if (url === void 0 || seen.has(url)) continue;
+-		seen.add(url);
+-		const title = optionalString(item, "title");
+-		const snippet = optionalString(item, "snippet");
+-		sources.push({
+-			url,
+-			...title === void 0 ? {} : { title },
+-			...snippet === void 0 ? {} : { snippet }
+-		});
++	for (const source of [...citedSources, ...otherSources]) {
++		if (seen.has(source.url)) continue;
++		seen.add(source.url);
++		sources.push(source);
+ 	}
++	const content = output.join("");
+ 	return {
+-		...output.length === 0 ? {} : { content: output },
++		...content.length === 0 ? {} : { content },
+ 		sources,
+-		truncated: false
++		truncated: value["status"] === "incomplete"
+ 	};
+ }
++/** Parse one complete SSE response and return its terminal Responses object. */
++function terminalResponseFromSse(text) {
++	let terminal;
++	const streamedOutput = [];
++	const blocks = text.replace(/\r\n/gu, "\n").split(/\n\n+/u);
++	for (const block of blocks) {
++		const data = block.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n").trim();
++		if (data.length === 0 || data === "[DONE]") continue;
++		let event;
++		try {
++			event = JSON.parse(data);
++		} catch (error) {
++			throw new WebError("OpenAI Codex returned malformed Responses SSE data", "WEB_PROVIDER_ERROR", { cause: error });
++		}
++		if (!isRecord(event)) continue;
++		if (event["type"] === "error") throw new WebError(providerMessage(event) ?? "OpenAI Codex Responses stream failed", "WEB_PROVIDER_ERROR");
++		if (event["type"] === "response.failed") throw new WebError(providerMessage(event["response"]) ?? "OpenAI Codex Responses request failed", "WEB_PROVIDER_ERROR");
++		if (event["type"] === "response.output_item.done" && Number.isSafeInteger(event["output_index"]) && event["output_index"] >= 0 && isRecord(event["item"])) streamedOutput[event["output_index"]] = event["item"];
++		if (event["type"] === "response.completed" || event["type"] === "response.incomplete") terminal = event["response"];
++	}
++	if (terminal === void 0) throw new WebError("OpenAI Codex Responses stream ended without a terminal response", "WEB_PROVIDER_ERROR");
++	if (isRecord(terminal) && Array.isArray(terminal["output"]) && terminal["output"].length === 0 && streamedOutput.length > 0) return {
++		...terminal,
++		output: streamedOutput.filter((item) => item !== void 0)
++	};
++	return terminal;
++}
+ /** Stable cancellation error for every provider phase. */
+ function searchAborted(signal, fallback) {
+ 	return new WebError("OpenAI Codex search aborted", "WEB_ABORTED", { cause: signal?.aborted === true ? signal.reason : fallback });
+@@ -3302,9 +3355,8 @@ function abortable(operation, signal) {
+ }
+ /** Keep provider diagnostics bounded and remove JWT-like material. */
+ function providerMessage(value) {
+-	if (!isRecord(value)) return void 0;
+-	const error = value["error"];
+-	return (typeof error === "string" ? error : isRecord(error) && typeof error["message"] === "string" ? error["message"] : typeof value["message"] === "string" ? value["message"] : void 0)?.replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu, "[REDACTED]").slice(0, 1e3);
++	const error = isRecord(value) ? value["error"] : void 0;
++	return (typeof value === "string" && value.length > 0 ? value : typeof error === "string" ? error : isRecord(error) && typeof error["message"] === "string" ? error["message"] : isRecord(error) && typeof error["detail"] === "string" ? error["detail"] : isRecord(value) && typeof value["message"] === "string" ? value["message"] : isRecord(value) && typeof value["detail"] === "string" ? value["detail"] : void 0)?.replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu, "[REDACTED]").slice(0, 1e3);
+ }
+ /** OpenAI Codex standalone-search provider using the same refreshable OAuth store as the LLM route. */
+ var OpenAICodexSearchProvider = class {
+@@ -3343,9 +3395,12 @@ var OpenAICodexSearchProvider = class {
+ 		if (access === void 0 || access.length === 0) throw new WebError("OpenAI Codex search is signed out; run \"dsh openai-codex login\"", "WEB_PROVIDER_CREDENTIAL_MISSING");
+ 		const accountId = accountIdFromToken(access);
+ 		throwIfSearchAborted(signal);
++		const requestId = this.options.resolveRequestId();
+ 		const body = {
+-			id: this.options.resolveRequestId(),
+ 			model: this.options.model,
++			store: false,
++			stream: true,
++			instructions: OPENAI_CODEX_SEARCH_INSTRUCTIONS,
+ 			input: [{
+ 				type: "message",
+ 				role: "user",
+@@ -3354,13 +3409,14 @@ var OpenAICodexSearchProvider = class {
+ 					text: request.query
+ 				}]
+ 			}],
+-			commands: { search_query: [{ q: request.query }] },
+-			settings: {
++			tools: [{
++				type: "web_search",
+ 				search_context_size: this.options.contextSize,
+-				allowed_callers: ["direct"],
+ 				external_web_access: externalWebAccess(this.options.mode)
+-			},
+-			max_output_tokens: this.options.maxOutputTokens
++			}],
++			tool_choice: "required",
++			parallel_tool_calls: true,
++			include: ["web_search_call.action.sources"]
+ 		};
+ 		this.options.recordRequest?.({
+ 			endpoint: OPENAI_CODEX_SEARCH_URL,
+@@ -3376,8 +3432,11 @@ var OpenAICodexSearchProvider = class {
+ 					authorization: `Bearer ${access}`,
+ 					"chatgpt-account-id": accountId,
+ 					"content-type": "application/json",
+-					accept: "application/json",
+-					originator: "deepseek-harness"
++					accept: "text/event-stream",
++					"openai-beta": "responses=experimental",
++					originator: "deepseek-harness",
++					"session-id": requestId,
++					"x-client-request-id": requestId
+ 				},
+ 				body: JSON.stringify(body),
+ 				...signal === void 0 ? {} : { signal }
+@@ -3387,20 +3446,24 @@ var OpenAICodexSearchProvider = class {
+ 			if (isAbortError(error)) throw searchAborted(signal, error);
+ 			throw new WebError("OpenAI Codex search request failed", "WEB_PROVIDER_ERROR", { cause: error });
+ 		}
+-		let payload;
++		let payloadText;
+ 		try {
+-			payload = await response.json();
++			payloadText = await response.text();
+ 		} catch (error) {
+ 			throwIfSearchAborted(signal);
+ 			if (isAbortError(error)) throw searchAborted(signal, error);
+ 			throw new WebError(`OpenAI Codex returned an unprocessable search response (HTTP ${response.status})`, "WEB_PROVIDER_ERROR", { cause: error });
+ 		}
+ 		if (!response.ok) {
++			let payload = payloadText;
++			try {
++				payload = JSON.parse(payloadText);
++			} catch {}
+ 			const detail = providerMessage(payload);
+ 			const message = detail === void 0 ? `OpenAI Codex search failed (HTTP ${response.status})` : `OpenAI Codex search failed (HTTP ${response.status}): ${detail}`;
+ 			throw new WebError(response.status === 401 || response.status === 403 ? `${message}; run "dsh openai-codex login" again` : message, response.status === 401 || response.status === 403 ? "WEB_PROVIDER_CREDENTIAL_MISSING" : "WEB_PROVIDER_ERROR");
+ 		}
+-		return mapOpenAICodexSearchResponse(payload);
++		return mapOpenAICodexSearchResponse(terminalResponseFromSse(payloadText));
+ 	}
+ };
+ //#endregion
 diff --git a/package.json b/package.json
-index e966a44..ef42cf5 100644
+index 5f64a64fcbf093561db013697b37941d22ce27e6..e73eb459e419427b0087ae185018327feeed427d 100644
 --- a/package.json
 +++ b/package.json
-@@ -116,7 +116,7 @@
+@@ -120,7 +120,7 @@
      "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
      "@deepseek-ai/dsh-web": "0.1.1-rc.2",
      "@deepseek-ai/schemastery": "^3.18.1-rc.1",

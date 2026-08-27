@@ -16,7 +16,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map(async root => await rm(root, { recursive: true, force: true })))
 })
 
-async function fixture(options: { readonly bundle?: boolean; readonly lockfile?: boolean } = {}): Promise<{
+async function fixture(options: { readonly bundle?: boolean; readonly lockfile?: boolean; readonly prebuilt?: boolean } = {}): Promise<{
   readonly bunBinary: string
   readonly source: string
   readonly stateRoot: string
@@ -28,12 +28,19 @@ async function fixture(options: { readonly bundle?: boolean; readonly lockfile?:
   const bunBinary = join(root, 'bun')
   await mkdir(join(source, 'src'), { recursive: true })
   await mkdir(join(source, '.git'), { recursive: true })
+  await mkdir(join(source, '.pnpm-store', 'ignored'), { recursive: true })
   await mkdir(join(source, 'node_modules', 'ignored'), { recursive: true })
   await writeFile(bunBinary, 'test runtime\n', { mode: 0o700 })
   await writeFile(join(source, 'src', 'index.ts'), 'export const value = 1\n')
   await writeFile(join(source, '.git', 'config'), 'must not be copied\n')
+  await writeFile(join(source, '.pnpm-store', 'ignored', 'file'), 'must not be copied\n')
   await writeFile(join(source, 'node_modules', 'ignored', 'file'), 'must not be copied\n')
   if (options.bundle !== false) await writeFile(join(source, 'cordis.patch.yml'), '[]\n')
+  if (options.prebuilt === true) {
+    await mkdir(join(source, 'lib'), { recursive: true })
+    await writeFile(join(source, 'lib', 'index.js'), 'export const value = 1\n')
+    await writeFile(join(source, 'lib', 'client.js'), 'export function apply() {}\n')
+  }
   await writeFile(join(source, 'package.json'), `${JSON.stringify({
     name: '@fixture/dsh-demo',
     version: '1.2.3',
@@ -47,7 +54,7 @@ async function fixture(options: { readonly bundle?: boolean; readonly lockfile?:
       ...(options.bundle === false ? {} : { bundle: { patch: 'cordis.patch.yml' } }),
       client: { platform: 'web' },
     },
-    scripts: { build: 'bun build src/index.ts --outdir lib' },
+    scripts: options.prebuilt === true ? {} : { build: 'bun build src/index.ts --outdir lib' },
   }, null, 2)}\n`)
   if (options.lockfile === true) await writeFile(join(source, 'bun.lock'), '{}\n')
   return { bunBinary, source, stateRoot }
@@ -125,6 +132,7 @@ describe('DeepDeckBunPluginBuilder', () => {
       expiresAt: '2026-08-23T00:30:00.000Z',
     })
     await expect(readFile(join(paths.stateRoot, 'jobs', preview.previewId, 'source', '.git', 'config'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(readFile(join(paths.stateRoot, 'jobs', preview.previewId, 'source', '.pnpm-store', 'ignored', 'file'))).rejects.toMatchObject({ code: 'ENOENT' })
     await expect(readFile(join(paths.stateRoot, 'jobs', preview.previewId, 'source', 'node_modules', 'ignored', 'file'))).rejects.toMatchObject({ code: 'ENOENT' })
 
     const result = await builder.build({ previewId: preview.previewId, confirmation: preview.confirmation })
@@ -151,6 +159,27 @@ describe('DeepDeckBunPluginBuilder', () => {
     await expect(readFile(join(paths.source, 'lib', 'index.js'))).rejects.toMatchObject({ code: 'ENOENT' })
     await builder.discard(preview.previewId)
     await expect(readFile(result.artifactPath)).resolves.toBeTruthy()
+  })
+
+  it('inspects rebuild availability without creating a source snapshot', async () => {
+    const paths = await fixture()
+    const liveSource = await realpath(paths.source)
+    const builder = new DeepDeckBunPluginBuilder({
+      ...paths,
+      runProcess: successfulRunner([]),
+      hotReload: {
+        async inspect(target) {
+          return { available: target.sourcePackageRoot === liveSource }
+        },
+        async reload() {},
+      },
+    })
+
+    await expect(builder.inspect({ sourceDirectory: paths.source })).resolves.toEqual({
+      packageName: '@fixture/dsh-demo',
+      hotUpdateAvailable: true,
+    })
+    await expect(readFile(join(paths.stateRoot, 'jobs'))).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
   it('builds an ordinary Cordis plugin mounted by an external profile patch', async () => {
@@ -219,6 +248,36 @@ describe('DeepDeckBunPluginBuilder', () => {
       await expect(realpath(join(expectedBunDirectory, 'bun'))).resolves.toBe(await realpath(paths.bunBinary))
     }
     await expect(readFile(join(liveSource, 'lib', 'index.js'), 'utf8')).resolves.toContain('value = 1')
+  })
+
+  it('installs a reviewed prebuilt bundle without requiring or running a build script', async () => {
+    const paths = await fixture({ prebuilt: true })
+    const calls: Array<{ readonly args: readonly string[]; readonly cwd: string }> = []
+    const builder = new DeepDeckBunPluginBuilder({
+      ...paths,
+      runProcess: successfulRunner(calls),
+    })
+
+    const preview = await builder.preview({ sourceDirectory: paths.source })
+    expect(preview).toMatchObject({
+      packageName: '@fixture/dsh-demo',
+      packageKind: 'bundle',
+      buildScript: 'Prebuilt package (no build script)',
+      buildRequired: false,
+    })
+    expect(preview.warnings).toContain(
+      'No build script is declared; the reviewed prebuilt Host and Client entries will be used.',
+    )
+
+    const result = await builder.buildSource({
+      previewId: preview.previewId,
+      confirmation: preview.confirmation,
+    })
+    expect(result.logs).toEqual({ install: 'installed\n', build: '' })
+    expect(calls).toEqual([{
+      args: ['install', '--ignore-scripts', '--linker', 'isolated'],
+      cwd: await realpath(paths.source),
+    }])
   })
 
   it('builds the reviewed active source in place and replaces its Host entry', async () => {

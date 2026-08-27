@@ -13,29 +13,29 @@ const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$
 
 type JsonObject = Record<string, unknown>
 
-export interface CommunityMarketProfile {
+export interface AppInstallProfile {
   readonly name: string
   readonly dir: string
 }
 
-export interface CommunityMarketPnpmOutcome {
+export interface AppInstallPnpmOutcome {
   readonly exitCode: number | null
   readonly signal: NodeJS.Signals | null
 }
 
-export interface CommunityMarketPnpmHandle {
+export interface AppInstallPnpmHandle {
   readonly stdout: Readable
   readonly stderr: Readable
-  readonly done: Promise<CommunityMarketPnpmOutcome>
+  readonly done: Promise<AppInstallPnpmOutcome>
   cancel(): void
 }
 
-export interface CommunityMarketPnpm {
+export interface AppInstallPnpm {
   runPlugin(
     args: readonly string[],
     invokingDir: string,
     signal?: AbortSignal,
-  ): CommunityMarketPnpmHandle
+  ): AppInstallPnpmHandle
   runPluginInstall(
     args: readonly string[],
     invokingDir: string,
@@ -45,7 +45,7 @@ export interface CommunityMarketPnpm {
       readonly receiptId: string
     },
     signal?: AbortSignal,
-  ): Promise<CommunityMarketPnpmHandle>
+  ): Promise<AppInstallPnpmHandle>
   recoveredInstallReceiptIds(): Promise<readonly string[]>
   acknowledgeRecoveredInstall(receiptId: string): Promise<void>
   rollbackPluginInstall(receiptId: string): Promise<boolean>
@@ -135,7 +135,7 @@ async function removeFile(path: string): Promise<void> {
 
 function parseRecoveryState(value: unknown): RecoveryState {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('DeepDeck community market recovery state is invalid')
+    throw new Error('DeepDeck App install recovery state is invalid')
   }
   const state = value as Record<string, unknown>
   if (
@@ -150,12 +150,12 @@ function parseRecoveryState(value: unknown): RecoveryState {
     || state.before === null
     || typeof state.before !== 'object'
     || Array.isArray(state.before)
-  ) throw new Error('DeepDeck community market recovery state is invalid')
+  ) throw new Error('DeepDeck App install recovery state is invalid')
 
   const before = state.before as Record<string, unknown>
   for (const filename of RECOVERY_FILES) {
     if (before[filename] !== null && typeof before[filename] !== 'string') {
-      throw new Error('DeepDeck community market recovery snapshot is invalid')
+      throw new Error('DeepDeck App install recovery snapshot is invalid')
     }
   }
   return state as unknown as RecoveryState
@@ -178,7 +178,7 @@ class InstallRecoveryStore {
       if (existing.generationId !== this.generationId && existing.phase === 'awaiting-restart') {
         // Starting another protected install from a new Host/Renderer generation
         // proves the previous installation restarted successfully. App installs do
-        // not pass through the Community Market receipt reconciliation path, so
+        // not pass through a separate receipt reconciliation path, so
         // commit that successful transaction here as well.
         await this.clear()
       } else if (existing.phase === 'awaiting-restart') {
@@ -239,7 +239,7 @@ class InstallRecoveryStore {
     }
     if (state.phase === 'awaiting-restart') {
       // Reaching the bridge in a new Cordis generation proves that the new
-      // profile booted far enough to expose the Market Host again.
+      // profile booted far enough to expose the App installer Host again.
       await this.clear()
       return []
     }
@@ -258,7 +258,7 @@ class InstallRecoveryStore {
   private async readExact(receiptId: string): Promise<RecoveryState> {
     const state = await this.read()
     if (state === undefined || state.receiptId !== receiptId) {
-      throw new Error('Community market recovery transaction changed during installation')
+      throw new Error('App install recovery transaction changed during installation')
     }
     return state
   }
@@ -272,7 +272,7 @@ class InstallRecoveryStore {
       throw cause
     }
     if (contents.byteLength > MAX_RECOVERY_BYTES) {
-      throw new Error('DeepDeck community market recovery state is too large')
+      throw new Error('DeepDeck App install recovery state is too large')
     }
     return parseRecoveryState(JSON.parse(contents.toString('utf8')) as unknown)
   }
@@ -283,7 +283,7 @@ class InstallRecoveryStore {
 
   private async restore(state: RecoveryState): Promise<void> {
     if (resolve(state.profileDir) !== resolve(this.profileDir)) {
-      throw new Error('Community market recovery profile no longer matches the active profile')
+      throw new Error('App install recovery profile no longer matches the active profile')
     }
     for (const filename of RECOVERY_FILES) {
       const path = join(this.profileDir, filename)
@@ -305,13 +305,13 @@ class InstallRecoveryStore {
 
 function validateArgs(args: readonly string[]): string[] {
   if (args.length === 0 || args.some((argument) => argument.length === 0 || argument.includes('\0'))) {
-    throw new Error('Community market plugin arguments are invalid')
+    throw new Error('App installer plugin arguments are invalid')
   }
   return [...args]
 }
 
 function validateDirectory(path: string): string {
-  if (!isAbsolute(path) || path.includes('\0')) throw new Error('Community market invoking directory is invalid')
+  if (!isAbsolute(path) || path.includes('\0')) throw new Error('App installer invoking directory is invalid')
   return resolve(path)
 }
 
@@ -325,20 +325,20 @@ export function resolveDshHome(environment: NodeJS.ProcessEnv = process.env): st
   return resolve(configured)
 }
 
-export function resolveCommunityMarketProfile(
+export function resolveAppInstallProfile(
   environment: NodeJS.ProcessEnv = process.env,
-): CommunityMarketProfile {
+): AppInstallProfile {
   const home = resolveDshHome(environment)
   return Object.freeze({ name: PROFILE_NAME, dir: join(home, 'profiles', PROFILE_NAME) })
 }
 
-export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
+export class DeepDeckAppInstallPnpm implements AppInstallPnpm {
   private readonly generationId = randomUUID()
   private readonly recovery: InstallRecoveryStore
   private active: ChildProcess | undefined
 
   constructor(
-    private readonly profile: CommunityMarketProfile,
+    private readonly profile: AppInstallProfile,
     private readonly homeDir: string,
     private readonly nodeBinary: string,
     private readonly cliPath: string,
@@ -346,7 +346,7 @@ export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
     private readonly spawnProcess: SpawnProcess = spawn,
   ) {
     if (!isAbsolute(profile.dir) || !isAbsolute(cliPath)) {
-      throw new Error('DeepDeck community market runtime paths must be absolute')
+      throw new Error('DeepDeck App installer runtime paths must be absolute')
     }
     this.recovery = new InstallRecoveryStore(statePath, profile.dir, this.generationId)
   }
@@ -355,10 +355,10 @@ export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
     args: readonly string[],
     invokingDir: string,
     signal?: AbortSignal,
-  ): CommunityMarketPnpmHandle {
+  ): AppInstallPnpmHandle {
     const resolvedArgs = validateArgs(args)
     if (resolvedArgs[0] === 'add') {
-      throw new Error('Community market installs must use the protected install boundary')
+      throw new Error('App installs must use the protected install boundary')
     }
     return this.start(resolvedArgs, invokingDir, signal)
   }
@@ -372,14 +372,14 @@ export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
       readonly receiptId: string
     },
     signal?: AbortSignal,
-  ): Promise<CommunityMarketPnpmHandle> {
+  ): Promise<AppInstallPnpmHandle> {
     const resolvedArgs = validateArgs(args)
     if (resolvedArgs[0] !== 'add') {
-      throw new Error('Protected community market installs require the add command')
+      throw new Error('Protected App installs require the add command')
     }
     signal?.throwIfAborted()
     await this.recovery.begin(recovery)
-    let handle: CommunityMarketPnpmHandle
+    let handle: AppInstallPnpmHandle
     try {
       handle = this.start(resolvedArgs, invokingDir, signal)
     } catch (cause) {
@@ -422,8 +422,8 @@ export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
     args: readonly string[],
     invokingDir: string,
     signal?: AbortSignal,
-  ): CommunityMarketPnpmHandle {
-    if (this.active !== undefined) throw new Error('Another community market package operation is running')
+  ): AppInstallPnpmHandle {
+    if (this.active !== undefined) throw new Error('Another App package operation is running')
     signal?.throwIfAborted()
     const child = this.spawnProcess(
       this.nodeBinary,
@@ -437,7 +437,7 @@ export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
     )
     if (child.stdout === null || child.stderr === null) {
       child.kill('SIGTERM')
-      throw new Error('Community market package process has no output streams')
+      throw new Error('App package process has no output streams')
     }
     this.active = child
     let cancelled = false
@@ -448,7 +448,7 @@ export class DeepDeckCommunityMarketPnpm implements CommunityMarketPnpm {
     }
     const abort = (): void => cancel()
     signal?.addEventListener('abort', abort, { once: true })
-    const done = new Promise<CommunityMarketPnpmOutcome>((resolveDone, rejectDone) => {
+    const done = new Promise<AppInstallPnpmOutcome>((resolveDone, rejectDone) => {
       child.once('error', rejectDone)
       child.once('exit', (exitCode, exitSignal) => resolveDone({ exitCode, signal: exitSignal }))
     }).finally(() => {

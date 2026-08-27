@@ -25,8 +25,10 @@ import {
   sessionMetricsZh,
 } from './SessionMetricsPopover.tsx'
 import { installArchiveSessionContinuity } from './archive-session-continuity.ts'
+import { trackDesktopScreen } from './desktop-runtime.ts'
+import { installDesktopSettingsShell } from './settings-shell.tsx'
 
-export const inject = ['slots', 'theme', 'workspaces', 'sessions', 'locale']
+export const inject = ['slots', 'theme', 'workspaces', 'sessions', 'locale', 'connection', 'settingsScope']
 
 function chatStoreFromHeader(entries: readonly StoredEntry[]): ChatStore {
   const entry = entries.find(candidate => candidate.store !== undefined)
@@ -38,6 +40,7 @@ function chatStoreFromHeader(entries: readonly StoredEntry[]): ChatStore {
 
 /** Install the branded desktop shell through declared Cordis lifecycle and Slot APIs. */
 export function apply(ctx: ClientContext): void {
+  trackDesktopScreen('home')
   installBranding(ctx)
   ctx.effect(
     () => installArchiveSessionContinuity(ctx),
@@ -103,6 +106,8 @@ export function apply(ctx: ClientContext): void {
       apps,
     }),
   }, DesktopSidebar), 'deepdeck desktop: wide-only sidebar shell')
+
+  installDesktopSettingsShell(ctx)
 
   ctx.effect(() => {
     const presenter = new ThemePresenter()

@@ -80,8 +80,8 @@ async function stopChild(child, exitPromise) {
 
 function pluginRoot(runtimeRoot, pluginName) {
   const harnessPackage = {
-    "community-market": "dsh-community-market",
     "dsh-codex-connect": "dsh-codex-connect",
+    "provider-aware-web": "@deepdeck/dsh-provider-aware-web",
   }[pluginName];
   if (harnessPackage !== undefined) {
     return join(runtimeRoot, "harness", "node_modules", harnessPackage);
@@ -266,7 +266,7 @@ if (remainingLink) throw new Error(`Runtime contains a non-portable symbolic lin
 const help = await run(nodeBinary, [cli, "--help"]);
 if (!help.includes("Usage: dsh")) throw new Error("Bundled Harness CLI did not return its help output");
 const pnpmVersion = await run(pnpm, ["--version"]);
-if (pnpmVersion.trim() !== "11.7.0") throw new Error(`Bundled pnpm returned ${JSON.stringify(pnpmVersion.trim())}`);
+if (pnpmVersion.trim() !== "12.0.0") throw new Error(`Bundled pnpm returned ${JSON.stringify(pnpmVersion.trim())}`);
 if (!bundledBun) throw new Error("Runtime manifest omitted the Bun plugin builder");
 const bunVersion = await run(bundledBun, ["--version"]);
 if (bunVersion.trim() !== BUN_VERSION) throw new Error(`Bundled Bun returned ${JSON.stringify(bunVersion.trim())}`);
