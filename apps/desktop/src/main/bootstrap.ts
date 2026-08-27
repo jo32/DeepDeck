@@ -231,6 +231,7 @@ export async function bootstrapDesktop(
     desktopWindow = await createMainWindow(branding);
     await showStatus(harness.getStatus());
     desktopWindow.send(channels.updatesStatus, updates.getStatus());
+    telemetry.trackScreen("home");
   };
 
   await createWindow();

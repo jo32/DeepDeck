@@ -13,6 +13,7 @@ Create a protected GitHub Environment named `production-release`. Require review
 | `APPLE_API_KEY` | Contents of the App Store Connect API `.p8` key; the workflow materializes it only in the runner's temporary directory |
 | `APPLE_API_KEY_ID` | App Store Connect API key ID |
 | `APPLE_API_ISSUER` | App Store Connect API issuer ID |
+| `VL_NATIVE_KEY` | VibeLoft Native v4 write key injected into the Electron main-process telemetry configuration |
 | `R2_ACCOUNT_ID` | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | R2 S3 access key ID |
 | `R2_SECRET_ACCESS_KEY` | R2 S3 secret access key |

@@ -187,13 +187,19 @@ async function extractNode(archivePath, destination, platform) {
 }
 
 async function deployHarness(target, workspaceDirectory) {
-  const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+  const workspaceManifest = JSON.parse(
+    await readFile(join(workspaceDirectory, "package.json"), "utf8"),
+  );
+  const packageManager = workspaceManifest.packageManager;
+  if (typeof packageManager !== "string" || !/^pnpm@\d+\.\d+\.\d+$/.test(packageManager)) {
+    throw new Error("Runtime workspace must declare an exact pnpm packageManager version");
+  }
+  const corepack = process.platform === "win32" ? "corepack.cmd" : "corepack";
   await mkdir(dirname(target), { recursive: true });
   await run(
-    pnpm,
+    corepack,
     [
-      "--dir",
-      workspaceDirectory,
+      packageManager,
       "--filter",
       "@deepdeck/desktop-runtime",
       "deploy",
@@ -204,7 +210,7 @@ async function deployHarness(target, workspaceDirectory) {
       "--config.link-workspace-packages=true",
       target,
     ],
-    { env: { CI: "true" } },
+    { cwd: workspaceDirectory, env: { CI: "true" } },
   );
 }
 
