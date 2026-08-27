@@ -16,7 +16,7 @@
     "web:check": "pnpm --filter @deepdeck/web check",
     "bootstrap": "pnpm harness:install && pnpm codex-connect:install && pnpm harness:build && pnpm build",
     "harness:install": "node scripts/install-harness.mjs",
-    "harness:build": "pnpm --dir vendor/deepseek-harness run build",
+    "harness:build": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs scripts/build-harness.ts",
     "codex-connect:deps": "node scripts/ensure-codex-connect-dependencies.mjs",
     "codex-connect:install": "pnpm install --frozen-lockfile && pnpm codex-connect:check",
     "codex-connect:check": "pnpm codex-connect:deps && node scripts/verify-codex-connect-patch.mjs && pnpm --dir vendor/dsh-codex-connect run typecheck",
