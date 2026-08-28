@@ -236,9 +236,8 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
     if (item.installed || installation.status === 'previewing' || installation.status === 'installing') return
     if (installation.status === 'ready') void discardAppInstall(installation.preview.previewId).catch(() => {})
     setInstallation({ status: 'previewing' })
-    const preview = activeTab === 'apps'
-      ? previewAppInstall(item.repository.url)
-      : previewMarketInstall(item.id)
+    const kind: AppMarketKind = activeTab === 'apps' ? 'apps' : 'plugins'
+    const preview = previewMarketInstall(kind, item.id)
     void preview.then(
       preview => { setInstallation({ status: 'ready', preview }) },
       error => { setInstallation({ status: 'failed', error: messageOf(error) }) },

@@ -866,22 +866,33 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
           sendJson(response, 200, { installPreview: await packages.preview(body.source, controller.signal) })
           return
         }
-        if (body.action === 'preview-market-install' && typeof body.itemId === 'string') {
+        if (
+          body.action === 'preview-market-install'
+          && (body.kind === 'apps' || body.kind === 'plugins')
+          && typeof body.itemId === 'string'
+        ) {
           if (!sameOrigin(request) || !isLoopback(request)) {
             sendJson(response, 403, { error: 'local same-origin request required' })
             return
           }
-          const item = await pluginMarket.resolve(body.itemId, controller.signal)
+          const item = body.kind === 'apps'
+            ? appStore.resolve(body.itemId)
+            : await pluginMarket.resolve(body.itemId, controller.signal)
+          const installPreview = await packages.preview({
+            source: item.repository.url,
+            ...(item.repository.subdirectory === undefined
+              ? {}
+              : { packageSubdirectory: item.repository.subdirectory }),
+            catalogItemId: item.id,
+            ...(item.packageName === undefined ? {} : { expectedPackageName: item.packageName }),
+            displayName: item.displayName,
+          }, controller.signal)
+          if (body.kind === 'apps' && installPreview.pluginKind !== 'app') {
+            await packages.discard(installPreview.previewId)
+            throw new Error('dshfind 条目不再声明有效的 dsh.app。')
+          }
           sendJson(response, 200, {
-            installPreview: await packages.preview({
-              source: item.repository.url,
-              ...(item.repository.subdirectory === undefined
-                ? {}
-                : { packageSubdirectory: item.repository.subdirectory }),
-              catalogItemId: item.id,
-              ...(item.packageName === undefined ? {} : { expectedPackageName: item.packageName }),
-              displayName: item.displayName,
-            }, controller.signal),
+            installPreview,
           })
           return
         }

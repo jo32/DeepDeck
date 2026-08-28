@@ -4,16 +4,16 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   apply,
   COMPUTER_USE_MCP_ENTRY_ID,
+  COMPUTER_USE_RUNTIME_GROUP_ID,
   ComputerUseSettingsSchema,
   ComputerUseLoaderGate,
   ComputerUsePermissionOnboarding,
-  COMPUTER_USE_DISABLE_APP_AGENT_PROXY_ENV,
   isComputerUseToolName,
   resolveSiblingLoaderEntryId,
 } from './index.ts'
 
 interface FakeEntry {
-  options: { disabled?: boolean }
+  options: { disabled?: boolean | { __jsExpr: string } }
 }
 
 function fakeLoader(initiallyDisabled: boolean) {
@@ -39,8 +39,8 @@ describe('ComputerUseLoaderGate', () => {
   it('targets a sibling inside the current nested loader tree', () => {
     expect(resolveSiblingLoaderEntryId(
       'include:deepdeck-computer-use',
-      COMPUTER_USE_MCP_ENTRY_ID,
-    )).toBe('include:deepdeck-computer-use-mcp')
+      `${COMPUTER_USE_RUNTIME_GROUP_ID}:${COMPUTER_USE_MCP_ENTRY_ID}`,
+    )).toBe('include:deepdeck-computer-use-runtime:deepdeck-computer-use-mcp')
   })
 
   it('recognizes only tools from the Open Computer Use MCP namespace', () => {
@@ -77,6 +77,19 @@ describe('ComputerUseLoaderGate', () => {
     )
   })
 
+  it('replaces the startup expression when the live preference changes', async () => {
+    const fake = fakeLoader(false)
+    fake.entry.options.disabled = { __jsExpr: 'ctx.deepdeckComputerUse.enabled === false' }
+    const gate = new ComputerUseLoaderGate(fake.loader as never)
+
+    await gate.setEnabled(false)
+
+    expect(fake.update).toHaveBeenCalledWith(
+      COMPUTER_USE_MCP_ENTRY_ID,
+      { disabled: true },
+    )
+  })
+
   it('serializes rapid preference changes in request order', async () => {
     const fake = fakeLoader(false)
     let releaseFirst: (() => void) | undefined
@@ -97,12 +110,11 @@ describe('ComputerUseLoaderGate', () => {
     expect(fake.update).toHaveBeenCalledTimes(2)
   })
 
-  it('enables the MCP row silently and waits for permissions on first tool use', async () => {
-    const entry: FakeEntry & { options: FakeEntry['options'] & { id?: string } } = {
-      options: { disabled: true },
+  it('keeps startup state intact, gates live changes, and waits for permissions on first tool use', async () => {
+    const entry: FakeEntry = {
+      options: { disabled: { __jsExpr: 'ctx.deepdeckComputerUse.enabled === false' } },
     }
-    let mounted = false
-    let onEntryInit: ((entry: typeof entry) => void) | undefined
+    let onSettingsChange: ((next: { enabled: boolean }) => Promise<void>) | undefined
     let onToolPreExecute: ((
       exec: { name: string },
       next: () => Promise<{ kind: 'allow' }>,
@@ -110,7 +122,10 @@ describe('ComputerUseLoaderGate', () => {
     const update = vi.fn(async (_id: string, options: { disabled?: boolean }) => {
       entry.options = { ...entry.options, ...options }
     })
-    const watch = vi.fn(() => () => {})
+    const watch = vi.fn((listener: (next: { enabled: boolean }) => Promise<void>) => {
+      onSettingsChange = listener
+      return () => {}
+    })
     let finishDoctor: (() => void) | undefined
     const doctor = new Promise<void>(resolve => { finishDoctor = resolve })
     const onboarding = {
@@ -126,18 +141,12 @@ describe('ComputerUseLoaderGate', () => {
       },
       loader: {
         locate: vi.fn(() => 'include:deepdeck-computer-use'),
-        resolve: vi.fn(() => {
-          if (!mounted) throw new Error('not mounted')
-          return entry
-        }),
+        resolve: vi.fn(() => entry),
         update,
       },
       provide: vi.fn(),
       effect: vi.fn((factory: () => unknown) => factory()),
       on: vi.fn((event: string, listener: never) => {
-        if (event === 'loader/entry-init') {
-          onEntryInit = listener as (next: typeof entry) => void
-        }
         if (event === 'tools/pre-execute') {
           onToolPreExecute = listener as typeof onToolPreExecute
         }
@@ -148,22 +157,11 @@ describe('ComputerUseLoaderGate', () => {
 
     await apply(ctx as never, onboarding)
 
-    expect(ctx.on).toHaveBeenCalledWith(
-      'loader/entry-init',
-      expect.any(Function),
-      { global: true },
+    expect(ctx.provide).toHaveBeenCalledWith(
+      'deepdeckComputerUse',
+      expect.objectContaining({ enabled: true }),
     )
-    onEntryInit?.(entry)
-    entry.options.id = COMPUTER_USE_MCP_ENTRY_ID
-    mounted = true
-
-    await vi.waitFor(() => {
-      expect(update).toHaveBeenCalledWith(
-        'include:deepdeck-computer-use-mcp',
-        { disabled: false },
-      )
-    })
-    expect(entry.options.disabled).toBe(false)
+    expect(update).not.toHaveBeenCalled()
     expect(onboarding.sync).not.toHaveBeenCalled()
 
     const next = vi.fn(async () => ({ kind: 'allow' as const }))
@@ -188,6 +186,22 @@ describe('ComputerUseLoaderGate', () => {
     finishDoctor?.()
     await toolExecution
     expect(next).toHaveBeenCalledTimes(2)
+
+    await onSettingsChange?.({ enabled: false })
+    expect(onboarding.sync).toHaveBeenLastCalledWith(
+      false,
+      expect.objectContaining({ enabled: false }),
+    )
+    expect(update).toHaveBeenLastCalledWith(
+      'include:deepdeck-computer-use-runtime:deepdeck-computer-use-mcp',
+      { disabled: true },
+    )
+
+    await onSettingsChange?.({ enabled: true })
+    expect(update).toHaveBeenLastCalledWith(
+      'include:deepdeck-computer-use-runtime:deepdeck-computer-use-mcp',
+      { disabled: false },
+    )
   })
 })
 
@@ -195,8 +209,9 @@ describe('ComputerUsePermissionOnboarding', () => {
   const runtime = {
     enabled: true,
     root: '/runtime/computer-use',
-    launcher: '/runtime/computer-use/bin/open-computer-use',
-    agentTempDirectory: '/tmp/deepdeck-open-computer-use',
+    mcpCommand: '/runtime/node',
+    mcpArgs: ['/runtime/computer-use/app-agent-proxy.js', '/runtime/Open Computer Use.app', 'mcp'],
+    appBundle: '/runtime/Open Computer Use.app',
   }
 
   function fakeChild(): ChildProcess {
@@ -222,14 +237,11 @@ describe('ComputerUsePermissionOnboarding', () => {
 
     expect(spawnProcess).toHaveBeenCalledOnce()
     expect(spawnProcess).toHaveBeenCalledWith(
-      process.execPath,
-      [runtime.launcher, 'doctor'],
+      '/usr/bin/open',
+      ['-W', '-n', runtime.appBundle],
       expect.objectContaining({
         cwd: runtime.root,
-        env: expect.objectContaining({
-          TMPDIR: runtime.agentTempDirectory,
-          [COMPUTER_USE_DISABLE_APP_AGENT_PROXY_ENV]: '1',
-        }),
+        env: process.env,
         stdio: 'ignore',
         windowsHide: true,
       }),

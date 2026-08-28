@@ -106,7 +106,7 @@ describe('AppsSettingsSection package controls', () => {
     expect(fetchMock.mock.calls.some(call => bodyFrom(call[1]).kind === 'plugins')).toBe(true)
   })
 
-  it('opens Apps by default and previews a deepdeck topic repository directly', async () => {
+  it('opens Apps by default and previews a dshfind-discovered App repository directly', async () => {
     const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const body = bodyFrom(init)
       if (body.action === 'list-apps') return response({ apps: [] })
@@ -126,7 +126,7 @@ describe('AppsSettingsSection package controls', () => {
           }],
         },
       })
-      if (body.action === 'preview-install') return response({
+      if (body.action === 'preview-market-install') return response({
         installPreview: {
           previewId: 'app-preview-1',
           appId: 'nga-reader',
@@ -154,8 +154,11 @@ describe('AppsSettingsSection package controls', () => {
     expect(container?.textContent).toContain('deepdeck')
     await act(async () => { button('marketInstall')?.click() })
     await vi.waitFor(() => expect(container?.textContent).toContain('@deepdeck-apps/nga-reader@1.0.0'))
-    const previewCall = fetchMock.mock.calls.find(call => actionFrom(call[1]) === 'preview-install')
-    expect(bodyFrom(previewCall?.[1]).source).toBe('https://github.com/jo32/dsh-nga-reader')
+    const previewCall = fetchMock.mock.calls.find(call => actionFrom(call[1]) === 'preview-market-install')
+    expect(bodyFrom(previewCall?.[1])).toMatchObject({
+      kind: 'apps',
+      itemId: 'github:jo32/dsh-nga-reader',
+    })
     expect(fetchMock.mock.calls.some(call => bodyFrom(call[1]).kind === 'apps')).toBe(true)
   })
 

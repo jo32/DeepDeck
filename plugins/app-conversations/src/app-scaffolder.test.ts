@@ -75,6 +75,25 @@ describe('DeepDeck App scaffolder', () => {
     await expect(readFile(join(first.sourceDirectory, 'keep.txt'), 'utf8')).resolves.toBe('user work\n')
   })
 
+  it('resumes an explicitly matching retained scaffold without overwriting it', async () => {
+    const root = await fixtureRoot()
+    const pluginRoot = join(root, 'plugins')
+    const first = await scaffoldAppSource(pluginRoot, { id: 'notes', title: 'Notes' })
+    await writeFile(join(first.sourceDirectory, 'keep.txt'), 'retained work\n')
+
+    await expect(scaffoldAppSource(
+      pluginRoot,
+      { id: 'notes', title: 'Notes' },
+      { reuseExisting: true },
+    )).resolves.toEqual(first)
+    await expect(readFile(join(first.sourceDirectory, 'keep.txt'), 'utf8')).resolves.toBe('retained work\n')
+    await expect(scaffoldAppSource(
+      pluginRoot,
+      { id: 'notes', title: 'Different Notes' },
+      { reuseExisting: true },
+    )).rejects.toThrow(/身份与本次创建不一致/u)
+  })
+
   it('passes the real Bun Builder source-build boundary', async () => {
     const root = await fixtureRoot()
     const scaffold = await scaffoldAppSource(join(root, 'plugins'), { id: 'builder-smoke', title: 'Builder Smoke' })

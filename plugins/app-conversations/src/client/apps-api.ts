@@ -82,8 +82,8 @@ export async function listAppMarket(
   return value.market as unknown as AppMarketPage
 }
 
-export async function previewMarketInstall(itemId: string): Promise<AppInstallPreview> {
-  const value = await call({ action: 'preview-market-install', itemId })
+export async function previewMarketInstall(kind: AppMarketKind, itemId: string): Promise<AppInstallPreview> {
+  const value = await call({ action: 'preview-market-install', kind, itemId })
   if (!isObject(value.installPreview)) throw new Error('App market install preview response is invalid')
   return value.installPreview as unknown as AppInstallPreview
 }

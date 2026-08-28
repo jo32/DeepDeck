@@ -35,6 +35,11 @@ function parseOptions(arguments_) {
 
 const options = parseOptions(process.argv.slice(2));
 const desktopPackage = JSON.parse(await readFile(join(desktopRoot, "package.json"), "utf8"));
+const computerUsePackage = JSON.parse(await readFile(join(workspaceRoot, "plugins", "computer-use", "package.json"), "utf8"));
+const {
+  COMPUTER_USE_PACKAGED_IDENTITY,
+  COMPUTER_USE_UPSTREAM_IDENTITY,
+} = requireFromDesktop("./build/computer-use-identity.cjs");
 const semverTag = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/;
 if (!semverTag.test(options.tag)) throw new Error(`Release tag is not SemVer: ${options.tag}`);
 if (options.tag !== `v${desktopPackage.version}`) {
@@ -61,6 +66,12 @@ if (builder.afterPack !== "build/after-pack.cjs") {
 }
 if (builder.afterSign !== "build/after-sign.cjs") {
   throw new Error("Production packaging must verify nested app signatures before notarization");
+}
+if (COMPUTER_USE_PACKAGED_IDENTITY.bundleIdentifier !== "com.jo32.deepdeck.cu-helper") {
+  throw new Error("Packaged Computer Use helper does not use the permanent DeepDeck identity");
+}
+if (computerUsePackage.dependencies?.["open-computer-use"] !== COMPUTER_USE_UPSTREAM_IDENTITY.version) {
+  throw new Error("Computer Use native identity audit does not match the pinned upstream version");
 }
 if (builder.forceCodeSigning !== true || builder.mac?.hardenedRuntime !== true || builder.mac?.notarize !== true) {
   throw new Error("Production macOS packaging must require signing, hardened runtime, and notarization");

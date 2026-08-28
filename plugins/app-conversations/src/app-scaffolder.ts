@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
 const APP_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u
@@ -14,6 +14,51 @@ export interface AppScaffoldResult {
   readonly title: string
   readonly packageName: string
   readonly sourceDirectory: string
+}
+
+export interface AppScaffoldOptions {
+  readonly reuseExisting?: boolean
+}
+
+type JsonObject = Record<string, unknown>
+
+function isObject(value: unknown): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+async function existingScaffold(
+  sourceDirectory: string,
+  input: AppScaffoldInput,
+  packageName: string,
+): Promise<AppScaffoldResult> {
+  const sourceInfo = await lstat(sourceDirectory)
+  if (!sourceInfo.isDirectory() || sourceInfo.isSymbolicLink()) {
+    throw new Error(`App 源码路径已存在，但不是可恢复的目录：${sourceDirectory}`)
+  }
+  let manifest: unknown
+  try {
+    manifest = JSON.parse(await readFile(join(sourceDirectory, 'package.json'), 'utf8')) as unknown
+  } catch (cause) {
+    throw new Error(`App 源码目录已存在，但缺少有效的 package.json：${sourceDirectory}`, { cause })
+  }
+  const dsh = isObject(manifest) && isObject(manifest.dsh) ? manifest.dsh : undefined
+  const app = dsh !== undefined && isObject(dsh.app) ? dsh.app : undefined
+  const bundle = dsh !== undefined && isObject(dsh.bundle) ? dsh.bundle : undefined
+  if (
+    !isObject(manifest)
+    || manifest.name !== packageName
+    || app?.id !== input.id
+    || app?.title !== input.title
+    || bundle?.patch !== './cordis.patch.yml'
+  ) {
+    throw new Error(`App 源码目录已存在，且身份与本次创建不一致：${sourceDirectory}`)
+  }
+  return Object.freeze({
+    appId: input.id,
+    title: input.title,
+    packageName,
+    sourceDirectory,
+  })
 }
 
 function escapeHtml(value: string): string {
@@ -135,6 +180,7 @@ function agentInstructions(): string {
 export async function scaffoldAppSource(
   pluginRoot: string,
   rawInput: AppScaffoldInput,
+  options: AppScaffoldOptions = {},
 ): Promise<AppScaffoldResult> {
   const input = normalizedInput(rawInput)
   const packageName = `@deepdeck-apps/${input.id}`
@@ -146,7 +192,12 @@ export async function scaffoldAppSource(
     const code = typeof cause === 'object' && cause !== null && 'code' in cause
       ? String((cause as { code?: unknown }).code)
       : undefined
-    if (code === 'EEXIST') throw new Error(`App 源码目录已存在：${sourceDirectory}`)
+    if (code === 'EEXIST') {
+      if (options.reuseExisting === true) {
+        return await existingScaffold(sourceDirectory, input, packageName)
+      }
+      throw new Error(`App 源码目录已存在：${sourceDirectory}`)
+    }
     throw cause
   }
 

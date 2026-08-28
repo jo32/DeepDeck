@@ -249,6 +249,7 @@ for (const plugin of manifest.plugins) {
         version: pinnedVersion,
       };
       requiredRuntimePaths.push(
+        join(root, "lib", "app-agent-proxy.js"),
         join(dependencyRoot, "LICENSE"),
         bundledComputerUse.launcher,
         nativeRuntime,

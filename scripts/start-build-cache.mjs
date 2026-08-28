@@ -61,6 +61,7 @@ export const desktopBuildArtifacts = [
   "plugins/app-conversations/lib/index.js",
   "plugins/app-conversations/lib/client.js",
   "plugins/computer-use/lib/index.js",
+  "plugins/computer-use/lib/app-agent-proxy.js",
   "plugins/computer-use/lib/client.js",
   "plugins/provider-aware-web/lib/index.js",
   "plugins/provider-aware-web/lib/client.js",

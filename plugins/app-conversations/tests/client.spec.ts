@@ -119,6 +119,7 @@ describe('app conversation Client registry', () => {
               id: 'session-blank',
               blank: true,
               cwd: '/plugins/reader',
+              agentPreset: 'cordis',
             },
           },
         }) },
@@ -134,6 +135,162 @@ describe('app conversation Client registry', () => {
       agentPreset: 'cordis',
     })
     expect(open).not.toHaveBeenCalled()
+  })
+
+  it('does not adopt a standard-preset blank session for Creator mode', async () => {
+    const open = vi.fn()
+    const create = vi.fn(async () => ({
+      result: { ok: true, value: { sessionId: 'session-creator', agentPreset: 'cordis' } },
+    }))
+    vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { action: string }
+      return new Response(JSON.stringify(request.action === 'creator-ready'
+        ? {
+            creator: {
+              protocolVersion: 2,
+              sessionId: 'session-creator',
+              appId: 'reader',
+              agentPreset: 'cordis',
+              sourcePackageRoot: '/plugins/reader',
+              tools: [
+                'deepdeck_app_context',
+                'deepdeck_app_apply',
+                'deepdeck_app_rebuild',
+                'deepdeck_app_restart',
+              ],
+            },
+          }
+        : {
+            workspace: {
+              appId: 'reader',
+              path: '/plugins/reader',
+              title: 'Creator · Reader',
+              workspaceId: 'workspace-creator',
+            },
+          }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }))
+
+    await openCreatorSession({
+      workspaces: {
+        list: { getSnapshot: () => ({
+          items: [{
+            workspaceId: 'workspace-creator',
+            path: '/plugins/reader',
+            sessionIds: ['session-standard'],
+          }],
+        }) },
+      },
+      sessions: {
+        list: { getSnapshot: () => ({
+          archivedSessionIds: [],
+          byId: {
+            'session-standard': {
+              id: 'session-standard',
+              blank: true,
+              cwd: '/plugins/reader',
+              agentPreset: 'standard',
+            },
+          },
+        }) },
+        noteAgentPreset: vi.fn(),
+        open,
+      },
+    } as never, { api: { sessions: { create } } } as never, 'reader')
+
+    expect(create).toHaveBeenCalledOnce()
+    expect(create).toHaveBeenCalledWith({
+      workspaceId: 'workspace-creator',
+      agentPreset: 'cordis',
+    })
+    expect(open).toHaveBeenCalledWith('session-creator')
+  })
+
+  it('creates a fresh Creator session when a reusable blank races to another preset', async () => {
+    const open = vi.fn()
+    const create = vi.fn()
+      .mockResolvedValueOnce({
+        result: {
+          ok: false,
+          error: {
+            code: 'agent-preset-conflict',
+            message: 'session already runs agent preset "standard"',
+            details: {
+              sessionId: 'session-blank',
+              requestedPreset: 'cordis',
+              existingPreset: 'standard',
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        result: { ok: true, value: { sessionId: 'session-fresh', agentPreset: 'cordis' } },
+      })
+    vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { action: string }
+      return new Response(JSON.stringify(request.action === 'creator-ready'
+        ? {
+            creator: {
+              protocolVersion: 2,
+              sessionId: 'session-fresh',
+              appId: 'reader',
+              agentPreset: 'cordis',
+              sourcePackageRoot: '/plugins/reader',
+              tools: [
+                'deepdeck_app_context',
+                'deepdeck_app_apply',
+                'deepdeck_app_rebuild',
+                'deepdeck_app_restart',
+              ],
+            },
+          }
+        : {
+            workspace: {
+              appId: 'reader',
+              path: '/plugins/reader',
+              title: 'Creator · Reader',
+              workspaceId: 'workspace-creator',
+            },
+          }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }))
+
+    await openCreatorSession({
+      workspaces: {
+        list: { getSnapshot: () => ({
+          items: [{
+            workspaceId: 'workspace-creator',
+            path: '/plugins/reader',
+            sessionIds: ['session-blank'],
+          }],
+        }) },
+      },
+      sessions: {
+        list: { getSnapshot: () => ({
+          archivedSessionIds: [],
+          byId: {
+            'session-blank': {
+              id: 'session-blank',
+              blank: true,
+              cwd: '/plugins/reader',
+              agentPreset: 'cordis',
+            },
+          },
+        }) },
+        noteAgentPreset: vi.fn(),
+        open,
+      },
+    } as never, { api: { sessions: { create } } } as never, 'reader')
+
+    expect(create).toHaveBeenNthCalledWith(1, {
+      workspaceId: 'workspace-creator',
+      sessionId: 'session-blank',
+      reuseWorkspaceBlank: true,
+      agentPreset: 'cordis',
+    })
+    expect(create).toHaveBeenNthCalledWith(2, {
+      workspaceId: 'workspace-creator',
+      agentPreset: 'cordis',
+    })
+    expect(open).toHaveBeenCalledWith('session-fresh')
   })
 
   it('dispatches a dedicated cordis Agent task with source provenance and diff-first instructions', async () => {

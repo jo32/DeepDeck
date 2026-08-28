@@ -75,7 +75,8 @@ pnpm package:local
 - the updater and native identity code exist in `app.asar`;
 - the bundled Harness contains no checkout-bound symlinks;
 - bundled Node can start the complete Web profile with an empty system `PATH` and return an HTTP page;
-- the pinned Open Computer Use package, launcher, license, and platform-native executable are present and runnable.
+- the pinned Open Computer Use package, launcher, DeepDeck app-agent proxy, license, and platform-native executable are present and runnable;
+- the nested macOS helper plist, Mach-O constants, and code-signing identifier all use `com.jo32.deepdeck.cu-helper`, its DeepDeck-specific fallback socket is present, and an actual proxied MCP handshake returns all nine Computer Use tools.
 
 `pnpm start:packaged` performs this branded package flow and launches DeepDeck. The normal `pnpm start` command uses the raw-Electron development path so routine launches do not rebuild and verify a complete application package; `pnpm start:raw` remains an explicit alias for that path.
 
@@ -86,7 +87,10 @@ dispatch for the latest stable `open-computer-use` release. It validates the
 package identity, MIT license, upstream repository, registry tarball origin,
 and published SHA-512 integrity metadata before refreshing the exact dependency
 and `pnpm-lock.yaml`. An update is proposed as a pull request and must pass the
-normal DeepDeck CI before merge.
+normal DeepDeck CI before merge. The packaging hook also checks the audited
+fixed-width identifier and socket occurrence counts for the pinned native
+binary; a changed upstream layout fails closed and requires an explicit identity
+rewrite review before the update can ship.
 
 Production release jobs deliberately continue to install with
 `--frozen-lockfile`. They never resolve a floating `latest` during signing, so
@@ -106,7 +110,7 @@ The workflow enforces this order:
 1. validate tag, app version, fixed identity, HTTPS feed, signing policy, and custom domain;
 2. install with frozen lockfiles, build Harness, run check/test/build;
 3. copy the pinned Open Computer Use launcher and native runtime into the independent client runtime;
-4. build natively on Apple Silicon and Intel runners, sign, verify the nested Open Computer Use signature, notarize, staple, and assess each app;
+4. rewrite the nested helper to `com.jo32.deepdeck.cu-helper`, build natively on Apple Silicon and Intel runners, sign it with the same Team ID as DeepDeck, verify the signing identifier, notarize, staple, and assess each app;
 5. verify the packaged independent runtime and update configuration;
 6. assemble one manifest and verify electron-builder SHA-512/size metadata;
 7. create the draft GitHub Release and upload the same build outputs plus SHA-256 sums;

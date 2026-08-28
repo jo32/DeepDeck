@@ -210,7 +210,7 @@ describe('DeepDeckAppPackageManager', () => {
       restartRequired: true,
     })
     expect(runPluginInstall).toHaveBeenCalledWith(
-      ['add', '--save-exact', `link:${result.sourceDirectory}`],
+      ['add', '--save-exact', `@fixture/ordinary@link:${result.sourceDirectory}`],
       paths.profile.dir,
       expect.objectContaining({ packageName: '@fixture/ordinary' }),
       undefined,
@@ -274,7 +274,7 @@ describe('DeepDeckAppPackageManager', () => {
     })
     expect(build.preview).toHaveBeenCalledWith({ sourceDirectory: created.sourceDirectory }, undefined)
     expect(runPluginInstall).toHaveBeenCalledWith(
-      ['add', '--save-exact', `link:${created.sourceDirectory}`],
+      ['add', '--save-exact', `@deepdeck-apps/daily-notes@link:${created.sourceDirectory}`],
       paths.profile.dir,
       expect.objectContaining({ packageName: '@deepdeck-apps/daily-notes' }),
       undefined,
@@ -320,7 +320,7 @@ describe('DeepDeckAppPackageManager', () => {
       restartRequired: true,
     })
     expect(runPluginInstall).toHaveBeenCalledWith(
-      ['add', '--save-exact', `link:${result.sourceDirectory}`],
+      ['add', '--save-exact', `@fixture/reader@link:${result.sourceDirectory}`],
       paths.profile.dir,
       expect.objectContaining({ packageName: '@fixture/reader', packageVersion: '1.2.3' }),
       undefined,

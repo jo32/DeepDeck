@@ -20,9 +20,10 @@ exports.default = async function applyDeepDeckBundleIdentity(context) {
     await execFileAsync("/usr/bin/plutil", ["-replace", "CFBundleName", "-string", bundleName, info]);
   }
 
-  // This hook runs before electron-builder signs nested code. Give the
-  // DeepDeck-signed helper a distinct TCC identity while retaining an
-  // identifier understood by open-computer-use 0.3.1.
+  // This hook runs before electron-builder signs nested code. Rewrite both the
+  // helper plist and the audited fixed-width identity constants in its Mach-O
+  // so LaunchServices, TCC, and the native permission code agree on one
+  // DeepDeck-owned identifier.
   const { bundlePath: computerUseApp } = await applyComputerUsePackagedIdentity(appPath, execFileAsync);
 
   // Production builds are signed by electron-builder immediately after this

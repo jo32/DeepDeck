@@ -569,6 +569,11 @@ function profilePackageState(
   }
 }
 
+function linkedPackageSpec(packageName: string, sourceDirectory: string): string {
+  if (!PACKAGE_NAME_PATTERN.test(packageName)) throw new Error('插件包名无效。')
+  return `${packageName}@link:${sourceDirectory}`
+}
+
 function normalizedRepositorySource(source: string): string | undefined {
   try {
     const url = new URL(source)
@@ -629,7 +634,7 @@ export class DeepDeckAppPackageManager {
 
   async create(input: AppScaffoldInput, signal?: AbortSignal): Promise<AppCreateResult> {
     signal?.throwIfAborted()
-    const scaffold = await scaffoldAppSource(this.pluginRoot, input)
+    const scaffold = await scaffoldAppSource(this.pluginRoot, input, { reuseExisting: true })
     try {
       const preview = await this.preview(scaffold.sourceDirectory, signal)
       if (preview.appId !== scaffold.appId || preview.packageName !== scaffold.packageName) {
@@ -833,7 +838,7 @@ export class DeepDeckAppPackageManager {
         }
         recoveryId = randomUUID()
         const handle = await this.pnpm.runPluginInstall(
-          ['add', '--save-exact', `link:${preview.finalPackageDirectory}`],
+          ['add', '--save-exact', linkedPackageSpec(preview.builder.packageName, preview.finalPackageDirectory)],
           this.profile.dir,
           {
             packageName: preview.builder.packageName,

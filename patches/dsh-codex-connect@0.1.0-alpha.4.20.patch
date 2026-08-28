@@ -72,6 +72,15 @@ diff --git a/lib/client.js b/lib/client.js
 index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc556e82fbc 100644
 --- a/lib/client.js
 +++ b/lib/client.js
+@@ -1615,7 +1615,7 @@ window.__ModuleLoader__.load({
+ 							}) : null
+ 						]
+ 					}),
+-					snapshot.status === "idle" || snapshot.status === "checking" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
++					snapshot.status === "idle" ? null : snapshot.status === "checking" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+ 						style: bodyStyle$1,
+ 						children: t("checkingForUpdates")
+ 					}) : snapshot.status === "up-to-date" ? recheckRequested ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 @@ -2831,11 +2831,11 @@ window.__ModuleLoader__.load({
  			proxyTestFailed: "Proxy test failed: {reason}.",
  			invalidProxyUrl: "Enter an HTTP(S) proxy origin without credentials or a path.",
@@ -102,6 +111,35 @@ index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc5
  			modeLive: "实时联网",
  			searchContextSize: "搜索上下文",
  			contextLow: "低",
+@@ -4249,12 +4249,12 @@ window.__ModuleLoader__.load({
+ 		function apply(ctx) {
+ 			const namespace = "settings.openai-codex";
+ 			const updater = new OpenAICodexUpdateStore(CODEX_CONNECT_VERSION);
++			// DeepDeck keeps update checks explicit in the settings card.
+ 			ctx.effect(() => {
+-				updater.refresh();
+ 				return () => {
+ 					updater.dispose();
+ 				};
+-			}, "dsh-codex-connect: update checker");
++			}, "dsh-codex-connect: manual update store");
+ 			ctx.effect(() => ctx.locale.register(namespace, {
+ 				zh,
+ 				en
+@@ -4272,13 +4272,6 @@ window.__ModuleLoader__.load({
+ 					updater
+ 				})
+ 			}, OpenAICodexPluginCard));
+-			ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+-				name: "shell.overlay",
+-				id: "dsh-codex-connect-update",
+-				order: 40,
+-				locale: namespace,
+-				inject: () => ({ updater })
+-			}, OpenAICodexUpdateOverlay));
+ 			ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({
+ 				name: "tool.call.toolview",
+ 				key: "codex_connect_image_generate",
 diff --git a/lib/index.d.ts b/lib/index.d.ts
 index a28e41b7ca2dc29dbbef6640ed7be66b75ca8458..386e431725d45aa7c420b8b7ad62f181a07185c5 100644
 --- a/lib/index.d.ts

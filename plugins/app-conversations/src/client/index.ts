@@ -219,15 +219,29 @@ async function prepareCreatorSession(
     const summary = sessions.byId[id]
     return summary?.blank === true
       && summary.cwd === workspace.path
+      && summary.agentPreset === 'cordis'
       && !archived.includes(id)
   })
-  const created = await connection.api.sessions.create({
+  let created = await connection.api.sessions.create({
     workspaceId: workspaceView.workspaceId,
     agentPreset: 'cordis',
     ...(reusable === undefined
       ? {}
       : { sessionId: reusable, reuseWorkspaceBlank: true as const }),
   })
+  // The list snapshot can race another caller that claims the same blank
+  // session. Preserve that session's immutable preset and recover by birthing
+  // a dedicated Creator session instead of surfacing the Host conflict.
+  if (
+    !created.result.ok
+    && reusable !== undefined
+    && created.result.error.code === 'agent-preset-conflict'
+  ) {
+    created = await connection.api.sessions.create({
+      workspaceId: workspaceView.workspaceId,
+      agentPreset: 'cordis',
+    })
+  }
   if (!created.result.ok) throw new Error(created.result.error.message)
   if (created.result.value.agentPreset !== 'cordis') {
     throw new Error('Host created the App session without the cordis Creator preset')

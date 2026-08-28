@@ -7,8 +7,8 @@ App content and Session logs live in ordinary Workspace directories under
 `~/DeepDeck/Apps`. Credentials remain owned by the app's credential service.
 
 The same Host registry owns the standalone **Store** settings section. Its
-**Apps** tab discovers GitHub repositories that opt in with the `deepdeck`
-topic and then verifies their root `package.json` declares `dsh.app`, while
+**Apps** tab discovers candidates through dshfind and then verifies their raw
+`package.json` declares `dsh.app`, without consuming the GitHub REST API quota.
 **Plugins** keeps the ordinary dshfind catalog.
 The **Config** tab renders one card per loaded App, projects any App-owned
 settings contribution through `settings.apps.item`, and exposes update,

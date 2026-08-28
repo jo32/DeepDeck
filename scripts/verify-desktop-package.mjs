@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { access, lstat, readFile, readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { arch as hostArch, platform as hostPlatform } from "node:process";
@@ -85,11 +85,140 @@ async function verifyHelpers(frameworksPath) {
   }
 }
 
+async function verifyComputerUseMcp(nodeBinary, proxyPath, computerUseApp) {
+  const expectedTools = [
+    "click",
+    "drag",
+    "get_app_state",
+    "list_apps",
+    "perform_secondary_action",
+    "press_key",
+    "scroll",
+    "set_value",
+    "type_text",
+  ];
+  const child = spawn(nodeBinary, [proxyPath, computerUseApp, "mcp"], {
+    env: process.env,
+    shell: false,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let output = "";
+  let errors = "";
+  let settled = false;
+  let timeout;
+
+  let discoveredTools;
+  const verified = new Promise((resolveVerified, rejectVerified) => {
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      rejectVerified(error);
+    };
+    timeout = setTimeout(() => {
+      fail(new Error(`Computer Use MCP execution timed out:\n${errors}`));
+    }, 45_000);
+    child.once("error", fail);
+    child.once("exit", (code, signal) => {
+      if (!settled) {
+        fail(new Error(`Computer Use MCP exited before tools/list (${signal ?? `code ${String(code)}`}):\n${errors}`));
+      }
+    });
+    child.stderr.on("data", chunk => { errors = `${errors}${chunk.toString("utf8")}`.slice(-20_000); });
+    child.stdout.on("data", chunk => {
+      output += chunk.toString("utf8");
+      let newline = output.indexOf("\n");
+      while (newline >= 0) {
+        const line = output.slice(0, newline);
+        output = output.slice(newline + 1);
+        newline = output.indexOf("\n");
+        if (!line.trim()) continue;
+        let message;
+        try {
+          message = JSON.parse(line);
+        } catch (error) {
+          fail(new Error(`Computer Use MCP returned invalid JSON: ${String(error)}\n${line}`));
+          return;
+        }
+        if (message.id === 1) {
+          child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
+          child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} })}\n`);
+        }
+        if (message.id === 2) {
+          const tools = message.result?.tools;
+          if (!Array.isArray(tools)) {
+            fail(new Error(`Computer Use tools/list has no tool array: ${line}`));
+            return;
+          }
+          discoveredTools = tools.map(tool => tool?.name).sort();
+          try {
+            assertEqual(JSON.stringify(discoveredTools), JSON.stringify(expectedTools), "Computer Use MCP tools");
+          } catch (error) {
+            fail(error);
+            return;
+          }
+          child.stdin.write(`${JSON.stringify({
+            jsonrpc: "2.0",
+            id: 3,
+            method: "tools/call",
+            params: { name: "list_apps", arguments: {} },
+          })}\n`);
+        }
+        if (message.id === 3) {
+          if (message.error !== undefined || message.result?.isError === true) {
+            fail(new Error(`Computer Use list_apps failed: ${line}`));
+            return;
+          }
+          if (!Array.isArray(message.result?.content)) {
+            fail(new Error(`Computer Use list_apps has no MCP content array: ${line}`));
+            return;
+          }
+          settled = true;
+          resolveVerified();
+        }
+      }
+    });
+  });
+
+  child.stdin.write(`${JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "deepdeck-package-verifier", version: "1" },
+    },
+  })}\n`);
+
+  try {
+    await verified;
+  } finally {
+    clearTimeout(timeout);
+    child.stdin.end();
+    if (child.exitCode === null && child.signalCode === null) {
+      await new Promise((resolveExit) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(exitTimeout);
+          child.off("exit", finish);
+          resolveExit();
+        };
+        const exitTimeout = setTimeout(finish, 3_000);
+        child.once("exit", finish);
+      });
+    }
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+  }
+}
+
 const options = parseOptions(process.argv.slice(2));
 if (hostPlatform !== "darwin") throw new Error("The current package verifier supports macOS app bundles");
 const appPath = options.appPath;
 const contents = join(appPath, "Contents");
 const resources = join(contents, "Resources");
+const packagedNodeBinary = join(resources, "runtime", "node", "bin", "node");
 const info = join(contents, "Info.plist");
 const desktopPackage = JSON.parse(await readFile(join(desktopRoot, "package.json"), "utf8"));
 
@@ -99,7 +228,7 @@ for (const required of [
   join(resources, "app.asar"),
   join(resources, "icon.icns"),
   join(resources, "runtime-manifest.json"),
-  join(resources, "runtime", "node", "bin", "node"),
+  packagedNodeBinary,
   join(resources, "runtime", "bin", "pnpm"),
   join(resources, "deepdeck-update-helper"),
   join(resources, "harness", "apps", "cli", "lib", "bin.js"),
@@ -124,6 +253,7 @@ await assertNoElectronFiles(resources);
 const requireFromDesktop = createRequire(join(desktopRoot, "package.json"));
 const {
   COMPUTER_USE_PACKAGED_IDENTITY,
+  verifyComputerUseExecutableIdentity,
 } = requireFromDesktop("./build/computer-use-identity.cjs");
 const { listPackage } = requireFromDesktop("@electron/asar");
 const asarFiles = new Set(listPackage(join(resources, "app.asar")));
@@ -158,6 +288,12 @@ await execFileAsync(
 
 const computerUseApp = join(appPath, COMPUTER_USE_PACKAGED_IDENTITY.relativeBundlePath);
 const computerUseInfo = join(computerUseApp, "Contents", "Info.plist");
+const computerUseExecutable = join(
+  computerUseApp,
+  "Contents",
+  "MacOS",
+  COMPUTER_USE_PACKAGED_IDENTITY.executableName,
+);
 for (const [key, value] of Object.entries({
   CFBundleIdentifier: COMPUTER_USE_PACKAGED_IDENTITY.bundleIdentifier,
   CFBundleName: COMPUTER_USE_PACKAGED_IDENTITY.bundleName,
@@ -167,6 +303,24 @@ for (const [key, value] of Object.entries({
 })) {
   assertEqual(await plistValue(computerUseInfo, key), value, `Computer Use ${key}`);
 }
+verifyComputerUseExecutableIdentity(await readFile(computerUseExecutable));
+
+const { stderr: computerUseSigningDescription } = await execFileAsync(
+  "/usr/bin/codesign",
+  ["-dvv", computerUseApp],
+);
+const computerUseSigningIdentifier = /^Identifier=(.+)$/m.exec(computerUseSigningDescription)?.[1]?.trim();
+assertEqual(
+  computerUseSigningIdentifier,
+  COMPUTER_USE_PACKAGED_IDENTITY.bundleIdentifier,
+  "Computer Use signing identifier",
+);
+await execFileAsync("/usr/bin/codesign", ["--verify", "--deep", "--strict", "--verbose=2", computerUseApp]);
+await verifyComputerUseMcp(
+  packagedNodeBinary,
+  join(resources, "plugins", "computer-use", "lib", "app-agent-proxy.js"),
+  computerUseApp,
+);
 
 if (options.production) {
   async function signingTeam(path) {
@@ -181,7 +335,6 @@ if (options.production) {
     signingTeam(computerUseApp),
   ]);
   assertEqual(computerUseTeam, deepDeckTeam, "Computer Use signing team");
-  await execFileAsync("/usr/bin/codesign", ["--verify", "--deep", "--strict", "--verbose=2", computerUseApp]);
 }
 
 const executableStat = await lstat(join(contents, "MacOS", "DeepDeck"));

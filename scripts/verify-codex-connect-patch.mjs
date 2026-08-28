@@ -80,6 +80,18 @@ if (claimsConfigurableProvider) {
   fail("compiled bundle still duplicates Harness 0.1.1's catalog-owned openai-codex directory entry");
 }
 
+const clientBundle = await readFile(join(packageRoot, "lib/client.js"), "utf8");
+if (clientBundle.includes('"dsh-codex-connect: update checker"')) {
+  fail("compiled client still starts the Codex Connect update checker automatically");
+}
+if (clientBundle.includes('id: "dsh-codex-connect-update"')) {
+  fail("compiled client still registers the Codex Connect update overlay");
+}
+if (!clientBundle.includes('"dsh-codex-connect: manual update store"')
+  || !clientBundle.includes("updater.refresh(true)")) {
+  fail("compiled client no longer preserves the manual settings update check");
+}
+
 const plugin = await import(pathToFileURL(join(packageRoot, manifest.main ?? "lib/index.js")).href);
 if (plugin.SUPPORTED_DSH_PLUGIN_API_VERSION !== expectedDshVersion) {
   fail("compiled doctor contract does not report Harness 0.1.1-rc.2");

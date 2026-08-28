@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { emptyAppMarketInventory } from './app-market.js'
 import { DeepDeckAppStore } from './app-store.js'
 
-function searchResponse(items: readonly unknown[], total = items.length): Response {
-  return new Response(JSON.stringify({ total_count: total, incomplete_results: false, items }), {
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-  })
+function catalogResponse(items: readonly unknown[], page: Record<string, unknown> = {}): Response {
+  return new Response(JSON.stringify({
+    schemaVersion: '1.0.0',
+    items,
+    page,
+  }), { headers: { 'content-type': 'application/json; charset=utf-8' } })
 }
 
 function manifestResponse(overrides: Record<string, unknown> = {}): Response {
@@ -15,64 +17,77 @@ function manifestResponse(overrides: Record<string, unknown> = {}): Response {
     dsh: { app: { id: 'nga-reader', title: 'NGA Reader' } },
     ...overrides,
   }
-  return new Response(JSON.stringify({
-    type: 'file',
-    encoding: 'base64',
-    content: Buffer.from(JSON.stringify(manifest)).toString('base64'),
-  }), { headers: { 'content-type': 'application/json; charset=utf-8' } })
+  return new Response(JSON.stringify(manifest), {
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  })
 }
 
-function repository(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function catalogItem(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    full_name: 'jo32/dsh-nga-reader',
+    id: 'jo32/dsh-nga-reader',
     name: 'dsh-nga-reader',
-    html_url: 'https://github.com/jo32/dsh-nga-reader',
-    description: 'A dsh-plugin NGA reader with app-scoped conversations.',
-    homepage: null,
-    archived: false,
-    disabled: false,
-    topics: ['cordis-plugin', 'deepdeck', 'deepseek-harness', 'dsh-plugin', 'nga-reader'],
-    owner: { login: 'jo32' },
-    license: { spdx_id: 'MIT' },
-    updated_at: '2026-08-25T07:39:30Z',
-    default_branch: 'main',
+    displayName: 'dsh-nga-reader',
+    summary: 'A dsh-plugin NGA reader with app-scoped AI conversations for DeepDeck.',
+    repository: { url: 'https://github.com/jo32/dsh-nga-reader' },
+    publisher: { name: 'jo32' },
+    updatedAt: '2026-08-25T07:39:30Z',
     ...overrides,
   }
 }
 
 describe('DeepDeckAppStore', () => {
-  it('queries the deepdeck topic and normalizes repositories with a dsh.app manifest', async () => {
+  it('searches dshfind and validates dsh.app through raw repository content', async () => {
     const fetchValue = vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input))
-      return url.pathname === '/search/repositories'
-        ? searchResponse([repository()], 25)
+      return url.hostname === 'api.dshfind.com'
+        ? catalogResponse([catalogItem()], { nextCursor: 'next-page', total: 25 })
         : manifestResponse()
     })
     const store = new DeepDeckAppStore({ fetchValue: fetchValue as unknown as typeof fetch })
 
     const page = await store.list('reader', undefined, emptyAppMarketInventory())
 
-    const requested = fetchValue.mock.calls[0]?.[0]
-    expect(requested).toBeInstanceOf(URL)
-    const url = requested as URL
-    expect(url.origin + url.pathname).toBe('https://api.github.com/search/repositories')
-    expect(url.searchParams.get('q')).toBe('topic:deepdeck "reader"')
-    expect(page).toMatchObject({ nextCursor: '2' })
+    const searchUrl = fetchValue.mock.calls[0]?.[0] as URL
+    expect(searchUrl.origin + searchUrl.pathname).toBe('https://api.dshfind.com/market/v1/plugins')
+    expect(searchUrl.searchParams.get('q')).toBe('reader')
+    expect(searchUrl.searchParams.get('limit')).toBe('24')
+    const manifestUrl = fetchValue.mock.calls[1]?.[0] as URL
+    expect(String(manifestUrl)).toBe('https://raw.githubusercontent.com/jo32/dsh-nga-reader/HEAD/package.json')
+    expect(fetchValue.mock.calls.every(call => new URL(String(call[0])).hostname !== 'api.github.com')).toBe(true)
+    expect(page).toMatchObject({ nextCursor: 'next-page' })
     expect(page.items).toEqual([expect.objectContaining({
-      id: 'github:jo32/dsh-nga-reader',
+      id: 'jo32/dsh-nga-reader',
       displayName: 'NGA Reader',
       packageName: 'dsh-nga-reader-plugin',
       latestVersion: '0.1.3',
       installed: false,
-      categories: expect.arrayContaining(['deepdeck', 'dsh-plugin']),
       repository: { url: 'https://github.com/jo32/dsh-nga-reader' },
     })])
+    expect(store.resolve('jo32/dsh-nga-reader')).toBe(page.items[0])
   })
 
-  it('fails closed when a repository does not carry the deepdeck topic', async () => {
-    const fetchValue = vi.fn(async () => searchResponse([
-      repository({ topics: ['dsh-plugin'] }),
-    ]))
+  it('uses the deepdeck discovery query for the initial App listing', async () => {
+    const fetchValue = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input))
+      return url.hostname === 'api.dshfind.com'
+        ? catalogResponse([catalogItem()], { total: 1 })
+        : manifestResponse()
+    })
+    const store = new DeepDeckAppStore({ fetchValue: fetchValue as unknown as typeof fetch })
+
+    await expect(store.list('', undefined, emptyAppMarketInventory())).resolves.toMatchObject({ total: 1 })
+
+    const searchUrl = fetchValue.mock.calls[0]?.[0] as URL
+    expect(searchUrl.searchParams.get('q')).toBe('deepdeck')
+  })
+
+  it('fails closed when a dshfind result does not declare dsh.app', async () => {
+    const fetchValue = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input))
+      return url.hostname === 'api.dshfind.com'
+        ? catalogResponse([catalogItem()], { total: 1 })
+        : manifestResponse({ dsh: { bundle: { patch: './cordis.patch.yml' } } })
+    })
     const store = new DeepDeckAppStore({ fetchValue: fetchValue as unknown as typeof fetch })
 
     await expect(store.list('', undefined, emptyAppMarketInventory())).resolves.toEqual({
@@ -81,34 +96,38 @@ describe('DeepDeckAppStore', () => {
     })
   })
 
-  it('reconciles an installed App by canonical repository URL', async () => {
-    const store = new DeepDeckAppStore({
-      fetchValue: vi.fn(async (input: string | URL | Request) => {
-        const url = new URL(String(input))
-        return url.pathname === '/search/repositories' ? searchResponse([repository()]) : manifestResponse()
-      }) as unknown as typeof fetch,
+  it('reads a catalog package subdirectory and reconciles the validated package name', async () => {
+    const fetchValue = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input))
+      return url.hostname === 'api.dshfind.com'
+        ? catalogResponse([catalogItem({
+            repository: {
+              url: 'https://github.com/jo32/dsh-nga-reader',
+              subdirectory: 'packages/reader',
+            },
+          })], { total: 1 })
+        : manifestResponse()
     })
+    const store = new DeepDeckAppStore({ fetchValue: fetchValue as unknown as typeof fetch })
 
     const page = await store.list('', undefined, {
       catalogItemIds: new Set(),
-      packageNames: new Set(),
-      repositoryUrls: new Set(['https://github.com/jo32/dsh-nga-reader']),
+      packageNames: new Set(['dsh-nga-reader-plugin']),
+      repositoryUrls: new Set(),
     })
 
+    expect(String(fetchValue.mock.calls[1]?.[0])).toBe(
+      'https://raw.githubusercontent.com/jo32/dsh-nga-reader/HEAD/packages/reader/package.json',
+    )
     expect(page.items[0]?.installed).toBe(true)
   })
 
-  it('excludes the DeepDeck host repository even if it carries a dsh.app manifest', async () => {
-    const fetchValue = vi.fn(async (input: string | URL | Request) => {
-      const url = new URL(String(input))
-      return url.pathname === '/search/repositories'
-        ? searchResponse([repository({
-            full_name: 'jo32/DeepDeck',
-            name: 'DeepDeck',
-            html_url: 'https://github.com/jo32/DeepDeck',
-          })])
-        : manifestResponse({ name: 'deepdeck', dsh: { app: { id: 'deepdeck', title: 'DeepDeck' } } })
-    })
+  it('excludes the DeepDeck host repository without requesting its manifest', async () => {
+    const fetchValue = vi.fn(async () => catalogResponse([catalogItem({
+      id: 'jo32/DeepDeck',
+      name: 'DeepDeck',
+      repository: { url: 'https://github.com/jo32/DeepDeck' },
+    })], { total: 1 }))
     const store = new DeepDeckAppStore({ fetchValue: fetchValue as unknown as typeof fetch })
 
     await expect(store.list('', undefined, emptyAppMarketInventory())).resolves.toEqual({

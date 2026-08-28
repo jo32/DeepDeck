@@ -1,15 +1,15 @@
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
-import { existsSync, mkdirSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import type { Entry, Loader } from '@deepseek-ai/cordis-plugin-loader'
+import type { Loader } from '@deepseek-ai/cordis-plugin-loader'
 import type { SettingsNamespace, SettingsScope } from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
 import {
   COMPUTER_USE_MCP_ENTRY_ID,
+  COMPUTER_USE_RUNTIME_GROUP_ID,
   COMPUTER_USE_SETTINGS_NAMESPACE,
   type ComputerUseRuntime,
   type ComputerUseSettings,
@@ -17,6 +17,7 @@ import {
 
 export {
   COMPUTER_USE_MCP_ENTRY_ID,
+  COMPUTER_USE_RUNTIME_GROUP_ID,
   COMPUTER_USE_SETTINGS_NAMESPACE,
   type ComputerUseRuntime,
   type ComputerUseSettings,
@@ -26,8 +27,6 @@ export const name = 'deepdeck-computer-use'
 export const inject = ['loader', 'settings', 'tools']
 
 const COMPUTER_USE_TOOL_PREFIX = 'mcp__open-computer-use__'
-export const COMPUTER_USE_DISABLE_APP_AGENT_PROXY_ENV = 'OPEN_COMPUTER_USE_DISABLE_APP_AGENT_PROXY'
-export const COMPUTER_USE_AGENT_TEMP_DIRECTORY_NAME = 'deepdeck-open-computer-use'
 
 export interface ComputerUseHostContext extends Context {
   readonly loader: Loader
@@ -59,7 +58,12 @@ export class ComputerUseLoaderGate {
     const disabled = !enabled
     const task = this.tail.then(async () => {
       const entry = this.loader.resolve(this.entryId)
-      if (Boolean(entry.options.disabled) === disabled) return
+      // The initial composition uses a `!!js` expression so the nested row can
+      // join the Host startup barrier without spawning for opted-out profiles.
+      // A live preference change must replace that expression with a concrete
+      // boolean; merely changing the service property does not remount a row.
+      const configured = entry.options.disabled
+      if ((configured == null && !disabled) || configured === disabled) return
       await this.loader.update(this.entryId, { disabled })
     })
     this.tail = task.catch(() => {})
@@ -74,11 +78,9 @@ export type SpawnComputerUseProcess = (
 ) => ChildProcess
 
 /**
- * Ask the bundled macOS app to check its own TCC permissions. Upstream's
- * `doctor` command exits without UI when everything is granted and presents
- * its native onboarding window only when Accessibility or Screen Recording is
- * missing. One check is made per enabled period so concurrent tool calls cannot
- * produce duplicate windows.
+ * Open the signed helper through LaunchServices and wait for its native
+ * onboarding instance. This makes the process asking for Accessibility and
+ * Screen Recording identical to the process that serves MCP requests.
  */
 export class ComputerUsePermissionOnboarding {
   private checkedForCurrentEnable = false
@@ -106,18 +108,15 @@ export class ComputerUsePermissionOnboarding {
     }
 
     this.checkedForCurrentEnable = true
+    if (!runtime.appBundle) return Promise.resolve()
     let child: ChildProcess
     try {
       child = this.spawnProcess(
-        process.execPath,
-        [runtime.launcher, 'doctor'],
+        '/usr/bin/open',
+        ['-W', '-n', runtime.appBundle],
         {
           cwd: runtime.root,
-          env: {
-            ...process.env,
-            TMPDIR: runtime.agentTempDirectory,
-            [COMPUTER_USE_DISABLE_APP_AGENT_PROXY_ENV]: '1',
-          },
+          env: process.env,
           stdio: 'ignore',
           windowsHide: true,
         },
@@ -185,20 +184,49 @@ export function resolveSiblingLoaderEntryId(
     : `${currentEntryId.slice(0, separator + 1)}${siblingEntryId}`
 }
 
-/** Resolve the launcher from this plugin's copied production dependency. */
+/** Resolve the platform transport from this plugin's copied dependency. */
 export function resolveComputerUseRuntime(
   enabled = true,
   metaUrl = import.meta.url,
-  temporaryDirectory = tmpdir(),
+  platform = process.platform,
 ): ComputerUseRuntime {
   const root = fileURLToPath(new URL('../', metaUrl))
   const launcher = join(root, 'node_modules', 'open-computer-use', 'bin', 'open-computer-use')
   if (!existsSync(launcher)) {
     throw new Error(`bundled open-computer-use launcher is missing: ${launcher}`)
   }
-  const agentTempDirectory = join(temporaryDirectory, COMPUTER_USE_AGENT_TEMP_DIRECTORY_NAME)
-  mkdirSync(agentTempDirectory, { recursive: true, mode: 0o700 })
-  return { enabled, root, launcher, agentTempDirectory }
+  if (platform !== 'darwin') {
+    return {
+      enabled,
+      root,
+      mcpCommand: process.execPath,
+      mcpArgs: [launcher, 'mcp'],
+    }
+  }
+
+  const appBundle = join(
+    root,
+    'node_modules',
+    'open-computer-use',
+    'dist',
+    'Open Computer Use.app',
+  )
+  const compiledProxy = fileURLToPath(new URL('./app-agent-proxy.js', metaUrl))
+  const sourceProxy = fileURLToPath(new URL('./app-agent-proxy.ts', metaUrl))
+  const appAgentProxy = existsSync(compiledProxy) ? compiledProxy : sourceProxy
+  if (!existsSync(appBundle)) {
+    throw new Error(`bundled Open Computer Use.app is missing: ${appBundle}`)
+  }
+  if (!existsSync(appAgentProxy)) {
+    throw new Error(`DeepDeck Computer Use app-agent proxy is missing: ${appAgentProxy}`)
+  }
+  return {
+    enabled,
+    root,
+    mcpCommand: process.execPath,
+    mcpArgs: [appAgentProxy, appBundle, 'mcp'],
+    appBundle,
+  }
 }
 
 /** Register the default-on preference and gate the native MCP loader entry. */
@@ -213,7 +241,7 @@ export async function apply(
   )
   const mcpEntryId = resolveSiblingLoaderEntryId(
     ctx.loader.locate(),
-    COMPUTER_USE_MCP_ENTRY_ID,
+    `${COMPUTER_USE_RUNTIME_GROUP_ID}:${COMPUTER_USE_MCP_ENTRY_ID}`,
   )
   const gate = new ComputerUseLoaderGate(ctx.loader, mcpEntryId)
   const runtime = resolveComputerUseRuntime(scope.get().enabled)
@@ -234,30 +262,11 @@ export async function apply(
     await gate.setEnabled(enabled)
   }
 
-  // The sibling MCP row is deliberately mounted disabled. Cordis builds patch
-  // rows in stages, so observe its construction and only then apply the
-  // persisted preference. An opted-out profile never starts the process.
+  // The MCP row lives in a nested group that depends on this service. The
+  // group therefore sees the persisted preference before it evaluates the
+  // child's `disabled` expression, while its async MCP discovery remains part
+  // of the Host startup barrier for default-enabled profiles.
   ctx.provide('deepdeckComputerUse', runtime)
-
-  const applyInitialPreference = (entry: Entry): void => {
-    queueMicrotask(() => {
-      if (entry.options.id !== COMPUTER_USE_MCP_ENTRY_ID) return
-      void syncPreference(scope.get().enabled).catch((error: unknown) => {
-        ctx.root.logger?.('computer-use').error(error)
-      })
-    })
-  }
-  ctx.effect(
-    () => ctx.on('loader/entry-init', applyInitialPreference, { global: true }),
-    'computer-use: activate the mounted MCP entry from settings',
-  )
-
-  // HMR can apply this plugin after the MCP row already exists.
-  try {
-    applyInitialPreference(ctx.loader.resolve(mcpEntryId))
-  } catch {
-    // Normal first boot: the listener above observes the later patch row.
-  }
 
   ctx.effect(
     () => scope.watch((next) => {
@@ -268,9 +277,8 @@ export async function apply(
   ctx.effect(
     () => ctx.on('tools/pre-execute', async (exec, next) => {
       if (runtime.enabled && isComputerUseToolName(exec.name)) {
-        // Run the permission UI as a standalone process and wait for it before
-        // dispatching the first native call. The MCP agent stays alive on its
-        // isolated socket, so onboarding cannot terminate the tool connection.
+        // LaunchServices gives onboarding and MCP the same stable signed app
+        // identity. The app-agent proxy uses a DeepDeck-specific socket.
         await onboarding.sync(true, runtime)
       }
       return next()

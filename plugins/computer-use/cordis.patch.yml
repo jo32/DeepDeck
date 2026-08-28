@@ -2,25 +2,31 @@
     - id: deepdeck-computer-use
       name: '@deepdeck/dsh-computer-use'
 
-    - id: deepdeck-computer-use-mcp
-      name: '@deepseek-ai/dsh-mcp-client'
-      # The management plugin clears this after the row mounts when the
-      # persisted setting is enabled. Starting disabled prevents an opted-out
-      # profile from ever spawning the native process during boot.
-      disabled: true
+    # The group waits for the management service before constructing its child,
+    # so the persisted preference is available during the first mount decision.
+    # For enabled profiles, MCP discovery is part of the Host startup barrier.
+    - id: deepdeck-computer-use-runtime
+      name: cordis:group
+      group: true
       inject:
         - deepdeckComputerUse
       config:
-        serverName: open-computer-use
-        transport: stdio
-        command: !!js process.execPath
-        args:
-          - !!js ctx.deepdeckComputerUse.launcher
-          - mcp
-        # open-computer-use uses TMPDIR for its app-agent socket. Scope it to
-        # DeepDeck so other clients cannot terminate this runtime's agent.
-        env:
-          TMPDIR: !!js ctx.deepdeckComputerUse.agentTempDirectory
-        cwd: !!js ctx.deepdeckComputerUse.root
-        toolCallTimeoutMs: 120000
-        failOnStartupError: false
+        - id: deepdeck-computer-use-mcp
+          name: '@deepseek-ai/dsh-mcp-client'
+          disabled: !!js ctx.deepdeckComputerUse.enabled === false
+          config:
+            serverName: open-computer-use
+            transport: stdio
+            command: !!js ctx.deepdeckComputerUse.mcpCommand
+            args: !!js ctx.deepdeckComputerUse.mcpArgs
+            cwd: !!js ctx.deepdeckComputerUse.root
+            toolCallTimeoutMs: 120000
+            failOnStartupError: false
+            # This supervisor exists only while the enabled MCP row is mounted.
+            # It restores the stdio proxy if that child process itself exits;
+            # the proxy separately health-checks the signed native helper.
+            reconnect:
+              enabled: true
+              initialDelayMs: 500
+              maxDelayMs: 30000
+              maxAttempts: 10
