@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-harness/desktop",
   "productName": "DeepDeck",
-  "version": "1.0.33",
+  "version": "1.0.34",
   "description": "DeepDeck desktop client",
   "author": "jo32",
   "private": true,

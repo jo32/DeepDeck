@@ -1,7 +1,9 @@
 import { createRequire } from "node:module";
-import { readFile, readdir, realpath } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
@@ -14,6 +16,10 @@ const textExtensions = new Set([".d.ts", ".js", ".json", ".md", ".yaml", ".yml"]
 
 function fail(message) {
   throw new Error(`verify-codex-connect-patch: ${message}`);
+}
+
+function expectDeepEqual(actual, expected, message) {
+  if (!isDeepStrictEqual(actual, expected)) fail(message);
 }
 
 async function readJson(path) {
@@ -99,6 +105,132 @@ if (plugin.SUPPORTED_DSH_PLUGIN_API_VERSION !== expectedDshVersion) {
 if (plugin.COMPATIBILITY_CONTRACT?.dshPluginApi?.version !== expectedDshVersion) {
   fail("compiled compatibility contract does not report Harness 0.1.1-rc.2");
 }
+
+const expectedSearchUrl = "https://chatgpt.com/backend-api/codex/responses";
+if (plugin.OPENAI_CODEX_SEARCH_URL !== expectedSearchUrl) {
+  fail(`compiled search endpoint is ${plugin.OPENAI_CODEX_SEARCH_URL ?? "missing"}, expected ${expectedSearchUrl}`);
+}
+
+const searchResponse = {
+  status: "completed",
+  output: [
+    {
+      type: "web_search_call",
+      action: {
+        sources: [
+          { type: "url", url: "https://example.com/a", title: "duplicate" },
+          { type: "url", url: "https://example.com/b", title: "Complete source" },
+        ],
+      },
+    },
+    {
+      type: "message",
+      content: [{
+        type: "output_text",
+        text: "Verified answer.",
+        annotations: [{ type: "url_citation", url: "https://example.com/a", title: "Cited source" }],
+      }],
+    },
+  ],
+};
+const expectedSearchResult = {
+  content: "Verified answer.",
+  sources: [
+    { url: "https://example.com/a", title: "Cited source" },
+    { url: "https://example.com/b", title: "Complete source" },
+  ],
+  truncated: false,
+};
+expectDeepEqual(
+  plugin.mapOpenAICodexSearchResponse(searchResponse),
+  expectedSearchResult,
+  "compiled hosted-search response mapping drifted",
+);
+
+const encodeTokenPart = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const accessToken = `${encodeTokenPart({ alg: "none" })}.${encodeTokenPart({
+  "https://api.openai.com/auth": { chatgpt_account_id: "deepdeck-patch-account" },
+})}.signature`;
+const searchRoot = await mkdtemp(join(tmpdir(), "deepdeck-codex-patch-"));
+const originalFetch = globalThis.fetch;
+let dispatchedSearch;
+let recordedSearch;
+try {
+  const credentials = new plugin.OpenAICodexCredentialStore(join(searchRoot, "auth.json"));
+  await credentials.modify(plugin.OPENAI_CODEX_PROVIDER, async () => ({
+    type: "oauth",
+    access: accessToken,
+    refresh: "verification-refresh-token",
+    expires: Date.now() + 3_600_000,
+    accountId: "deepdeck-patch-account",
+  }));
+  globalThis.fetch = async (endpoint, init) => {
+    dispatchedSearch = { endpoint: String(endpoint), init };
+    return new Response(
+      `data: ${JSON.stringify({ type: "response.completed", response: searchResponse })}\n\ndata: [DONE]\n\n`,
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+  };
+  const provider = new plugin.OpenAICodexSearchProvider({
+    credentials,
+    model: "gpt-search-patch-verification",
+    mode: "live",
+    contextSize: "high",
+    maxOutputTokens: 321,
+    resolveRequestId: () => "deepdeck-patch-verification",
+    recordRequest: (request) => { recordedSearch = request; },
+  });
+  expectDeepEqual(
+    await provider.search({ query: "verify the DeepDeck patch" }),
+    expectedSearchResult,
+    "compiled hosted-search provider result drifted",
+  );
+} finally {
+  globalThis.fetch = originalFetch;
+  await rm(searchRoot, { recursive: true, force: true });
+}
+
+if (dispatchedSearch === undefined || recordedSearch === undefined) {
+  fail("compiled hosted-search provider did not record and dispatch its request");
+}
+const dispatchedHeaders = new Headers(dispatchedSearch.init?.headers);
+const dispatchedBody = JSON.parse(String(dispatchedSearch.init?.body));
+const expectedSearchBody = {
+  model: "gpt-search-patch-verification",
+  store: false,
+  stream: true,
+  instructions: "Search the web for the user query and return a concise answer grounded in the sources you found.",
+  input: [{
+    type: "message",
+    role: "user",
+    content: [{ type: "input_text", text: "verify the DeepDeck patch" }],
+  }],
+  tools: [{
+    type: "web_search",
+    search_context_size: "high",
+    external_web_access: true,
+  }],
+  tool_choice: "required",
+  parallel_tool_calls: true,
+  include: ["web_search_call.action.sources"],
+};
+if (dispatchedSearch.endpoint !== expectedSearchUrl
+  || dispatchedSearch.init?.method !== "POST"
+  || dispatchedSearch.init?.redirect !== "error") {
+  fail("compiled hosted-search provider dispatch contract drifted");
+}
+if (dispatchedHeaders.get("accept") !== "text/event-stream"
+  || dispatchedHeaders.get("openai-beta") !== "responses=experimental"
+  || dispatchedHeaders.get("session-id") !== "deepdeck-patch-verification"
+  || dispatchedHeaders.get("x-client-request-id") !== "deepdeck-patch-verification") {
+  fail("compiled hosted-search request headers drifted");
+}
+expectDeepEqual(dispatchedBody, expectedSearchBody, "compiled hosted-search request body drifted");
+expectDeepEqual(
+  recordedSearch,
+  { endpoint: expectedSearchUrl, body: expectedSearchBody },
+  "compiled hosted-search request recording drifted",
+);
 
 const report = plugin.evaluateCompatibility({
   nodeVersion: "v24.18.1",
