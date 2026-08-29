@@ -9,6 +9,7 @@ import {
 } from '../src/client/index.js'
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
@@ -24,7 +25,7 @@ describe('app conversation Client registry', () => {
       return new Response(JSON.stringify(request.action === 'creator-ready'
         ? {
             creator: {
-              protocolVersion: 2,
+              protocolVersion: 3,
               sessionId: 'session-creator',
               appId: 'reader',
               agentPreset: 'cordis',
@@ -35,6 +36,7 @@ describe('app conversation Client registry', () => {
                 'deepdeck_app_rebuild',
                 'deepdeck_app_restart',
               ],
+              skills: ['deepdeck-vibe-app-development'],
             },
           }
         : {
@@ -83,12 +85,13 @@ describe('app conversation Client registry', () => {
       return new Response(JSON.stringify(request.action === 'creator-ready'
         ? {
             creator: {
-              protocolVersion: 2,
+              protocolVersion: 3,
               sessionId: 'session-blank',
               appId: 'reader',
               agentPreset: 'cordis',
               sourcePackageRoot: '/plugins/reader',
               tools: ['deepdeck_app_context'],
+              skills: ['deepdeck-vibe-app-development'],
             },
           }
         : {
@@ -147,7 +150,7 @@ describe('app conversation Client registry', () => {
       return new Response(JSON.stringify(request.action === 'creator-ready'
         ? {
             creator: {
-              protocolVersion: 2,
+              protocolVersion: 3,
               sessionId: 'session-creator',
               appId: 'reader',
               agentPreset: 'cordis',
@@ -158,6 +161,7 @@ describe('app conversation Client registry', () => {
                 'deepdeck_app_rebuild',
                 'deepdeck_app_restart',
               ],
+              skills: ['deepdeck-vibe-app-development'],
             },
           }
         : {
@@ -230,7 +234,7 @@ describe('app conversation Client registry', () => {
       return new Response(JSON.stringify(request.action === 'creator-ready'
         ? {
             creator: {
-              protocolVersion: 2,
+              protocolVersion: 3,
               sessionId: 'session-fresh',
               appId: 'reader',
               agentPreset: 'cordis',
@@ -241,6 +245,7 @@ describe('app conversation Client registry', () => {
                 'deepdeck_app_rebuild',
                 'deepdeck_app_restart',
               ],
+              skills: ['deepdeck-vibe-app-development'],
             },
           }
         : {
@@ -314,7 +319,7 @@ describe('app conversation Client registry', () => {
         : request.action === 'creator-ready'
           ? {
               creator: {
-                protocolVersion: 2,
+                protocolVersion: 3,
                 sessionId: 'session-update',
                 appId: 'reader',
                 agentPreset: 'cordis',
@@ -325,6 +330,7 @@ describe('app conversation Client registry', () => {
                   'deepdeck_app_rebuild',
                   'deepdeck_app_restart',
                 ],
+                skills: ['deepdeck-vibe-app-development'],
               },
             }
           : {
@@ -433,5 +439,118 @@ describe('app conversation Client registry', () => {
       status: 'running',
       sessionId: 'session-1',
     }))
+  })
+
+  it('delivers action-scoped tool effects instead of treating final text as App data', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('window', { setTimeout: globalThis.setTimeout })
+    const prompt = vi.fn(async () => ({ ok: true }))
+    const publish = vi.fn()
+    const requests: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as { action: string }
+      requests.push(request.action)
+      if (request.action === 'resolve-workspace') {
+        return new Response(JSON.stringify({
+          workspace: {
+            appId: 'reader',
+            path: '/tmp/deepdeck-reader',
+            title: 'Apps · Reader',
+            workspaceId: 'workspace-1',
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      if (request.action === 'begin-agent-action') {
+        return new Response(JSON.stringify({
+          execution: {
+            executionId: 'execution-1',
+            sessionId: 'session-1',
+            appId: 'reader',
+            tools: ['reader_set_reply_draft'],
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      if (request.action === 'read-agent-action-effects') {
+        return new Response(JSON.stringify({
+          effectPage: {
+            executionId: 'execution-1',
+            effects: [{
+              sequence: 1,
+              effectId: 'effect-1',
+              toolName: 'reader_set_reply_draft',
+              effect: 'reply-draft.set',
+              payload: { content: 'Structured draft' },
+              createdAt: '2026-08-29T00:00:00.000Z',
+            }],
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({ finished: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }))
+    const history = vi.fn()
+      .mockResolvedValueOnce({ result: { ok: true, value: { events: [] } } })
+      .mockResolvedValue({
+        result: {
+          ok: true,
+          value: {
+            events: [
+              { event: { type: 'turn/start', seq: 1, time: 1, data: { turn: 1 } } },
+              { event: { type: 'assistant/message', seq: 2, time: 2, data: { message: { content: [{ type: 'text', text: 'Draft applied.' }] } } } },
+              { event: { type: 'turn/end', seq: 3, time: 3, data: { reason: { kind: 'completed' } } } },
+            ],
+          },
+        },
+      })
+    const registry = new DefaultAppConversationClientRegistry({
+      workspaces: {
+        list: { getSnapshot: () => ({ items: [] }) },
+        create: vi.fn(async () => ({ workspaceId: 'workspace-1', path: '/tmp/deepdeck-reader' })),
+        connectWorkspace: vi.fn(async () => 'session-1'),
+      },
+      sessions: {
+        list: { getSnapshot: () => ({ byId: { 'session-1': { running: false } } }) },
+        binding: () => ({ session: { rename: vi.fn(async () => ({ ok: true })), prompt } }),
+        open: vi.fn(),
+      },
+    } as never, { api: { sessions: { history } } } as never, publish)
+    registry.register({
+      id: 'reader',
+      actions: {
+        reply: () => ({
+          prompt: 'Draft the reply and call reader_set_reply_draft.',
+          title: 'Draft reply',
+          tools: ['reader_set_reply_draft'],
+        }),
+      },
+    })
+
+    expect(registry.accept({
+      source: 'deepdeck-app-page',
+      type: 'invoke',
+      clientId: 'client-1',
+      requestId: 'request-1',
+      appId: 'reader',
+      actionId: 'reply',
+      payload: {},
+      openSession: false,
+    })).toBe(true)
+    await vi.advanceTimersByTimeAsync(700)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(prompt).toHaveBeenCalledWith([
+      { type: 'text', text: 'Draft the reply and call reader_set_reply_draft.' },
+    ], 'queue')
+    expect(publish).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'action-effect',
+      requestId: 'request-1',
+      effect: expect.objectContaining({
+        effect: 'reply-draft.set',
+        payload: { content: 'Structured draft' },
+      }),
+    }))
+    expect(requests).toContain('finish-agent-action')
   })
 })

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DefaultAppConversationHostRegistry } from './index.js'
 import { appCreatorToolDefinitions, installAppCreatorMode } from './creator-tools.js'
+import { DEEPDECK_VIBE_APP_SKILL } from './creator-skill.js'
 import type { AppConversationHostRegistry } from './contracts.js'
 
 const temporaryRoots: string[] = []
@@ -24,11 +25,17 @@ describe('App Creator binding', () => {
     const lifecycle = new Map<string, (...args: never[]) => void>()
     let presetSelected: ((sessionId: string, agentPreset: string) => void) | undefined
     const toolDisposers: Array<ReturnType<typeof vi.fn>> = []
+    const skillDisposers: Array<ReturnType<typeof vi.fn>> = []
     const promptDisposers: Array<ReturnType<typeof vi.fn>> = []
     const creatorContext = {
       tools: { register: vi.fn((_definition: unknown) => {
         const dispose = vi.fn()
         toolDisposers.push(dispose)
+        return dispose
+      }) },
+      skills: { register: vi.fn((_definition: unknown) => {
+        const dispose = vi.fn()
+        skillDisposers.push(dispose)
         return dispose
       }) },
       systemPrompt: { section: vi.fn(() => {
@@ -40,6 +47,7 @@ describe('App Creator binding', () => {
     }
     const standardContext = {
       tools: { register: vi.fn() },
+      skills: { register: vi.fn() },
       systemPrompt: { section: vi.fn() },
       on: vi.fn(() => vi.fn()),
     }
@@ -76,10 +84,13 @@ describe('App Creator binding', () => {
 
     lifecycle.get('agent/created')?.({ agent: standard } as never)
     expect(standardContext.tools.register).not.toHaveBeenCalled()
+    expect(standardContext.skills.register).not.toHaveBeenCalled()
     expect(standardContext.systemPrompt.section).not.toHaveBeenCalled()
 
     lifecycle.get('agent/created')?.({ agent: creator } as never)
     expect(creatorContext.tools.register).toHaveBeenCalledTimes(4)
+    expect(creatorContext.skills.register).toHaveBeenCalledOnce()
+    expect(creatorContext.skills.register).toHaveBeenCalledWith(DEEPDECK_VIBE_APP_SKILL)
 
     currentPreset.set(creatorContext, 'cordis')
     presetSelected?.(creator.id, 'cordis')
@@ -101,6 +112,7 @@ describe('App Creator binding', () => {
     dispose()
     expect(presetSelected).toBeUndefined()
     for (const stop of toolDisposers) expect(stop).toHaveBeenCalledOnce()
+    for (const stop of skillDisposers) expect(stop).toHaveBeenCalledOnce()
   })
 
   it('uses only the current Creator Workspace for context, rebuild, and restart', async () => {
@@ -155,6 +167,7 @@ describe('App Creator binding', () => {
       steer: vi.fn(),
       ctx: {
         tools: { register: vi.fn(() => vi.fn()) },
+        skills: { register: vi.fn(() => vi.fn()) },
         systemPrompt: { section: vi.fn(() => vi.fn()) },
         on: vi.fn(() => vi.fn()),
       },
@@ -186,11 +199,12 @@ describe('App Creator binding', () => {
     await expect(creatorMode.assertReady('creator', 'reader')).rejects.toThrow('cordis preset')
     preset = 'cordis'
     await expect(creatorMode.assertReady('creator', 'reader')).resolves.toMatchObject({
-      protocolVersion: 2,
+      protocolVersion: 3,
       sessionId: 'creator',
       appId: 'reader',
       agentPreset: 'cordis',
       tools: ['deepdeck_app_context', 'deepdeck_app_apply', 'deepdeck_app_rebuild', 'deepdeck_app_restart'],
+      skills: ['deepdeck-vibe-app-development'],
     })
     creatorMode()
   })
@@ -208,6 +222,7 @@ describe('App Creator binding', () => {
       steer: vi.fn(),
       ctx: {
         tools: { register: vi.fn((definition: unknown) => { registered.push(definition); return vi.fn() }) },
+        skills: { register: vi.fn(() => vi.fn()) },
         systemPrompt: { section: vi.fn(() => vi.fn()) },
         on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
           scoped.set(event, listener)
@@ -286,6 +301,7 @@ describe('App Creator binding', () => {
       steer: vi.fn(),
       ctx: {
         tools: { register: vi.fn(() => vi.fn()) },
+        skills: { register: vi.fn(() => vi.fn()) },
         systemPrompt: { section: vi.fn(() => vi.fn()) },
         on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
           scoped.set(event, listener)
@@ -340,6 +356,7 @@ describe('App Creator binding', () => {
       steer: vi.fn(),
       ctx: {
         tools: { register: vi.fn((definition: (typeof registered)[number]) => { registered.push(definition); return vi.fn() }) },
+        skills: { register: vi.fn(() => vi.fn()) },
         systemPrompt: { section: vi.fn(() => vi.fn()) },
         on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
           scoped.set(event, listener)
@@ -415,6 +432,45 @@ describe('App Creator binding', () => {
 })
 
 describe('App source registry', () => {
+  it('resolves only registered action tools for the canonical App Workspace', async () => {
+    const root = await temporaryRoot()
+    const source = join(root, 'source')
+    const workspace = join(root, 'DeepDeck', 'Apps', 'reader')
+    await mkdir(source)
+    await mkdir(workspace, { recursive: true })
+    const registry = new DefaultAppConversationHostRegistry(
+      { create: vi.fn(async path => ({ id: 'workspace', path, title: path })) },
+      root,
+    )
+    registry.register({
+      id: 'reader',
+      title: 'Reader',
+      workspaceSlug: 'reader',
+      packageName: '@deepdeck/reader',
+      sourcePackageRoot: source,
+      actionTools: [
+        {
+          name: 'reader_set_reply',
+          description: 'Set the Reader reply draft.',
+          parameters: {
+            type: 'object',
+            additionalProperties: false,
+            properties: { content: { type: 'string' } },
+            required: ['content'],
+          },
+          effect: 'reply.set',
+        },
+      ],
+    })
+
+    expect(registry.actionTools('reader', workspace, ['reader_set_reply']))
+      .toEqual([expect.objectContaining({ name: 'reader_set_reply', effect: 'reply.set' })])
+    expect(() => registry.actionTools('reader', join(root, 'elsewhere'), ['reader_set_reply']))
+      .toThrow('Workspace does not match')
+    expect(() => registry.actionTools('reader', workspace, ['reader_missing']))
+      .toThrow('is not registered')
+  })
+
   it('resolves the source Workspace and rejects an unrelated Creator cwd', async () => {
     const root = await temporaryRoot()
     const source = join(root, 'reader')

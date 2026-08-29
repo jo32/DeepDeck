@@ -222,6 +222,11 @@ for (const plugin of manifest.plugins) {
     }
     requiredRuntimePaths.push(join(root, bundlePatch));
     if (plugin === "dsh-codex-connect") await verifyCodexConnectContract(root, pluginManifest);
+    if (plugin === "app-conversations") {
+      requiredRuntimePaths.push(
+        join(root, "skills", "deepdeck-vibe-app-development", "SKILL.md"),
+      );
+    }
     const clientExport = pluginManifest.exports?.["./client"];
     const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
     requiredRuntimePaths.push(join(root, pluginManifest.main ?? "lib/index.js"));

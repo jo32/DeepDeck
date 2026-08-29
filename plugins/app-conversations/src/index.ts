@@ -7,6 +7,7 @@ import { isAbsolute, join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import {
   APP_CONVERSATION_API_PATH,
+  type AppConversationActionToolDefinition,
   type AppBuildValidationResult,
   type AppCreateResult,
   type AppRebuildResult,
@@ -20,6 +21,7 @@ import {
   type AppUpdateContext,
   type AppWindowReloadReceipt,
 } from './contracts.js'
+import { installAppActionTools } from './action-tools.js'
 import { AppApplyStateStore } from './app-apply-state.js'
 import {
   DeepDeckAppPackageManager,
@@ -64,7 +66,11 @@ interface AppConversationHostContext {
     composedPreset(agentContext: Context): string | undefined
   }
   readonly agents: {
-    get(sessionId: string): { readonly ctx: Context } | undefined
+    get(sessionId: string): {
+      readonly id: string
+      readonly ctx: Context
+      readonly session: { readonly id: string; readonly header: { readonly cwd?: string } }
+    } | undefined
   }
   readonly sessions: { flush(session: unknown): Promise<boolean> }
   readonly logger: { warn(message: string): void }
@@ -124,6 +130,8 @@ interface AppBunBuilderService {
 
 const APP_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/
 const PACKAGE_NAME_PATTERN = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/
+const ACTION_TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]{0,63}$/
+const ACTION_EFFECT_PATTERN = /^[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$/
 
 export const APP_WORKSPACE_DIRECTORY = join('DeepDeck', 'Apps')
 export const inject = [
@@ -137,6 +145,7 @@ export const inject = [
   'agents',
   'sessions',
   'tools',
+  'skills',
   'systemPrompt',
 ] as const
 
@@ -178,6 +187,32 @@ function normalizedDefinition(definition: AppConversationHostDefinition): AppCon
   const packageName = definition.packageName.trim()
   const sourcePackageRoot = resolve(definition.sourcePackageRoot)
   const appWindowPath = definition.appWindowPath?.trim()
+  const actionTools = definition.actionTools?.map((tool): AppConversationActionToolDefinition => {
+    const name = tool.name.trim()
+    const description = tool.description.trim()
+    const effect = tool.effect.trim()
+    if (!ACTION_TOOL_NAME_PATTERN.test(name)) throw new Error(`invalid App action tool name '${name}'`)
+    if (description.length === 0) throw new Error(`App action tool '${name}' needs a description`)
+    if (!ACTION_EFFECT_PATTERN.test(effect)) throw new Error(`invalid App action effect '${effect}'`)
+    if (
+      !isObject(tool.parameters)
+      || tool.parameters.type !== 'object'
+      || tool.parameters.additionalProperties !== false
+      || !isObject(tool.parameters.properties)
+      || (tool.parameters.required !== undefined
+        && (!Array.isArray(tool.parameters.required)
+          || !tool.parameters.required.every(value => typeof value === 'string')))
+    ) throw new Error(`App action tool '${name}' has invalid parameters`)
+    return {
+      name,
+      description,
+      effect,
+      parameters: tool.parameters,
+    }
+  })
+  if (actionTools !== undefined && new Set(actionTools.map(tool => tool.name)).size !== actionTools.length) {
+    throw new Error('App action tool names must be unique')
+  }
   if (!APP_ID_PATTERN.test(id)) throw new Error(`invalid app conversation id '${id}'`)
   if (!APP_ID_PATTERN.test(workspaceSlug)) throw new Error(`invalid app workspace slug '${workspaceSlug}'`)
   if (title.length === 0) throw new Error('app conversation title must not be blank')
@@ -205,6 +240,7 @@ function normalizedDefinition(definition: AppConversationHostDefinition): AppCon
     sourcePackageRoot,
     ...(workspaceTitle === undefined ? {} : { workspaceTitle }),
     ...(appWindowPath === undefined ? {} : { appWindowPath }),
+    ...(actionTools === undefined || actionTools.length === 0 ? {} : { actionTools }),
   }
 }
 
@@ -286,6 +322,27 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
       title: workspace.title,
       workspaceId: String(workspace.id),
     }
+  }
+
+  actionTools(
+    appId: string,
+    cwd: string,
+    names: readonly string[],
+  ): readonly AppConversationActionToolDefinition[] {
+    const definition = this.definition(appId)
+    const expectedWorkspace = canonicalPath(join(this.home, APP_WORKSPACE_DIRECTORY, definition.workspaceSlug))
+    if (canonicalPath(cwd) !== expectedWorkspace) {
+      throw new Error('The App Agent Workspace does not match the dispatched App.')
+    }
+    if (names.length === 0 || new Set(names).size !== names.length) {
+      throw new Error('Dispatched App action tools must be a non-empty unique list.')
+    }
+    const registered = new Map((definition.actionTools ?? []).map(tool => [tool.name, tool]))
+    return names.map((name) => {
+      const tool = registered.get(name)
+      if (tool === undefined) throw new Error(`App action tool '${name}' is not registered for '${definition.id}'.`)
+      return tool
+    })
   }
 
   isCreatorSource(cwd: string): boolean {
@@ -756,6 +813,14 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
     'deepdeck app conversations: host registry',
   )
   let creatorMode: ReturnType<typeof installAppCreatorMode> | undefined
+  const actionTools = installAppActionTools(
+    ctx as unknown as Parameters<typeof installAppActionTools>[0],
+    registry,
+  )
+  ctx.effect(
+    () => () => { actionTools.dispose() },
+    'deepdeck app conversations: action-scoped Agent tools',
+  )
   ctx.effect(
     () => {
       creatorMode = installAppCreatorMode(
@@ -835,6 +900,49 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
           sendJson(response, 200, {
             creator: await creatorMode.assertReady(body.sessionId, body.appId, controller.signal),
           })
+          return
+        }
+        if (
+          body.action === 'begin-agent-action'
+          && typeof body.sessionId === 'string'
+          && typeof body.appId === 'string'
+          && Array.isArray(body.toolNames)
+          && body.toolNames.every(name => typeof name === 'string')
+        ) {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          sendJson(response, 200, {
+            execution: actionTools.begin({
+              sessionId: body.sessionId,
+              appId: body.appId,
+              toolNames: body.toolNames,
+            }),
+          })
+          return
+        }
+        if (
+          body.action === 'read-agent-action-effects'
+          && typeof body.executionId === 'string'
+          && typeof body.afterSequence === 'number'
+        ) {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          sendJson(response, 200, {
+            effectPage: actionTools.read(body.executionId, body.afterSequence),
+          })
+          return
+        }
+        if (body.action === 'finish-agent-action' && typeof body.executionId === 'string') {
+          if (!sameOrigin(request) || !isLoopback(request)) {
+            sendJson(response, 403, { error: 'local same-origin request required' })
+            return
+          }
+          actionTools.finish(body.executionId)
+          sendJson(response, 200, { finished: true })
           return
         }
         if (body.action === 'create-app' && typeof body.appId === 'string' && typeof body.title === 'string') {

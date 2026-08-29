@@ -3,6 +3,14 @@
 Cordis runtime for app-scoped Workspaces and canonical Sessions. App actions
 can either stream preview state or open the Session directly in the main window.
 
+Actions may also declare Host-owned UI-effect tools. The runtime mounts only
+the tools selected by that dispatch into the action's canonical Agent Session,
+binds every call to the invoking App and request, and forwards validated
+structured effects to that App window. This keeps assistant prose as
+conversation content instead of treating it as an implicit UI data protocol;
+for example, a reader can expose `reader_set_reply_draft` without granting the
+Agent permission to publish the reply.
+
 App content and Session logs live in ordinary Workspace directories under
 `~/DeepDeck/Apps`. Credentials remain owned by the app's credential service.
 
@@ -30,7 +38,13 @@ Each card also exposes **Vibe Coding**. It opens a blank `cordis` Creator-mode
 Session whose Workspace is the App's registered source root. The Host adds
 `deepdeck_app_context`, `deepdeck_app_apply`, the compatibility alias
 `deepdeck_app_rebuild`, and `deepdeck_app_restart` only
-to that preset's scoped tool layer; ordinary presets never see them. All four
+to that source-bound Agent's scoped tool layer. It also registers the embedded
+`deepdeck-vibe-app-development` Skill in the same scope and requires Creator
+readiness to confirm both the apply tools and Skill before opening the Session.
+The Skill distills reusable source-backed App architecture, structured Agent
+effects, credentials, lifecycle, packaging, and end-to-end verification without
+copying a particular reference App's domain model or UI. Ordinary Sessions
+never see this contribution. All four
 tools derive the App from the Session cwd and refuse unregistered source paths,
 so the model cannot choose an arbitrary package to build or restart from an
 unbound Workspace. Apply is the single build boundary: ordinary source changes

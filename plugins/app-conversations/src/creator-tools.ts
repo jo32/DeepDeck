@@ -14,6 +14,11 @@ import {
   snapshotAppWorkspace,
   type AppWorkspaceSnapshot,
 } from './creator-state.js'
+import {
+  DEEPDECK_VIBE_APP_SKILL,
+  DEEPDECK_VIBE_APP_SKILL_NAME,
+  type CreatorSkillRegistration,
+} from './creator-skill.js'
 
 interface CreatorSession {
   readonly id: string
@@ -22,6 +27,7 @@ interface CreatorSession {
 
 interface CreatorModeScopedContext {
   readonly tools: { register(definition: CreatorToolDefinition): () => void }
+  readonly skills: { register(definition: CreatorSkillRegistration): () => void }
   readonly systemPrompt: {
     section(definition: { readonly name: string; readonly order: number; readonly text: string }): () => void
   }
@@ -364,11 +370,13 @@ export function installAppCreatorMode(
     const disposers = appCreatorToolDefinitions(registry, operations(state)).map(
       definition => agent.ctx.tools.register(definition),
     )
+    disposers.push(agent.ctx.skills.register(DEEPDECK_VIBE_APP_SKILL))
     disposers.push(agent.ctx.systemPrompt.section({
       name: 'deepdeck:app-creator',
       order: 95,
       text: [
         'This session Workspace is a registered DeepDeck App source package, so the Host enforces the Creator apply lifecycle independently of the selected preset.',
+        `Load the ${DEEPDECK_VIBE_APP_SKILL_NAME} Skill before App-specific source work; it contains the architecture, Agent-action, security, and verification guidance for DeepDeck Vibe Apps.`,
         'Call deepdeck_app_context before App-specific work to verify that binding.',
         'After source edits, call deepdeck_app_apply; it is the single authoritative build-and-apply operation, so do not run a duplicate build first.',
         'Ordinary code changes use Cordis hot reload. Structural changes queue a full runtime restart only after the final response is durably saved.',
@@ -506,6 +514,7 @@ export function installAppCreatorMode(
           'deepdeck_app_rebuild',
           'deepdeck_app_restart',
         ] as const,
+        skills: [DEEPDECK_VIBE_APP_SKILL_NAME] as const,
       })
     },
   })

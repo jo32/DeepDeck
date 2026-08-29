@@ -59,6 +59,7 @@
     "lib/*.js.map",
     "lib/types/**/*.d.ts",
     "src/app-settings-contract.d.ts",
+    "skills/**",
     "cordis.patch.yml",
     "README.md"
   ]

@@ -11,10 +11,12 @@ import {
   APP_CONVERSATION_RUNTIME_SOURCE,
   type AppConversationClientDefinition,
   type AppConversationClientRegistry,
+  type AppConversationActionEffect,
   type AppConversationPageInvokeMessage,
   type AppConversationPageMessage,
   type AppConversationPreviewMessage,
   type AppConversationPreparedAction,
+  type AppConversationRuntimeMessage,
   type AppConversationWorkspace,
   type AppCreatorReadyResult,
   type AppUpdateContext,
@@ -41,6 +43,8 @@ interface AssistantPreview {
 
 const MAX_PROMPT_LENGTH = 64 * 1024
 const MAX_SESSION_TITLE_LENGTH = 120
+const ACTION_TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]{0,63}$/
+const MAX_ACTION_TOOLS = 16
 const POLL_INTERVAL_MS = 700
 const POLL_TIMEOUT_MS = 10 * 60 * 1000
 
@@ -61,13 +65,29 @@ function textFromContent(content: unknown): string {
     .trim()
 }
 
-/** Fold the most recent turn's durable message, falling back to live text deltas. */
-export function extractAssistantPreview(entries: readonly HistoryEntry[]): AssistantPreview {
+function latestTurnStartSequence(entries: readonly HistoryEntry[]): number {
+  let sequence = -1
+  for (const entry of entries) {
+    if (entry.event.type === 'turn/start') sequence = Math.max(sequence, entry.event.seq)
+  }
+  return sequence
+}
+
+/** Fold the newest post-baseline turn, falling back to its live text deltas. */
+export function extractAssistantPreview(
+  entries: readonly HistoryEntry[],
+  afterTurnSequence?: number,
+): AssistantPreview {
   const events = entries.map(entry => entry.event)
   let turnStart = -1
   for (let index = 0; index < events.length; index += 1) {
-    if (events[index]?.type === 'turn/start') turnStart = index
+    const event = events[index]
+    if (
+      event?.type === 'turn/start'
+      && (afterTurnSequence === undefined || event.seq > afterTurnSequence)
+    ) turnStart = index
   }
+  if (afterTurnSequence !== undefined && turnStart < 0) return { text: '', completed: false }
 
   let completed = false
   let turnError: string | undefined
@@ -130,16 +150,102 @@ function normalizePreparedAction(value: AppConversationPreparedAction): AppConve
   const prompt = value.prompt.trim()
   const title = value.title.trim()
   const sessionTitle = value.sessionTitle?.trim()
+  const tools = value.tools?.map(tool => tool.trim())
   if (prompt.length === 0) throw new Error('app action produced an empty prompt')
   if (prompt.length > MAX_PROMPT_LENGTH) throw new Error('app action prompt exceeds 64 KiB')
   if (title.length === 0) throw new Error('app action produced an empty title')
+  if (tools !== undefined) {
+    if (tools.length === 0 || tools.length > MAX_ACTION_TOOLS) {
+      throw new Error('app action tools must contain between 1 and 16 names')
+    }
+    if (new Set(tools).size !== tools.length || !tools.every(tool => ACTION_TOOL_NAME_PATTERN.test(tool))) {
+      throw new Error('app action tools must be valid unique tool names')
+    }
+  }
   return {
     prompt,
     title,
     ...(sessionTitle === undefined || sessionTitle.length === 0
       ? {}
       : { sessionTitle: sessionTitle.slice(0, MAX_SESSION_TITLE_LENGTH) }),
+    ...(tools === undefined ? {} : { tools }),
   }
+}
+
+interface AgentActionExecution {
+  readonly executionId: string
+  readonly sessionId: string
+  readonly appId: string
+  readonly tools: readonly string[]
+}
+
+async function appActionRequest(body: JsonObject): Promise<JsonObject> {
+  const response = await fetch(APP_CONVERSATION_API_PATH, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const value: unknown = await response.json()
+  if (!response.ok || !isObject(value)) {
+    const message = isObject(value) && typeof value.error === 'string' ? value.error : `HTTP ${String(response.status)}`
+    throw new Error(`App action runtime request failed: ${message}`)
+  }
+  return value
+}
+
+async function beginAgentAction(
+  sessionId: SessionId,
+  appId: string,
+  toolNames: readonly string[],
+): Promise<AgentActionExecution> {
+  const value = await appActionRequest({
+    action: 'begin-agent-action',
+    sessionId,
+    appId,
+    toolNames,
+  })
+  const execution = value.execution
+  if (
+    !isObject(execution)
+    || typeof execution.executionId !== 'string'
+    || execution.sessionId !== sessionId
+    || execution.appId !== appId
+    || !Array.isArray(execution.tools)
+    || !execution.tools.every(tool => typeof tool === 'string')
+  ) throw new Error('App action runtime returned an invalid execution binding')
+  return execution as unknown as AgentActionExecution
+}
+
+async function readAgentActionEffects(
+  executionId: string,
+  afterSequence: number,
+): Promise<readonly AppConversationActionEffect[]> {
+  const value = await appActionRequest({
+    action: 'read-agent-action-effects',
+    executionId,
+    afterSequence,
+  })
+  const page = value.effectPage
+  if (!isObject(page) || page.executionId !== executionId || !Array.isArray(page.effects)) {
+    throw new Error('App action runtime returned an invalid effect page')
+  }
+  for (const effect of page.effects) {
+    if (
+      !isObject(effect)
+      || typeof effect.sequence !== 'number'
+      || !Number.isSafeInteger(effect.sequence)
+      || effect.sequence <= afterSequence
+      || typeof effect.effectId !== 'string'
+      || typeof effect.toolName !== 'string'
+      || typeof effect.effect !== 'string'
+      || typeof effect.createdAt !== 'string'
+    ) throw new Error('App action runtime returned an invalid effect')
+  }
+  return page.effects as unknown as readonly AppConversationActionEffect[]
+}
+
+async function finishAgentAction(executionId: string): Promise<void> {
+  await appActionRequest({ action: 'finish-agent-action', executionId })
 }
 
 async function resolveWorkspace(
@@ -177,7 +283,9 @@ function validateCreatorReady(value: unknown, sessionId: SessionId, appId: strin
     'deepdeck_app_rebuild',
     'deepdeck_app_restart',
   ] as const
+  const requiredSkills = ['deepdeck-vibe-app-development'] as const
   const tools = Array.isArray(creator.tools) ? creator.tools : undefined
+  const skills = Array.isArray(creator.skills) ? creator.skills : undefined
   if (
     creator.protocolVersion !== APP_CREATOR_PROTOCOL_VERSION
     || creator.sessionId !== sessionId
@@ -186,7 +294,9 @@ function validateCreatorReady(value: unknown, sessionId: SessionId, appId: strin
     || typeof creator.sourcePackageRoot !== 'string'
     || tools === undefined
     || !requiredTools.every(tool => tools.includes(tool))
-  ) throw new Error('Creator runtime did not confirm the requested App, preset, and apply guard')
+    || skills === undefined
+    || !requiredSkills.every(skill => skills.includes(skill))
+  ) throw new Error('Creator runtime did not confirm the requested App, preset, apply guard, and Vibe App Skill')
   return creator as unknown as AppCreatorReadyResult
 }
 
@@ -347,7 +457,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
   constructor(
     private readonly ctx: ClientContext,
     private readonly connection: ConnectionHandle,
-    private readonly publish: (message: AppConversationPreviewMessage) => void,
+    private readonly publish: (message: AppConversationRuntimeMessage) => void,
   ) {}
 
   register(definition: AppConversationClientDefinition): () => void {
@@ -401,6 +511,8 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
   private async invoke(message: AppConversationPageInvokeMessage): Promise<void> {
     let action: AppConversationPreparedAction | undefined
     let sessionId: SessionId | undefined
+    let execution: AgentActionExecution | undefined
+    let turnBaseline: number | undefined
     try {
       this.emit(message, action, { status: 'preparing' })
       const definition = this.definitions.get(message.appId)
@@ -429,21 +541,35 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
         const renamed = await binding.session.rename(action.sessionTitle)
         if (!renamed.ok) throw new Error(renamed.error.message)
       }
+      if (action.tools !== undefined) {
+        const summary = this.ctx.sessions.list.getSnapshot().byId[sessionId]
+        if (summary?.running === true) {
+          throw new Error('App actions with scoped tools cannot be queued into a running Session')
+        }
+        const history = await this.connection.api.sessions.history({ sessionId, maxMessages: 32 })
+        if (!history.result.ok) throw new Error(history.result.error.message)
+        turnBaseline = latestTurnStartSequence(history.result.value.events)
+        execution = await beginAgentAction(sessionId, message.appId, action.tools)
+      }
       const prompted = await binding.session.prompt([{ type: 'text', text: action.prompt }], 'queue')
       if (!prompted.ok) throw new Error(prompted.error.message)
       this.emit(message, action, { status: 'running', sessionId })
       if (message.openSession === true) {
         this.ctx.sessions.open(sessionId)
         void requestMainWindowFocus()
-        return
+        if (execution === undefined) return
       }
-      await this.poll(message, action, sessionId)
+      await this.poll(message, action, sessionId, execution, turnBaseline)
     } catch (error) {
       this.emit(message, action, {
         status: 'failed',
         ...(sessionId === undefined ? {} : { sessionId }),
         error: errorMessage(error),
       })
+    } finally {
+      if (execution !== undefined) {
+        await finishAgentAction(execution.executionId).catch(() => {})
+      }
     }
   }
 
@@ -451,11 +577,29 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
     message: AppConversationPageInvokeMessage,
     action: AppConversationPreparedAction,
     sessionId: SessionId,
+    execution?: AgentActionExecution,
+    turnBaseline?: number,
   ): Promise<void> {
     const startedAt = Date.now()
     let lastText = ''
+    let lastEffectSequence = 0
     while (Date.now() - startedAt < POLL_TIMEOUT_MS) {
       await delay(POLL_INTERVAL_MS)
+      if (execution !== undefined) {
+        const effects = await readAgentActionEffects(execution.executionId, lastEffectSequence)
+        for (const effect of effects) {
+          this.publish({
+            source: APP_CONVERSATION_RUNTIME_SOURCE,
+            type: 'action-effect',
+            targetClientId: message.clientId,
+            requestId: message.requestId,
+            appId: message.appId,
+            sessionId,
+            effect,
+          })
+          lastEffectSequence = Math.max(lastEffectSequence, effect.sequence)
+        }
+      }
       const summary = this.ctx.sessions.list.getSnapshot().byId[sessionId]
       if (summary?.pendingInteraction !== undefined) {
         this.emit(message, action, {
@@ -468,7 +612,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
 
       const history = await this.connection.api.sessions.history({ sessionId, maxMessages: 32 })
       if (!history.result.ok) throw new Error(history.result.error.message)
-      const preview = extractAssistantPreview(history.result.value.events)
+      const preview = extractAssistantPreview(history.result.value.events, turnBaseline)
       if (preview.text.length > 0 && preview.text !== lastText) {
         lastText = preview.text
         this.emit(message, action, { status: 'running', sessionId, content: lastText })

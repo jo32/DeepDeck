@@ -1,6 +1,6 @@
 export const APP_CONVERSATION_API_PATH = '/api/deepdeck/app-conversations'
 export const APP_CONVERSATION_CHANNEL = 'deepdeck-app-conversations-v1'
-export const APP_CREATOR_PROTOCOL_VERSION = 2
+export const APP_CREATOR_PROTOCOL_VERSION = 3
 export const APP_CONVERSATION_PAGE_SOURCE = 'deepdeck-app-page'
 export const APP_CONVERSATION_RUNTIME_SOURCE = 'deepdeck-app-runtime'
 
@@ -49,6 +49,44 @@ export interface AppConversationPreviewMessage {
   readonly error?: string
 }
 
+/** One structured UI mutation emitted by an action-scoped Agent tool. */
+export interface AppConversationActionEffect {
+  readonly sequence: number
+  readonly effectId: string
+  readonly toolName: string
+  readonly effect: string
+  readonly payload: unknown
+  readonly createdAt: string
+}
+
+export interface AppConversationEffectMessage {
+  readonly source: typeof APP_CONVERSATION_RUNTIME_SOURCE
+  readonly type: 'action-effect'
+  readonly targetClientId: string
+  readonly requestId: string
+  readonly appId: string
+  readonly sessionId: string
+  readonly effect: AppConversationActionEffect
+}
+
+export type AppConversationRuntimeMessage =
+  | AppConversationPreviewMessage
+  | AppConversationEffectMessage
+
+/** Declarative App tool mounted only while a dispatched action is active. */
+export interface AppConversationActionToolDefinition {
+  readonly name: string
+  readonly description: string
+  readonly parameters: {
+    readonly type: 'object'
+    readonly additionalProperties: false
+    readonly properties: Readonly<Record<string, unknown>>
+    readonly required?: readonly string[]
+  }
+  /** Stable App-owned effect name delivered to the invoking App window. */
+  readonly effect: string
+}
+
 export interface AppConversationHostDefinition {
   readonly id: string
   readonly title: string
@@ -60,6 +98,8 @@ export interface AppConversationHostDefinition {
   readonly sourcePackageRoot: string
   /** Optional same-origin page promoted into a DeepDeck secondary App window. */
   readonly appWindowPath?: string
+  /** UI-effect tools scoped to a live action in this App's canonical Workspace. */
+  readonly actionTools?: readonly AppConversationActionToolDefinition[]
 }
 
 export interface AppSettingsDescriptor {
@@ -279,6 +319,7 @@ export interface AppCreatorReadyResult {
     'deepdeck_app_rebuild',
     'deepdeck_app_restart',
   ]
+  readonly skills: readonly ['deepdeck-vibe-app-development']
 }
 
 export interface AppWindowReloadReceipt {
@@ -298,6 +339,11 @@ export interface AppConversationHostRegistry {
   register(definition: AppConversationHostDefinition): () => void
   resolve(appId: string): Promise<AppConversationWorkspace>
   resolveCreator(appId: string): Promise<AppConversationWorkspace>
+  actionTools(
+    appId: string,
+    cwd: string,
+    names: readonly string[],
+  ): readonly AppConversationActionToolDefinition[]
   isCreatorSource(cwd: string): boolean
   creatorContext(cwd: string, signal?: AbortSignal): Promise<AppCreatorContext>
   applyState(cwd: string, signal?: AbortSignal): Promise<AppPersistedApplyState>
@@ -321,6 +367,8 @@ export interface AppConversationPreparedAction {
   readonly prompt: string
   readonly title: string
   readonly sessionTitle?: string
+  /** Host-registered tools enabled only for this dispatched action. */
+  readonly tools?: readonly string[]
 }
 
 export interface AppConversationClientDefinition {

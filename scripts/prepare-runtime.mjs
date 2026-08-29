@@ -504,7 +504,7 @@ async function copyPlugin(pluginName, destinationRoot) {
   await cp(join(source, "package.json"), join(destination, "package.json"));
   await cp(join(source, "cordis.patch.yml"), join(destination, "cordis.patch.yml"));
   await cp(join(source, "lib"), join(destination, "lib"), { recursive: true });
-  for (const optionalDirectory of ["client", "data", "src"]) {
+  for (const optionalDirectory of ["client", "data", "skills", "src"]) {
     if (await pathExists(join(source, optionalDirectory))) {
       await cp(join(source, optionalDirectory), join(destination, optionalDirectory), { recursive: true });
     }

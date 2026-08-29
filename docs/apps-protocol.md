@@ -74,6 +74,17 @@ ctx.effect(() => ctx.appConversations.register({
   packageName: '@example/dsh-example-reader',
   sourcePackageRoot: packageRoot,
   appWindowPath: '/apps/example-reader',
+  actionTools: [{
+    name: 'example_set_draft',
+    description: 'Set the draft shown in the Example Reader editor.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { content: { type: 'string', maxLength: 20_000 } },
+      required: ['content'],
+    },
+    effect: 'draft.set',
+  }],
 }), 'example reader: app registration')
 ```
 
@@ -88,6 +99,7 @@ ctx.effect(() => ctx.appConversations.register({
 | `packageName` | Bun Builder 审核和 Loader 匹配使用的包名 | 必须与 `package.json.name` 完全一致 |
 | `sourcePackageRoot` | Vibe Coding 和 Rebuild 使用的源码根目录 | 必须是绝对本地路径，不能是 Builder staging 目录 |
 | `appWindowPath` | 可选的独立 App 窗口页面 | 同源绝对 pathname；Apply 后 Desktop 刷新匹配窗口并回报数量 |
+| `actionTools` | 可选的 Agent UI-effect tools | 名称、schema 和 effect 由 Host 固定注册；只在一次 action 执行期间挂载 |
 
 建议从 `import.meta.url` 推导 `sourcePackageRoot`，不要写开发机绝对路径。热更新后 Host 会从 Builder staging 目录重新注册；注册表只在包名一致时保留之前审核过的原始源码根目录，避免下一次 Rebuild 错误地指向临时目录。
 
@@ -150,10 +162,19 @@ interface AppConversationPreparedAction {
   prompt: string
   title: string
   sessionTitle?: string
+  tools?: string[]
 }
 ```
 
 转换函数负责验证和限制页面传入的 payload。协议还会拒绝空 prompt、超过 64 KiB 的 prompt，并把 Session 标题限制在 120 个字符内。
+
+`tools` 只能选择该 App Host 已声明的 `actionTools`。启用 tool 的 action 会先把它们绑定到本次
+请求、canonical Session 和 App Workspace，再发送 prompt；prompt 应明确说明何时调用哪个 tool。
+Agent 调用 tool 后，运行时把结构化 effect 交给发起请求的 App 页面。Assistant 最终文本仍只作为
+Session 中的对话和进度预览，不会被隐式复制进 App 的业务字段。
+
+这类 tool 只表达 UI effect，例如设置草稿、添加候选项或选择结果。发布、删除、付款等有外部副作用
+的操作仍应走 App 自己的确认和权限边界，不能因为 Agent 写入了草稿就自动执行。
 
 ### 3.5 新建 App
 
@@ -230,6 +251,31 @@ const channelName = 'deepdeck-app-conversations-v1'
 }
 ```
 
+Agent 调用 action-scoped tool 时，运行时另发一条 `action-effect`：
+
+```json
+{
+  "source": "deepdeck-app-runtime",
+  "type": "action-effect",
+  "targetClientId": "page-instance-id",
+  "requestId": "request-id",
+  "appId": "example-reader",
+  "sessionId": "session-id",
+  "effect": {
+    "sequence": 1,
+    "effectId": "effect-id",
+    "toolName": "example_set_draft",
+    "effect": "draft.set",
+    "payload": { "content": "Prepared draft" },
+    "createdAt": "2026-08-29T00:00:00.000Z"
+  }
+}
+```
+
+App 页面必须按 `targetClientId`、`requestId`、`appId` 和 effect 名验证消息，再将 payload 应用到
+对应 UI。`effectId` 与单调递增的 `sequence` 用于去重和按序消费；action 完成或失败后，tool 会被
+卸载，尚未读取的 effect 只短暂保留用于完成投递。
+
 状态语义：
 
 | 状态 | 含义 |
@@ -286,7 +332,8 @@ Loader 更新失败时，旧 Host 保持活动；成功后才清理同一 packag
 
 ### 6.2 Creator mode
 
-`app-conversations` 只向选择了 `cordis` preset 的 agent scope 注册四个工具：
+Vibe Coding 创建或复用 `cordis` preset 的 source-bound Agent。
+`app-conversations` 在该 Agent scope 注册四个工具和一个运行时 Skill：
 
 | Tool | 作用 |
 | --- | --- |
@@ -294,6 +341,16 @@ Loader 更新失败时，旧 Host 保持活动；成功后才清理同一 packag
 | `deepdeck_app_apply` | 单一权威入口：构建一次，普通源码走 Cordis HMR，结构变化排队完整重启 |
 | `deepdeck_app_rebuild` | `deepdeck_app_apply` 的兼容别名 |
 | `deepdeck_app_restart` | 构建验证后登记完整重启；等当前 turn 持久化完成才执行 |
+
+| Skill | 作用 |
+| --- | --- |
+| `deepdeck-vibe-app-development` | DeepDeck Vibe App 的通用源码开发方法：Host/Client/Page 边界、结构化 Agent effects、凭据和安全、Cordis lifecycle、包 invariant 与端到端验证 |
+
+Skill 由 `app-conversations` 随包分发，并通过 source-bound Agent 的
+`ctx.skills.register(...)` 注入，不写入用户的全局 Skill 目录，也不会出现在普通 App 对话中。
+Creator system prompt 要求 Agent 在 App 源码工作前加载它；`creator-ready` 协议同时确认 preset、
+apply guard、四个 tools 和 Skill，任何一项缺失都会拒绝打开 Creator Session。Skill 只保留从参考
+App 中提炼的架构和失败模式，不携带特定站点的接口、数据模型、prompt、布局或功能清单。
 
 工具没有 `sourceDirectory` 或 `appId` 参数，而是从 Session header 的 `cwd` 解析 App，并要求它与注册源码目录的 realpath 完全一致。因此 Creator agent 不能借此构建任意目录；从其他入口打开的 Creator Session 也会被拒绝。Host 在每个 Creator turn 前后对 Workspace 建立指纹；源码变化但没有成功 Apply 时，会继续当前 turn，第二次仍遗漏时由 Host 执行兜底 Apply。构建失败会留下可报告的失败状态，不会形成无限循环。
 
@@ -375,12 +432,16 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 | `rebuild` | Apps 设置 | 要求同源；路径和命令只能由 Host 注册表决定 |
 | `resolve-workspace` | App Client | 只解析普通 App Workspace |
 | `resolve-creator-workspace` | Vibe Coding | 要求 loopback + 同源 |
+| `begin-agent-action` | App Client | 要求 loopback + 同源；把 Host 注册的指定 tools 绑定到 App Session/Workspace |
+| `read-agent-action-effects` | App Client | 要求 loopback + 同源；只读取本次 execution 的结构化 effects |
+| `finish-agent-action` | App Client | 要求 loopback + 同源；卸载 tools 并清理 execution |
 | `focus-main-window` | App Client | 只请求 Electron 聚焦主窗口 |
 
 其他边界：
 
 - API request body 上限为 32 KiB；
 - App `id`、Workspace slug、package name 和绝对源码路径在 Host 注册时验证；
+- action tool 的名称和 schema 只能来自 Host 注册表，并校验 Session、App 与 canonical Workspace 完全匹配；
 - Builder 拒绝符号链接源码根目录、与 Builder state 重叠的目录和超限源码树；
 - Browser 不得传入 build command；执行的只能是 preview 中审核过的 package `scripts.build`；
 - `scripts.build` 仍以当前用户权限执行本地代码，Builder 不是 sandbox；只应 Rebuild 可信源码；
@@ -394,8 +455,9 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 2. Host/Client App definition 从注册表移除；
 3. App settings slot 被释放；
 4. BroadcastChannel listener 随 `app-conversations` Client 生命周期关闭；
-5. 已有 Workspace 和 Session 历史保留在磁盘，不因 Plugin 卸载而删除；
-6. credentials 仍由 App credential service 的清理策略负责。
+5. action-scoped tools 随 turn、Agent 或 Plugin 生命周期卸载；
+6. 已有 Workspace 和 Session 历史保留在磁盘，不因 Plugin 卸载而删除；
+7. credentials 仍由 App credential service 的清理策略负责。
 
 这使 App UI 跟随 Cordis plugin lifecycle，不需要 Electron 额外扫描 package 或维护重复状态。
 
@@ -407,6 +469,8 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 - [ ] Client 注册 `sidebar.apps`，成功打开后调用 `closeApps()`
 - [ ] 有设置时使用 `settings.apps.item`，slot `id` 与 App `id` 一致
 - [ ] App actions 使用固定 `actionId` 并验证 payload，不接受页面提供的任意 prompt
+- [ ] App 数据回写使用 Host 注册、action 选择的 scoped tool；不要把 Assistant 最终文本隐式当成字段值
+- [ ] 写入草稿的 UI effect 与发布、删除等有副作用的能力分离，并测试未调用 tool、重复 effect 和错误 payload
 - [ ] 普通会话只使用 `~/DeepDeck/Apps/<slug>`，源码修改只使用 Creator Workspace
 - [ ] App UI 使用设计 token，同时检查 Light 和 Dark mode
 - [ ] 凭据只进入 Host credential service，不进入 Session、Client state 或页面消息
@@ -420,6 +484,7 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 - [Apps Client registry 与消息协议](../plugins/app-conversations/src/client/index.ts)
 - [Apps 设置 section](../plugins/app-conversations/src/client/AppsSettingsSection.tsx)
 - [Creator mode tools](../plugins/app-conversations/src/creator-tools.ts)
+- [Vibe App development Skill](../plugins/app-conversations/skills/deepdeck-vibe-app-development/SKILL.md)
 - [Bun Builder](../plugins/bun-plugin-builder/src/builder.ts)
 - [Cordis Loader HMR adapter](../plugins/bun-plugin-builder/src/index.ts)
 - [Hacker News Reader 参考 App](https://github.com/jo32/dsh-hackernews-reader)
