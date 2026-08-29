@@ -44,9 +44,20 @@ interface CreatorModeScopedContext {
   ): () => void
 }
 
+interface CreatorModeFiber extends PromiseLike<unknown> {
+  dispose(): Promise<void>
+}
+
+interface CreatorModeAgentContext {
+  inject(
+    dependencies: readonly ['tools', 'skills', 'systemPrompt'],
+    callback: (scope: CreatorModeScopedContext) => void | (() => void),
+  ): CreatorModeFiber
+}
+
 interface CreatorAgent {
   readonly id: string
-  readonly ctx: CreatorModeScopedContext
+  readonly ctx: CreatorModeAgentContext
   readonly session: CreatorSession
   steer(message: CreatorSteerMessage): void
 }
@@ -80,7 +91,7 @@ interface CreatorToolDefinition {
 
 interface CreatorModeHostContext {
   readonly agents: { get(sessionId: string): CreatorAgent | undefined }
-  readonly agentPresets: { composedPreset(agentContext: CreatorModeScopedContext): string | undefined }
+  readonly agentPresets: { composedPreset(agentContext: CreatorModeAgentContext): string | undefined }
   readonly sessions: { flush(session: CreatorSession): Promise<boolean> }
   readonly logger: { warn(message: string): void }
   on(
@@ -114,6 +125,11 @@ interface CreatorAgentState {
   pendingRestart: boolean
   restartDispatchStarted: boolean
   steeredDigest?: string
+}
+
+interface CreatorAgentRegistration {
+  readonly ready: Promise<void>
+  stop(): void
 }
 
 const EMPTY_PARAMETERS = { type: 'object', additionalProperties: false, properties: {} } as const
@@ -260,7 +276,7 @@ export function installAppCreatorMode(
   assertReady(sessionId: string, appId: string, signal?: AbortSignal): Promise<AppCreatorReadyResult>
 } {
   const registrations = new Set<() => void>()
-  const agents = new WeakMap<object, () => void>()
+  const agents = new WeakMap<object, CreatorAgentRegistration>()
   const states = new WeakMap<object, CreatorAgentState>()
   const sessions = new WeakMap<object, CreatorAgentState>()
 
@@ -353,7 +369,7 @@ export function installAppCreatorMode(
   }
 
   const detach = (agent: CreatorAgent): void => {
-    agents.get(agent)?.()
+    agents.get(agent)?.stop()
   }
 
   const attach = (agent: CreatorAgent): void => {
@@ -365,75 +381,78 @@ export function installAppCreatorMode(
       pendingRestart: false,
       restartDispatchStarted: false,
     }
-    states.set(agent, state)
-    sessions.set(agent.session, state)
-    const disposers = appCreatorToolDefinitions(registry, operations(state)).map(
-      definition => agent.ctx.tools.register(definition),
-    )
-    disposers.push(agent.ctx.skills.register(DEEPDECK_VIBE_APP_SKILL))
-    disposers.push(agent.ctx.systemPrompt.section({
-      name: 'deepdeck:app-creator',
-      order: 95,
-      text: [
-        'This session Workspace is a registered DeepDeck App source package, so the Host enforces the Creator apply lifecycle independently of the selected preset.',
-        `Load the ${DEEPDECK_VIBE_APP_SKILL_NAME} Skill before App-specific source work; it contains the architecture, Agent-action, security, and verification guidance for DeepDeck Vibe Apps.`,
-        'Call deepdeck_app_context before App-specific work to verify that binding.',
-        'After source edits, call deepdeck_app_apply; it is the single authoritative build-and-apply operation, so do not run a duplicate build first.',
-        'Ordinary code changes use Cordis hot reload. Structural changes queue a full runtime restart only after the final response is durably saved.',
-        'The Host apply guard compares the Workspace before the turn can finish and will continue the turn if changed source has not been applied.',
-        'Never claim the running App was updated unless the apply receipt confirms the relevant Host, Client, or App-window runtime surface.',
-      ].join(' '),
-    }))
-    disposers.push(agent.ctx.on('agent/pre-step', async ({ turn, signal }, next) => {
-      if (state.turn !== turn) {
-        state.turn = turn
-        delete state.steeredDigest
-        delete state.failedDigest
-        delete state.guardFailure
-        await ensureBound(state, signal)
-        state.turnBaseline = await snapshotAppWorkspace(state.cwd, signal)
-      }
-      return await next()
-    }))
-    disposers.push(agent.ctx.on('agent/turn-stopping', async ({ signal }) => {
-      let current: AppWorkspaceSnapshot
-      let persistedState: Awaited<ReturnType<AppConversationHostRegistry['applyState']>>
-      try {
-        await ensureBound(state, signal)
-        if (state.turnBaseline === undefined) {
-          throw new Error('Creator apply guard has no turn baseline.')
+    const fiber = agent.ctx.inject(['tools', 'skills', 'systemPrompt'], (scope) => {
+      const disposers = appCreatorToolDefinitions(registry, operations(state)).map(
+        definition => scope.tools.register(definition),
+      )
+      disposers.push(scope.skills.register(DEEPDECK_VIBE_APP_SKILL))
+      disposers.push(scope.systemPrompt.section({
+        name: 'deepdeck:app-creator',
+        order: 95,
+        text: [
+          'This session Workspace is a registered DeepDeck App source package, so the Host enforces the Creator apply lifecycle independently of the selected preset.',
+          `Load the ${DEEPDECK_VIBE_APP_SKILL_NAME} Skill before App-specific source work; it contains the architecture, Agent-action, security, and verification guidance for DeepDeck Vibe Apps.`,
+          'Call deepdeck_app_context before App-specific work to verify that binding.',
+          'After source edits, call deepdeck_app_apply; it is the single authoritative build-and-apply operation, so do not run a duplicate build first.',
+          'Ordinary code changes use Cordis hot reload. Structural changes queue a full runtime restart only after the final response is durably saved.',
+          'The Host apply guard compares the Workspace before the turn can finish and will continue the turn if changed source has not been applied.',
+          'Never claim the running App was updated unless the apply receipt confirms the relevant Host, Client, or App-window runtime surface.',
+        ].join(' '),
+      }))
+      disposers.push(scope.on('agent/pre-step', async ({ turn, signal }, next) => {
+        if (state.turn !== turn) {
+          state.turn = turn
+          delete state.steeredDigest
+          delete state.failedDigest
+          delete state.guardFailure
+          await ensureBound(state, signal)
+          state.turnBaseline = await snapshotAppWorkspace(state.cwd, signal)
         }
-        current = await snapshotAppWorkspace(state.cwd, signal)
-        persistedState = await registry.applyState(state.cwd, signal)
-      } catch (error) {
-        const failure = `DeepDeck App apply guard failed closed for ${state.cwd}: ${errorMessage(error)}`
-        ctx.logger.warn(failure)
-        if (state.guardFailure !== failure) {
-          state.guardFailure = failure
-          steer(agent, `${failure}. Do not finish or claim the App was updated; repair or report this concrete blocker.`)
+        return await next()
+      }))
+      disposers.push(scope.on('agent/turn-stopping', async ({ signal }) => {
+        let current: AppWorkspaceSnapshot
+        let persistedState: Awaited<ReturnType<AppConversationHostRegistry['applyState']>>
+        try {
+          await ensureBound(state, signal)
+          if (state.turnBaseline === undefined) {
+            throw new Error('Creator apply guard has no turn baseline.')
+          }
+          current = await snapshotAppWorkspace(state.cwd, signal)
+          persistedState = await registry.applyState(state.cwd, signal)
+        } catch (error) {
+          const failure = `DeepDeck App apply guard failed closed for ${state.cwd}: ${errorMessage(error)}`
+          ctx.logger.warn(failure)
+          if (state.guardFailure !== failure) {
+            state.guardFailure = failure
+            steer(agent, `${failure}. Do not finish or claim the App was updated; repair or report this concrete blocker.`)
+            return
+          }
+          throw new Error(failure)
+        }
+        const effectiveDigest = persistedState.pendingRestartDigest ?? persistedState.appliedDigest
+        const changedThisTurn = current.digest !== state.turnBaseline.digest
+        const differsFromApplied = effectiveDigest !== undefined && current.digest !== effectiveDigest
+        if (
+          (!changedThisTurn && !differsFromApplied)
+          || current.digest === state.failedDigest
+        ) return
+        if (state.steeredDigest !== current.digest) {
+          state.steeredDigest = current.digest
+          steer(agent, 'DeepDeck detected unapplied changes in this App Workspace. Call deepdeck_app_apply now; it performs the authoritative build and chooses hot reload or a durable post-turn restart. Do not finish with a manual restart instruction.')
           return
         }
-        throw new Error(failure)
+        try {
+          const result = await applyState(state, signal)
+          steer(agent, `DeepDeck applied the pending App changes automatically because the prior apply reminder was not completed. Reflect this verified result in the final response:\n${renderApply(result)}`)
+        } catch (error) {
+          steer(agent, `DeepDeck could not apply the pending App changes. Report this concrete failure and do not claim the running App was updated: ${errorMessage(error)}`)
+        }
+      }))
+      return () => {
+        for (const dispose of disposers.reverse()) dispose()
       }
-      const effectiveDigest = persistedState.pendingRestartDigest ?? persistedState.appliedDigest
-      const changedThisTurn = current.digest !== state.turnBaseline.digest
-      const differsFromApplied = effectiveDigest !== undefined && current.digest !== effectiveDigest
-      if (
-        (!changedThisTurn && !differsFromApplied)
-        || current.digest === state.failedDigest
-      ) return
-      if (state.steeredDigest !== current.digest) {
-        state.steeredDigest = current.digest
-        steer(agent, 'DeepDeck detected unapplied changes in this App Workspace. Call deepdeck_app_apply now; it performs the authoritative build and chooses hot reload or a durable post-turn restart. Do not finish with a manual restart instruction.')
-        return
-      }
-      try {
-        const result = await applyState(state, signal)
-        steer(agent, `DeepDeck applied the pending App changes automatically because the prior apply reminder was not completed. Reflect this verified result in the final response:\n${renderApply(result)}`)
-      } catch (error) {
-        steer(agent, `DeepDeck could not apply the pending App changes. Report this concrete failure and do not claim the running App was updated: ${errorMessage(error)}`)
-      }
-    }))
+    })
 
     let active = true
     const stop = () => {
@@ -443,10 +462,18 @@ export function installAppCreatorMode(
       agents.delete(agent)
       states.delete(agent)
       sessions.delete(agent.session)
-      for (const dispose of disposers.reverse()) dispose()
+      void fiber.dispose().catch((error: unknown) => {
+        ctx.logger.warn(`deepdeck Creator scope cleanup failed: ${errorMessage(error)}`)
+      })
+    }
+    const registration: CreatorAgentRegistration = {
+      ready: Promise.resolve(fiber).then(() => undefined),
+      stop,
     }
     registrations.add(stop)
-    agents.set(agent, stop)
+    agents.set(agent, registration)
+    states.set(agent, state)
+    sessions.set(agent.session, state)
   }
 
   const sync = (agent: CreatorAgent): void => {
@@ -495,6 +522,7 @@ export function installAppCreatorMode(
       const agent = ctx.agents.get(sessionId)
       if (agent === undefined) throw new Error('Creator Agent is not active.')
       sync(agent)
+      await agents.get(agent)?.ready
       const state = states.get(agent)
       if (state === undefined) throw new Error('Creator Apply guard is not attached to this App source.')
       if (ctx.agentPresets.composedPreset(agent.ctx) !== 'cordis') {

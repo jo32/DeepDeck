@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DefaultAppConversationHostRegistry } from './index.js'
 import { appCreatorToolDefinitions, installAppCreatorMode } from './creator-tools.js'
@@ -19,6 +20,31 @@ async function temporaryRoot(): Promise<string> {
   return root
 }
 
+function injectedCreatorContext<T extends object>(scope: T) {
+  let cleanup: void | (() => void)
+  const dispose = vi.fn(async () => {
+    cleanup?.()
+    cleanup = undefined
+  })
+  const ready = Promise.resolve()
+  const fiber = {
+    dispose,
+    then: ready.then.bind(ready),
+  }
+  const inject = vi.fn((
+    _dependencies: readonly string[],
+    callback: (injected: T) => void | (() => void),
+  ) => {
+    cleanup = callback(scope)
+    return fiber
+  })
+  return {
+    context: { inject },
+    inject,
+    dispose,
+  }
+}
+
 describe('App Creator binding', () => {
   it('mounts App tools from the registered source independently of preset switches', () => {
     type Agent = { readonly id: string; readonly ctx: object; readonly session: object; readonly steer: ReturnType<typeof vi.fn> }
@@ -27,7 +53,7 @@ describe('App Creator binding', () => {
     const toolDisposers: Array<ReturnType<typeof vi.fn>> = []
     const skillDisposers: Array<ReturnType<typeof vi.fn>> = []
     const promptDisposers: Array<ReturnType<typeof vi.fn>> = []
-    const creatorContext = {
+    const creatorScope = {
       tools: { register: vi.fn((_definition: unknown) => {
         const dispose = vi.fn()
         toolDisposers.push(dispose)
@@ -45,12 +71,16 @@ describe('App Creator binding', () => {
       }) },
       on: vi.fn(() => vi.fn()),
     }
-    const standardContext = {
+    const standardScope = {
       tools: { register: vi.fn() },
       skills: { register: vi.fn() },
       systemPrompt: { section: vi.fn() },
       on: vi.fn(() => vi.fn()),
     }
+    const creatorInjection = injectedCreatorContext(creatorScope)
+    const standardInjection = injectedCreatorContext(standardScope)
+    const creatorContext = creatorInjection.context
+    const standardContext = standardInjection.context
     const currentPreset = new Map<object, string>([
       [creatorContext, 'standard'],
       [standardContext, 'standard'],
@@ -83,19 +113,24 @@ describe('App Creator binding', () => {
     const dispose = installAppCreatorMode(host as never, registry)
 
     lifecycle.get('agent/created')?.({ agent: standard } as never)
-    expect(standardContext.tools.register).not.toHaveBeenCalled()
-    expect(standardContext.skills.register).not.toHaveBeenCalled()
-    expect(standardContext.systemPrompt.section).not.toHaveBeenCalled()
+    expect(standardInjection.inject).not.toHaveBeenCalled()
+    expect(standardScope.tools.register).not.toHaveBeenCalled()
+    expect(standardScope.skills.register).not.toHaveBeenCalled()
+    expect(standardScope.systemPrompt.section).not.toHaveBeenCalled()
 
     lifecycle.get('agent/created')?.({ agent: creator } as never)
-    expect(creatorContext.tools.register).toHaveBeenCalledTimes(4)
-    expect(creatorContext.skills.register).toHaveBeenCalledOnce()
-    expect(creatorContext.skills.register).toHaveBeenCalledWith(DEEPDECK_VIBE_APP_SKILL)
+    expect(creatorInjection.inject).toHaveBeenCalledWith(
+      ['tools', 'skills', 'systemPrompt'],
+      expect.any(Function),
+    )
+    expect(creatorScope.tools.register).toHaveBeenCalledTimes(4)
+    expect(creatorScope.skills.register).toHaveBeenCalledOnce()
+    expect(creatorScope.skills.register).toHaveBeenCalledWith(DEEPDECK_VIBE_APP_SKILL)
 
     currentPreset.set(creatorContext, 'cordis')
     presetSelected?.(creator.id, 'cordis')
-    expect(creatorContext.tools.register).toHaveBeenCalledTimes(4)
-    expect(creatorContext.systemPrompt.section).toHaveBeenCalledWith(expect.objectContaining({
+    expect(creatorScope.tools.register).toHaveBeenCalledTimes(4)
+    expect(creatorScope.systemPrompt.section).toHaveBeenCalledWith(expect.objectContaining({
       name: 'deepdeck:app-creator',
     }))
 
@@ -106,13 +141,78 @@ describe('App Creator binding', () => {
 
     currentPreset.set(creatorContext, 'cordis')
     presetSelected?.(creator.id, 'cordis')
-    expect(creatorContext.tools.register).toHaveBeenCalledTimes(4)
-    expect(creatorContext.systemPrompt.section).toHaveBeenCalledTimes(1)
+    expect(creatorScope.tools.register).toHaveBeenCalledTimes(4)
+    expect(creatorScope.systemPrompt.section).toHaveBeenCalledTimes(1)
 
     dispose()
     expect(presetSelected).toBeUndefined()
     for (const stop of toolDisposers) expect(stop).toHaveBeenCalledOnce()
     for (const stop of skillDisposers) expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it('injects Creator services into an Agent scope that does not already expose skills', async () => {
+    const root = new Context()
+    const skillDispose = vi.fn()
+    const skillRegister = vi.fn(() => skillDispose)
+    const services = root.plugin((scope) => {
+      scope.provide('tools', { register: vi.fn(() => vi.fn()) })
+      scope.provide('skills', { register: skillRegister })
+      scope.provide('systemPrompt', { section: vi.fn(() => vi.fn()) })
+    })
+    await services
+
+    let agentContext: Context | undefined
+    const agentFiber = root.plugin({
+      name: 'creator-agent-without-skills',
+      inject: ['tools', 'systemPrompt'],
+      apply(scope) {
+        agentContext = scope
+      },
+    })
+    await agentFiber
+    expect(() => (agentContext as Context & { readonly skills: unknown }).skills)
+      .toThrow('cannot get property "skills" without inject')
+
+    const lifecycle = new Map<string, (...args: never[]) => void>()
+    const agent = {
+      id: 'creator',
+      session: { id: 'creator', header: { cwd: '/plugins/reader' } },
+      steer: vi.fn(),
+      ctx: agentContext,
+    }
+    const host = {
+      agents: { get: vi.fn(() => agent) },
+      agentPresets: { composedPreset: vi.fn(() => 'cordis') },
+      sessions: { flush: vi.fn(async () => true) },
+      logger: { warn: vi.fn() },
+      on: vi.fn((event: string, listener: (...args: never[]) => void) => {
+        lifecycle.set(event, listener)
+        return () => { lifecycle.delete(event) }
+      }),
+    }
+    const registry = {
+      isCreatorSource: (cwd: string) => cwd === '/plugins/reader',
+      creatorContext: vi.fn(async () => ({
+        appId: 'reader',
+        title: 'Reader',
+        packageName: '@deepdeck/reader',
+        sourcePackageRoot: '/plugins/reader',
+        rebuildAvailable: true,
+        applyState: { status: 'unknown' as const },
+      })),
+    } as unknown as AppConversationHostRegistry
+    const creatorMode = installAppCreatorMode(host as never, registry)
+    lifecycle.get('agent/created')?.({ agent } as never)
+
+    await expect(creatorMode.assertReady('creator', 'reader')).resolves.toMatchObject({
+      skills: ['deepdeck-vibe-app-development'],
+    })
+    expect(skillRegister).toHaveBeenCalledWith(DEEPDECK_VIBE_APP_SKILL)
+
+    creatorMode()
+    await vi.waitFor(() => expect(skillDispose).toHaveBeenCalledOnce())
+    await agentFiber.dispose()
+    await services.dispose()
   })
 
   it('uses only the current Creator Workspace for context, rebuild, and restart', async () => {
@@ -161,16 +261,18 @@ describe('App Creator binding', () => {
   it('confirms readiness only after the live cordis Agent has the source-bound guard', async () => {
     const lifecycle = new Map<string, (...args: never[]) => void>()
     let preset = 'standard'
+    const scope = {
+      tools: { register: vi.fn(() => vi.fn()) },
+      skills: { register: vi.fn(() => vi.fn()) },
+      systemPrompt: { section: vi.fn(() => vi.fn()) },
+      on: vi.fn(() => vi.fn()),
+    }
+    const injection = injectedCreatorContext(scope)
     const agent = {
       id: 'creator',
       session: { id: 'creator', header: { cwd: '/plugins/reader' } },
       steer: vi.fn(),
-      ctx: {
-        tools: { register: vi.fn(() => vi.fn()) },
-        skills: { register: vi.fn(() => vi.fn()) },
-        systemPrompt: { section: vi.fn(() => vi.fn()) },
-        on: vi.fn(() => vi.fn()),
-      },
+      ctx: injection.context,
     }
     const host = {
       agents: { get: vi.fn(() => agent) },
@@ -216,19 +318,21 @@ describe('App Creator binding', () => {
     const hostEvents = new Map<string, (...args: never[]) => void>()
     const registered: unknown[] = []
     const session = { id: 'creator', header: { cwd: root } }
+    const scope = {
+      tools: { register: vi.fn((definition: unknown) => { registered.push(definition); return vi.fn() }) },
+      skills: { register: vi.fn(() => vi.fn()) },
+      systemPrompt: { section: vi.fn(() => vi.fn()) },
+      on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
+        scoped.set(event, listener)
+        return () => { scoped.delete(event) }
+      }),
+    }
+    const injection = injectedCreatorContext(scope)
     const agent = {
       id: 'creator',
       session,
       steer: vi.fn(),
-      ctx: {
-        tools: { register: vi.fn((definition: unknown) => { registered.push(definition); return vi.fn() }) },
-        skills: { register: vi.fn(() => vi.fn()) },
-        systemPrompt: { section: vi.fn(() => vi.fn()) },
-        on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
-          scoped.set(event, listener)
-          return () => { scoped.delete(event) }
-        }),
-      },
+      ctx: injection.context,
     }
     const rebuildCreator = vi.fn(async () => ({
       appId: 'reader',
@@ -295,19 +399,21 @@ describe('App Creator binding', () => {
     const scoped = new Map<string, (...args: never[]) => unknown>()
     const hostEvents = new Map<string, (...args: never[]) => void>()
     const session = { id: 'creator', header: { cwd: '/plugins/reader' } }
+    const scope = {
+      tools: { register: vi.fn(() => vi.fn()) },
+      skills: { register: vi.fn(() => vi.fn()) },
+      systemPrompt: { section: vi.fn(() => vi.fn()) },
+      on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
+        scoped.set(event, listener)
+        return () => { scoped.delete(event) }
+      }),
+    }
+    const injection = injectedCreatorContext(scope)
     const agent = {
       id: 'creator',
       session,
       steer: vi.fn(),
-      ctx: {
-        tools: { register: vi.fn(() => vi.fn()) },
-        skills: { register: vi.fn(() => vi.fn()) },
-        systemPrompt: { section: vi.fn(() => vi.fn()) },
-        on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
-          scoped.set(event, listener)
-          return () => { scoped.delete(event) }
-        }),
-      },
+      ctx: injection.context,
     }
     const registry = {
       isCreatorSource: () => true,
@@ -350,19 +456,21 @@ describe('App Creator binding', () => {
     const hostEvents = new Map<string, (...args: never[]) => void>()
     const registered: Array<{ readonly name: string; execute(args: unknown, exec: unknown): Promise<string> }> = []
     const session = { id: 'creator', header: { cwd: root } }
+    const scope = {
+      tools: { register: vi.fn((definition: (typeof registered)[number]) => { registered.push(definition); return vi.fn() }) },
+      skills: { register: vi.fn(() => vi.fn()) },
+      systemPrompt: { section: vi.fn(() => vi.fn()) },
+      on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
+        scoped.set(event, listener)
+        return () => { scoped.delete(event) }
+      }),
+    }
+    const injection = injectedCreatorContext(scope)
     const agent = {
       id: 'creator',
       session,
       steer: vi.fn(),
-      ctx: {
-        tools: { register: vi.fn((definition: (typeof registered)[number]) => { registered.push(definition); return vi.fn() }) },
-        skills: { register: vi.fn(() => vi.fn()) },
-        systemPrompt: { section: vi.fn(() => vi.fn()) },
-        on: vi.fn((event: string, listener: (...args: never[]) => unknown) => {
-          scoped.set(event, listener)
-          return () => { scoped.delete(event) }
-        }),
-      },
+      ctx: injection.context,
     }
     const order: string[] = []
     const restartCreator = vi.fn(async () => {
