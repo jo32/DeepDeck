@@ -10,8 +10,9 @@ function toOrigin(value: string | undefined) {
   return new URL(url).origin;
 }
 
+export const productionSiteUrl = "https://deepdeck.getmegaportal.com";
+
 export const siteUrl =
   toOrigin(process.env.NEXT_PUBLIC_SITE_URL) ??
   toOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
-  toOrigin(process.env.VERCEL_URL) ??
-  "http://localhost:3000";
+  productionSiteUrl;

@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { setSiteLocale } from "../actions";
-import type { SiteLocale } from "../../lib/locale";
+import { localePath, type SiteLocale } from "../../lib/locale";
+import { serializeStructuredData } from "../../lib/structured-data";
 
 const githubUrl = "https://github.com/jo32/DeepDeck";
 const releaseUrl = `${githubUrl}/releases/latest`;
@@ -57,21 +57,20 @@ const copy = {
       downloadShort: "下载",
     },
     language: {
-      locale: "en",
       lang: "en",
       label: "EN",
       ariaLabel: "Switch to English",
     },
     interface: {
-      eyebrow: "DeepDeck 是一个桌面 AI 工作台。",
-      title: ["简约的", "界面交互。"],
-      body: "工作区、模式、模型和输入，被收进一条自然的操作路径。打开 DeepDeck，不需要先理解一套复杂系统，直接开始工作。",
+      eyebrow: "DeepDeck 是开源、本地运行的 AI 工作台。",
+      title: ["DeepSeek Harness", "桌面客户端。"],
+      body: "工作区、模式、模型和输入，被收进一条自然的操作路径。DeepDeck 兼容现有 Harness 设置与插件生态，完成引导式首次设置后即可开始工作。",
       github: "查看 GitHub",
       imageAlt: "DeepDeck 简约桌面界面",
     },
     apps: {
       title: ["支持", "App。"],
-      body: "插件不必藏在工具列表里。它可以拥有独立窗口、独立设置，以及自己的 AI 对话。Hacker News Reader 就是一个完整的 DeepDeck App。",
+      body: "DeepDeck App 是一种可安装扩展，可以拥有独立窗口、独立设置，以及自己的 AI 对话。Hacker News Reader 就是一个完整示例。",
       explain: "解释",
       summarize: "总结",
       note: "同一个 App 里，阅读内容、搜索、登录，以及“解释 / 总结”AI Actions 都有自己的位置。",
@@ -125,7 +124,7 @@ const copy = {
     },
     vibe: {
       title: ["现场 Vibe", "一个 App。"],
-      body: "在 Hacker News 的设置里点击 Vibe Coding，DeepDeck 会打开绑定源码的 Creator Workspace。说出修改，Agent 写代码，Bun 构建，Cordis 原地热更新。",
+      body: "Vibe Coding 是 AI 辅助的 App 构建流程。在 Hacker News 的设置里打开它，DeepDeck 会绑定源码工作区；说出修改后，Agent 写代码、Bun 构建，Cordis 原地热更新。",
       steps: [
         ["打开 Creator", "源码工作区自动绑定"],
         ["描述想法", "Agent 直接修改 App"],
@@ -157,21 +156,20 @@ const copy = {
       downloadShort: "Download",
     },
     language: {
-      locale: "zh",
       lang: "zh-CN",
       label: "中文",
       ariaLabel: "切换到中文",
     },
     interface: {
-      eyebrow: "DeepDeck is a desktop AI workbench.",
-      title: ["A simpler", "way to interact."],
-      body: "Workspaces, modes, models, and the prompt all fall into one natural flow. Open DeepDeck and start working—there is no system to learn first.",
+      eyebrow: "DeepDeck is an open-source, local AI workbench.",
+      title: ["The desktop client", "for DeepSeek Harness."],
+      body: "Workspaces, modes, models, and the prompt all fall into one natural flow. DeepDeck keeps existing Harness settings and extensions compatible; after guided first-run setup, it is ready for work.",
       github: "View on GitHub",
       imageAlt: "The focused DeepDeck desktop interface",
     },
     apps: {
       title: ["Supports", "Apps."],
-      body: "Plugins do not have to stay buried in a tools list. Each one can have its own window, settings, and AI conversations. Hacker News Reader is a complete DeepDeck App.",
+      body: "A DeepDeck App is an installable extension with its own window, settings, and AI conversations. Hacker News Reader is a complete example.",
       explain: "Explain",
       summarize: "Summarize",
       note: "Reading, search, sign-in, and AI Actions such as Explain and Summarize all live inside the same App.",
@@ -225,7 +223,7 @@ const copy = {
     },
     vibe: {
       title: ["Vibe", "an App."],
-      body: "Click Vibe Coding in Hacker News settings. DeepDeck opens a Creator Workspace bound to its source. Describe the change, the Agent writes code, Bun builds it, and Cordis hot-reloads it in place.",
+      body: "Vibe Coding is DeepDeck's AI-assisted app-building workflow. Open it from Hacker News settings to bind the source workspace; describe a change, and the Agent writes code while Bun and Cordis rebuild and hot-reload it.",
       steps: [
         ["Open Creator", "The source workspace is bound automatically"],
         ["Describe the idea", "The Agent edits the App directly"],
@@ -254,6 +252,10 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeStructuredData(locale) }}
+      />
       <header className="site-header">
         <div className="nav-shell">
           <a className="brand" href="#interface" aria-label={content.aria.home}>
@@ -268,17 +270,15 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>
           </nav>
           <div className="nav-actions">
-            <form action={setSiteLocale} className="language-form">
-              <input type="hidden" name="locale" value={content.language.locale} />
-              <button
-                className="language-link"
-                type="submit"
-                lang={content.language.lang}
-                aria-label={content.language.ariaLabel}
-              >
-                {content.language.label}
-              </button>
-            </form>
+            <a
+              className="language-link"
+              href={locale === "en" ? localePath.zh : localePath.en}
+              hrefLang={content.language.lang}
+              lang={content.language.lang}
+              aria-label={content.language.ariaLabel}
+            >
+              {content.language.label}
+            </a>
             <a className="nav-cta" href={releaseUrl} target="_blank" rel="noreferrer">
               <span className="nav-cta-long">{content.nav.download}</span>
               <span className="nav-cta-short">{content.nav.downloadShort}</span>
@@ -298,7 +298,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             <div className="story-title">
               <p className="eyebrow">{content.interface.eyebrow}</p>
               <h1>
-                {content.interface.title[0]}
+                {content.interface.title[0]}{" "}
                 <span>{content.interface.title[1]}</span>
               </h1>
             </div>
@@ -343,7 +343,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             </div>
             <div className="story-title">
               <h2>
-                {content.apps.title[0]}
+                {content.apps.title[0]}{" "}
                 <span>{content.apps.title[1]}</span>
               </h2>
             </div>
@@ -410,7 +410,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
               </div>
               <div className="story-title">
                 <h2>
-                  {content.showcase.title[0]}
+                  {content.showcase.title[0]}{" "}
                   <span>{content.showcase.title[1]}</span>
                 </h2>
               </div>
@@ -470,7 +470,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             </div>
             <div className="story-title">
               <h2>
-                {content.install.title[0]}
+                {content.install.title[0]}{" "}
                 <span>{content.install.title[1]}</span>
               </h2>
             </div>
@@ -545,7 +545,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
               </div>
               <div className="story-title">
                 <h2>
-                  {content.vibe.title[0]}
+                  {content.vibe.title[0]}{" "}
                   <span>{content.vibe.title[1]}</span>
                 </h2>
               </div>
@@ -576,7 +576,6 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
                   width={780}
                   height={410}
                   sizes="(max-width: 768px) 94vw, 540px"
-                  loading="eager"
                 />
               </figure>
               <figure className="proof-card proof-result">
@@ -590,7 +589,6 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
                   width={1208}
                   height={768}
                   sizes="(max-width: 768px) 94vw, 720px"
-                  loading="eager"
                 />
               </figure>
             </div>

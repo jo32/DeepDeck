@@ -1,25 +1,31 @@
 import type { Metadata, Viewport } from "next";
+import { localePath, type SiteLocale } from "./locale";
 import { siteUrl } from "./site";
 
 const localeMetadata = {
   zh: {
     locale: "zh_CN",
-    title: "DeepDeck — 你的本地智能工作伙伴",
-    description: "DeepDeck 是一个界面简约、支持独立 App，并能通过 Vibe Coding 现场构建新 App 的桌面 AI 工作台。",
-    image: "/opengraph-image",
+    alternateLocale: "en_US",
+    title: "DeepDeck：开源 DeepSeek Harness 桌面客户端",
+    description: "DeepDeck 是开源的 DeepSeek Harness 桌面客户端，提供简约 AI 工作台、可安装扩展，以及 AI 辅助的 App 构建与热更新流程。",
+    keywords: ["DeepSeek Harness 桌面客户端", "本地 AI 工作台", "Cordis App", "Vibe Coding"],
+    imageAlt: "DeepDeck 开源 DeepSeek Harness 桌面客户端",
+    image: "/zh/opengraph-image",
   },
   en: {
     locale: "en_US",
-    title: "DeepDeck — Your local AI workbench",
-    description: "DeepDeck is a focused desktop AI workbench with first-class Apps and an integrated Vibe Coding workflow for building new ones.",
+    alternateLocale: "zh_CN",
+    title: "DeepDeck: Open-Source Desktop Client for DeepSeek Harness",
+    description: "DeepDeck is an open-source desktop client for DeepSeek Harness with a focused AI workbench, installable extensions, and AI-assisted app building.",
+    keywords: ["DeepSeek Harness desktop client", "local AI workbench", "Cordis Apps", "Vibe Coding"],
+    imageAlt: "DeepDeck open-source desktop client for DeepSeek Harness",
     image: "/opengraph-image",
   },
 } as const;
 
-export type MetadataLocale = keyof typeof localeMetadata;
-
-export function createSiteMetadata(locale: MetadataLocale): Metadata {
+export function createSiteMetadata(locale: SiteLocale): Metadata {
   const content = localeMetadata[locale];
+  const canonicalPath = localePath[locale];
 
   return {
     metadataBase: new URL(siteUrl),
@@ -29,28 +35,46 @@ export function createSiteMetadata(locale: MetadataLocale): Metadata {
     keywords: [
       "DeepDeck",
       "DeepSeek Harness",
-      "AI desktop",
-      "AI agent",
-      "Cordis plugins",
+      "open source AI desktop",
+      ...content.keywords,
     ],
     authors: [{ name: "DeepDeck" }],
+    creator: "DeepDeck",
+    publisher: "DeepDeck",
+    category: "technology",
     alternates: {
-      canonical: "/",
+      canonical: canonicalPath,
+      languages: {
+        en: "/",
+        "zh-CN": "/zh",
+        "x-default": "/",
+      },
     },
     openGraph: {
       type: "website",
-      url: "/",
+      url: canonicalPath,
       locale: content.locale,
+      alternateLocale: content.alternateLocale,
       title: content.title,
       description: content.description,
       siteName: "DeepDeck",
-      images: [{ url: content.image, width: 1200, height: 630 }],
+      images: [{ url: content.image, width: 1200, height: 630, alt: content.imageAlt }],
     },
     twitter: {
       card: "summary_large_image",
       title: content.title,
       description: content.description,
-      images: [content.image],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
   };
 }

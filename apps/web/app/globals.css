@@ -115,11 +115,6 @@ main {
   gap: 10px;
 }
 
-.language-form {
-  display: flex;
-  margin: 0;
-}
-
 .language-link {
   display: inline-flex;
   align-items: center;

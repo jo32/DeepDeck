@@ -1,10 +1,29 @@
 import { ImageResponse } from "next/og";
+import type { SiteLocale } from "../../lib/locale";
 
-export const alt = "DeepDeck — One desktop. Three things.";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const openGraphImageSize = { width: 1200, height: 630 };
+export const openGraphImageContentType = "image/png";
 
-export default function OpenGraphImage() {
+const imageCopy: Record<SiteLocale, {
+  headline: readonly [string, string];
+  summary: string;
+  footer: string;
+}> = {
+  en: {
+    headline: ["Desktop AI,", "built for Harness."],
+    summary: "Focused workbench · Installable Apps · AI-assisted building",
+    footer: "Open source · Local · Extensible",
+  },
+  zh: {
+    headline: ["DeepSeek Harness", "桌面 AI 工作台"],
+    summary: "简约交互 · 可安装 App · AI 辅助构建",
+    footer: "开源 · 本地运行 · 可扩展",
+  },
+};
+
+export function createOpenGraphImage(locale: SiteLocale) {
+  const content = imageCopy[locale];
+
   return new ImageResponse(
     (
       <div
@@ -63,19 +82,19 @@ export default function OpenGraphImage() {
               fontWeight: 650,
             }}
           >
-            <span>One desktop.</span>
-            <span>Three things.</span>
+            <span>{content.headline[0]}</span>
+            <span>{content.headline[1]}</span>
           </div>
           <div style={{ fontSize: 25, color: "#666", letterSpacing: "-0.5px" }}>
-            Simple interactions · App support · Vibe Apps
+            {content.summary}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 20 }}>
           <span>DeepDeck · Open Source</span>
-          <span style={{ color: "#777" }}>Built on DeepSeek Harness</span>
+          <span style={{ color: "#777" }}>{content.footer}</span>
         </div>
       </div>
     ),
-    size,
+    openGraphImageSize,
   );
 }

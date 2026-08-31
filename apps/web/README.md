@@ -23,4 +23,6 @@ pnpm web:build
 2. 将 **Root Directory** 设置为 `apps/web`。
 3. 保持自动识别的 **Next.js** Framework Preset，然后部署。
 
-站点会优先使用 Vercel 提供的 `VERCEL_PROJECT_PRODUCTION_URL` 生成 Open Graph、robots 和 sitemap 的绝对地址。绑定自定义域名后会自动使用生产域名；也可以通过 `NEXT_PUBLIC_SITE_URL` 显式覆盖。
+站点默认以 `https://deepdeck.getmegaportal.com` 作为 canonical origin，并会优先使用 `NEXT_PUBLIC_SITE_URL` 或 Vercel 提供的 `VERCEL_PROJECT_PRODUCTION_URL` 覆盖它。Open Graph、robots、sitemap 与 JSON-LD 都使用同一个 origin。
+
+英文首页位于 `/`，中文首页位于 `/zh`。两者是可独立索引的静态页面，并通过 `hreflang` 互相声明；旧的 `/en` 地址永久重定向到 `/`。
