@@ -179,6 +179,14 @@ interface AgentActionExecution {
   readonly tools: readonly string[]
 }
 
+interface RetainedAgentAction {
+  readonly execution: AgentActionExecution
+  route: Pick<AppConversationPageInvokeMessage, 'clientId' | 'requestId' | 'appId'>
+  lastEffectSequence: number
+  reading: Promise<void> | undefined
+  monitoring: Promise<void> | undefined
+}
+
 async function appActionRequest(body: JsonObject): Promise<JsonObject> {
   const response = await fetch(APP_CONVERSATION_API_PATH, {
     method: 'POST',
@@ -453,12 +461,19 @@ function delay(ms: number): Promise<void> {
 export class DefaultAppConversationClientRegistry implements AppConversationClientRegistry {
   private readonly definitions = new Map<string, AppConversationClientDefinition>()
   private readonly tasks = new Set<Promise<void>>()
+  private readonly retainedActions = new Map<SessionId, RetainedAgentAction>()
+  private readonly stopSessionChanges: () => void
+  private disposed = false
 
   constructor(
     private readonly ctx: ClientContext,
     private readonly connection: ConnectionHandle,
     private readonly publish: (message: AppConversationRuntimeMessage) => void,
-  ) {}
+  ) {
+    this.stopSessionChanges = this.ctx.sessions.list.subscribe?.(() => {
+      this.reconcileRetainedActions()
+    }) ?? (() => {})
+  }
 
   register(definition: AppConversationClientDefinition): () => void {
     const id = definition.id.trim()
@@ -472,7 +487,20 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
       body: JSON.stringify({ action: 'client-ready', appId: id }),
     }).catch(() => {})
     return () => {
-      if (this.definitions.get(id) === normalized) this.definitions.delete(id)
+      if (this.definitions.get(id) !== normalized) return
+      this.definitions.delete(id)
+      for (const [sessionId, state] of this.retainedActions) {
+        if (state.execution.appId === id) this.releaseRetainedAction(sessionId, state)
+      }
+    }
+  }
+
+  dispose(): void {
+    if (this.disposed) return
+    this.disposed = true
+    this.stopSessionChanges()
+    for (const [sessionId, state] of this.retainedActions) {
+      this.releaseRetainedAction(sessionId, state)
     }
   }
 
@@ -511,7 +539,9 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
   private async invoke(message: AppConversationPageInvokeMessage): Promise<void> {
     let action: AppConversationPreparedAction | undefined
     let sessionId: SessionId | undefined
-    let execution: AgentActionExecution | undefined
+    let retainedAction: RetainedAgentAction | undefined
+    let createdRetainedAction = false
+    let promptAccepted = false
     let turnBaseline: number | undefined
     try {
       this.emit(message, action, { status: 'preparing' })
@@ -544,62 +574,136 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
       if (action.tools !== undefined) {
         const summary = this.ctx.sessions.list.getSnapshot().byId[sessionId]
         if (summary?.running === true) {
-          throw new Error('App actions with scoped tools cannot be queued into a running Session')
+          throw new Error('App actions with Session-bound tools cannot be queued into a running Session')
         }
         const history = await this.connection.api.sessions.history({ sessionId, maxMessages: 32 })
         if (!history.result.ok) throw new Error(history.result.error.message)
         turnBaseline = latestTurnStartSequence(history.result.value.events)
-        execution = await beginAgentAction(sessionId, message.appId, action.tools)
+        const retained = await this.retainAgentAction(sessionId, message, action.tools)
+        retainedAction = retained.state
+        createdRetainedAction = retained.created
       }
       const prompted = await binding.session.prompt([{ type: 'text', text: action.prompt }], 'queue')
       if (!prompted.ok) throw new Error(prompted.error.message)
+      promptAccepted = true
       this.emit(message, action, { status: 'running', sessionId })
       if (message.openSession === true) {
         this.ctx.sessions.open(sessionId)
         void requestMainWindowFocus()
-        if (execution === undefined) return
+        if (retainedAction === undefined) return
       }
-      await this.poll(message, action, sessionId, execution, turnBaseline)
+      await this.poll(message, action, sessionId, retainedAction, turnBaseline)
     } catch (error) {
       this.emit(message, action, {
         status: 'failed',
         ...(sessionId === undefined ? {} : { sessionId }),
         error: errorMessage(error),
       })
-    } finally {
-      if (execution !== undefined) {
-        await finishAgentAction(execution.executionId).catch(() => {})
+      if (!promptAccepted && createdRetainedAction && sessionId !== undefined && retainedAction !== undefined) {
+        this.releaseRetainedAction(sessionId, retainedAction)
       }
     }
+  }
+
+  private async retainAgentAction(
+    sessionId: SessionId,
+    message: AppConversationPageInvokeMessage,
+    tools: readonly string[],
+  ): Promise<{ readonly state: RetainedAgentAction; readonly created: boolean }> {
+    const existing = this.retainedActions.get(sessionId)
+    if (
+      existing !== undefined
+      && existing.execution.appId === message.appId
+      && existing.execution.tools.length === tools.length
+      && existing.execution.tools.every((tool, index) => tool === tools[index])
+    ) {
+      existing.route = message
+      return { state: existing, created: false }
+    }
+    if (existing !== undefined) {
+      await finishAgentAction(existing.execution.executionId).catch(() => {})
+      if (this.retainedActions.get(sessionId) === existing) this.retainedActions.delete(sessionId)
+    }
+    const execution = await beginAgentAction(sessionId, message.appId, tools)
+    const state: RetainedAgentAction = {
+      execution,
+      route: message,
+      lastEffectSequence: 0,
+      reading: undefined,
+      monitoring: undefined,
+    }
+    this.retainedActions.set(sessionId, state)
+    return { state, created: true }
+  }
+
+  private releaseRetainedAction(sessionId: SessionId, state: RetainedAgentAction): void {
+    if (this.retainedActions.get(sessionId) !== state) return
+    this.retainedActions.delete(sessionId)
+    void finishAgentAction(state.execution.executionId).catch(() => {})
+  }
+
+  private async drainAgentActionEffects(state: RetainedAgentAction): Promise<void> {
+    if (state.reading !== undefined) return await state.reading
+    const reading = (async () => {
+      const effects = await readAgentActionEffects(
+        state.execution.executionId,
+        state.lastEffectSequence,
+      )
+      for (const effect of effects) {
+        this.publish({
+          source: APP_CONVERSATION_RUNTIME_SOURCE,
+          type: 'action-effect',
+          targetClientId: state.route.clientId,
+          requestId: state.route.requestId,
+          appId: state.route.appId,
+          sessionId: state.execution.sessionId,
+          effect,
+        })
+        state.lastEffectSequence = Math.max(state.lastEffectSequence, effect.sequence)
+      }
+    })().finally(() => {
+      if (state.reading === reading) state.reading = undefined
+    })
+    state.reading = reading
+    await reading
+  }
+
+  private reconcileRetainedActions(): void {
+    if (this.disposed) return
+    const sessions = this.ctx.sessions.list.getSnapshot()
+    for (const [sessionId, state] of this.retainedActions) {
+      if (sessions.byId[sessionId]?.running !== true || state.monitoring !== undefined) continue
+      const monitoring = this.monitorRetainedAction(sessionId, state)
+        .catch(() => {
+          this.releaseRetainedAction(sessionId, state)
+        })
+        .finally(() => {
+          if (state.monitoring === monitoring) state.monitoring = undefined
+        })
+      state.monitoring = monitoring
+    }
+  }
+
+  private async monitorRetainedAction(sessionId: SessionId, state: RetainedAgentAction): Promise<void> {
+    do {
+      await delay(POLL_INTERVAL_MS)
+      if (this.disposed || this.retainedActions.get(sessionId) !== state) return
+      await this.drainAgentActionEffects(state)
+    } while (this.ctx.sessions.list.getSnapshot().byId[sessionId]?.running === true)
   }
 
   private async poll(
     message: AppConversationPageInvokeMessage,
     action: AppConversationPreparedAction,
     sessionId: SessionId,
-    execution?: AgentActionExecution,
+    retainedAction?: RetainedAgentAction,
     turnBaseline?: number,
   ): Promise<void> {
     const startedAt = Date.now()
     let lastText = ''
-    let lastEffectSequence = 0
     while (Date.now() - startedAt < POLL_TIMEOUT_MS) {
       await delay(POLL_INTERVAL_MS)
-      if (execution !== undefined) {
-        const effects = await readAgentActionEffects(execution.executionId, lastEffectSequence)
-        for (const effect of effects) {
-          this.publish({
-            source: APP_CONVERSATION_RUNTIME_SOURCE,
-            type: 'action-effect',
-            targetClientId: message.clientId,
-            requestId: message.requestId,
-            appId: message.appId,
-            sessionId,
-            effect,
-          })
-          lastEffectSequence = Math.max(lastEffectSequence, effect.sequence)
-        }
-      }
+      if (retainedAction !== undefined) await this.drainAgentActionEffects(retainedAction)
       const summary = this.ctx.sessions.list.getSnapshot().byId[sessionId]
       if (summary?.pendingInteraction !== undefined) {
         this.emit(message, action, {
@@ -672,6 +776,7 @@ export function apply(ctx: ClientContext): void {
     return () => {
       channel.removeEventListener('message', listener)
       channel.close()
+      registry.dispose()
       disposeService()
     }
   }, 'deepdeck app conversations: client registry and protocol')

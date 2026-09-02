@@ -441,14 +441,15 @@ describe('app conversation Client registry', () => {
     }))
   })
 
-  it('delivers action-scoped tool effects instead of treating final text as App data', async () => {
+  it('keeps App tool effects connected for direct follow-ups in the same Session', async () => {
     vi.useFakeTimers()
     vi.stubGlobal('window', { setTimeout: globalThis.setTimeout })
     const prompt = vi.fn(async () => ({ ok: true }))
     const publish = vi.fn()
     const requests: string[] = []
+    let continuationEffectReady = false
     vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
-      const request = JSON.parse(String(init?.body)) as { action: string }
+      const request = JSON.parse(String(init?.body)) as { action: string; afterSequence?: number }
       requests.push(request.action)
       if (request.action === 'resolve-workspace') {
         return new Response(JSON.stringify({
@@ -471,17 +472,29 @@ describe('app conversation Client registry', () => {
         }), { status: 200, headers: { 'content-type': 'application/json' } })
       }
       if (request.action === 'read-agent-action-effects') {
-        return new Response(JSON.stringify({
-          effectPage: {
-            executionId: 'execution-1',
-            effects: [{
+        const effects = request.afterSequence === 0
+          ? [{
               sequence: 1,
               effectId: 'effect-1',
               toolName: 'reader_set_reply_draft',
               effect: 'reply-draft.set',
               payload: { content: 'Structured draft' },
               createdAt: '2026-08-29T00:00:00.000Z',
-            }],
+            }]
+          : continuationEffectReady && request.afterSequence === 1
+            ? [{
+                sequence: 2,
+                effectId: 'effect-2',
+                toolName: 'reader_set_reply_draft',
+                effect: 'reply-draft.set',
+                payload: { content: 'Direct follow-up draft' },
+                createdAt: '2026-08-29T00:01:00.000Z',
+              }]
+            : []
+        return new Response(JSON.stringify({
+          effectPage: {
+            executionId: 'execution-1',
+            effects,
           },
         }), { status: 200, headers: { 'content-type': 'application/json' } })
       }
@@ -504,6 +517,15 @@ describe('app conversation Client registry', () => {
           },
         },
       })
+    let sessionRunning = false
+    const sessionListeners = new Set<() => void>()
+    const sessionList = {
+      getSnapshot: () => ({ byId: { 'session-1': { running: sessionRunning } } }),
+      subscribe(listener: () => void) {
+        sessionListeners.add(listener)
+        return () => { sessionListeners.delete(listener) }
+      },
+    }
     const registry = new DefaultAppConversationClientRegistry({
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
@@ -511,7 +533,7 @@ describe('app conversation Client registry', () => {
         connectWorkspace: vi.fn(async () => 'session-1'),
       },
       sessions: {
-        list: { getSnapshot: () => ({ byId: { 'session-1': { running: false } } }) },
+        list: sessionList,
         binding: () => ({ session: { rename: vi.fn(async () => ({ ok: true })), prompt } }),
         open: vi.fn(),
       },
@@ -551,6 +573,27 @@ describe('app conversation Client registry', () => {
         payload: { content: 'Structured draft' },
       }),
     }))
+    expect(requests).not.toContain('finish-agent-action')
+
+    continuationEffectReady = true
+    sessionRunning = true
+    for (const listener of sessionListeners) listener()
+    await vi.advanceTimersByTimeAsync(700)
+
+    expect(publish).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'action-effect',
+      requestId: 'request-1',
+      sessionId: 'session-1',
+      effect: expect.objectContaining({
+        sequence: 2,
+        payload: { content: 'Direct follow-up draft' },
+      }),
+    }))
+
+    sessionRunning = false
+    for (const listener of sessionListeners) listener()
+    registry.dispose()
+    await vi.advanceTimersByTimeAsync(0)
     expect(requests).toContain('finish-agent-action')
   })
 })

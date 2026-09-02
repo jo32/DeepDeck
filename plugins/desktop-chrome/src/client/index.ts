@@ -27,6 +27,8 @@ import {
 import { installArchiveSessionContinuity } from './archive-session-continuity.ts'
 import { trackDesktopScreen } from './desktop-runtime.ts'
 import { installDesktopSettingsShell } from './settings-shell.tsx'
+import { RestartConfirmation } from './RestartConfirmation.tsx'
+import { installRestartContinuity, type RestartContinuityRuntime } from './restart-continuity.ts'
 
 export const inject = ['slots', 'theme', 'workspaces', 'sessions', 'locale', 'connection', 'settingsScope']
 
@@ -46,6 +48,10 @@ export function apply(ctx: ClientContext): void {
     () => installArchiveSessionContinuity(ctx),
     'deepdeck desktop: archived session continuity',
   )
+  const connection = ctx.get('connection') as RestartContinuityRuntime['connection'] | undefined
+  if (connection === undefined) throw new Error('deepdeck desktop: client connection is unavailable')
+  ctx.effect(() => installRestartContinuity({ sessions: ctx.sessions, connection }),
+    'deepdeck desktop: restart session continuity')
 
   const layout = new DesktopLayoutController()
   const brandComposition = new BrandCompositionController()
@@ -154,4 +160,11 @@ export function apply(ctx: ClientContext): void {
     order: 100,
     locale: SESSION_METRICS_LOCALE,
   }, SessionMetricsPopover))
+
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'deepdeck-restart-confirmation',
+    order: 100,
+    locale: DESKTOP_SIDEBAR_LOCALE,
+  }, RestartConfirmation))
 }

@@ -1,6 +1,11 @@
-import { ipcMain, nativeTheme, type IpcMainEvent } from "electron";
+import { ipcMain, nativeTheme, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 import { channels } from "../preload/channels.js";
 import type { DesktopBranding } from "../shared/branding.js";
+import type {
+  DesktopRestartDecision,
+  DesktopRestartRecovery,
+  DesktopRestartRequest,
+} from "../shared/runtime.js";
 import { isDesktopThemeSource } from "../shared/theme.js";
 import type { DesktopUpdateStatus } from "../shared/update.js";
 import type { HarnessProcess } from "./harness/harness-process.js";
@@ -9,6 +14,10 @@ import type { DesktopUpdateService } from "./update-service.js";
 export interface DesktopIpcHooks {
   onHarnessClientReady(senderId: number): void;
   onInstallUpdate(): DesktopUpdateStatus;
+  onPendingRestart(senderId: number): DesktopRestartRequest | undefined;
+  onRestartDecision(senderId: number, decision: unknown): boolean;
+  onRestartRecovery(senderId: number): DesktopRestartRecovery | undefined;
+  onAcknowledgeRestartRecovery(senderId: number, recoveryId: unknown, sessionIds: unknown): boolean;
   onTelemetryScreen(screen: unknown): boolean;
 }
 
@@ -37,6 +46,21 @@ export function registerIpc(
     }
     return harness.getStatus();
   });
+  ipcMain.handle(channels.runtimePendingRestart, (event: IpcMainInvokeEvent) => (
+    hooks.onPendingRestart(event.sender.id)
+  ));
+  ipcMain.handle(channels.runtimeDecideRestart, (event: IpcMainInvokeEvent, decision: DesktopRestartDecision) => (
+    hooks.onRestartDecision(event.sender.id, decision)
+  ));
+  ipcMain.handle(channels.runtimeRestartRecovery, (event: IpcMainInvokeEvent) => (
+    hooks.onRestartRecovery(event.sender.id)
+  ));
+  ipcMain.handle(
+    channels.runtimeAcknowledgeRestartRecovery,
+    (event: IpcMainInvokeEvent, recoveryId: unknown, sessionIds: unknown) => (
+      hooks.onAcknowledgeRestartRecovery(event.sender.id, recoveryId, sessionIds)
+    ),
+  );
   ipcMain.handle(channels.telemetryScreen, (_event, screen: unknown) => hooks.onTelemetryScreen(screen));
   ipcMain.handle(channels.updatesGet, () => updates.getStatus());
   ipcMain.handle(channels.updatesDownload, () => updates.download());
@@ -47,6 +71,10 @@ export function registerIpc(
     ipcMain.removeHandler(channels.brandingGet);
     ipcMain.removeHandler(channels.runtimeGet);
     ipcMain.removeHandler(channels.runtimeRestart);
+    ipcMain.removeHandler(channels.runtimePendingRestart);
+    ipcMain.removeHandler(channels.runtimeDecideRestart);
+    ipcMain.removeHandler(channels.runtimeRestartRecovery);
+    ipcMain.removeHandler(channels.runtimeAcknowledgeRestartRecovery);
     ipcMain.removeHandler(channels.telemetryScreen);
     ipcMain.removeHandler(channels.updatesGet);
     ipcMain.removeHandler(channels.updatesDownload);

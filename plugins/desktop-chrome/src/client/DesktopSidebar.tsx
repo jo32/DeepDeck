@@ -32,6 +32,16 @@ export const desktopSidebarZh = {
   'update.short': '更新',
   'update.open': '查看可用更新',
   'update.close': '关闭更新提示',
+  'restart.title': '重启 DeepDeck？',
+  'restart.description': '重启会暂停所有正在运行的 Session。确认后会自动恢复运行状态。',
+  'restart.runningSessions': '个正在运行的 Session 将在重启后自动续跑',
+  'restart.waitingSessions': '个等待用户处理的 Session 将恢复原等待状态',
+  'restart.openApps': '个当前打开的 App 将在重启后重新打开',
+  'restart.durability': '已排队的消息和待处理内容会保留，不会因重启丢失。',
+  'restart.cancel': '暂不重启',
+  'restart.confirm': '确认重启',
+  'restart.restarting': '正在重启…',
+  'restart.failed': '未能提交重启选择，请重试。',
 } as const
 
 export const desktopSidebarEn = {
@@ -55,6 +65,16 @@ export const desktopSidebarEn = {
   'update.short': 'Update',
   'update.open': 'View available update',
   'update.close': 'Close update prompt',
+  'restart.title': 'Restart DeepDeck?',
+  'restart.description': 'Restarting pauses every running Session. DeepDeck will restore their state after you confirm.',
+  'restart.runningSessions': 'running Session(s) will continue automatically after restart',
+  'restart.waitingSessions': 'Session(s) awaiting input will return to the same wait state',
+  'restart.openApps': 'currently open App(s) will reopen after restart',
+  'restart.durability': 'Queued messages and pending work are preserved across the restart.',
+  'restart.cancel': 'Not now',
+  'restart.confirm': 'Restart',
+  'restart.restarting': 'Restarting…',
+  'restart.failed': 'The restart choice could not be submitted. Try again.',
 } satisfies Record<keyof typeof desktopSidebarZh, string>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

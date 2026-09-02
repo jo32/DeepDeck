@@ -251,7 +251,7 @@ const channelName = 'deepdeck-app-conversations-v1'
 }
 ```
 
-Agent 调用 action-scoped tool 时，运行时另发一条 `action-effect`：
+Agent 调用 Session-bound App tool 时，运行时另发一条 `action-effect`：
 
 ```json
 {
@@ -272,9 +272,14 @@ Agent 调用 action-scoped tool 时，运行时另发一条 `action-effect`：
 }
 ```
 
-App 页面必须按 `targetClientId`、`requestId`、`appId` 和 effect 名验证消息，再将 payload 应用到
-对应 UI。`effectId` 与单调递增的 `sequence` 用于去重和按序消费；action 完成或失败后，tool 会被
-卸载，尚未读取的 effect 只短暂保留用于完成投递。
+App 页面必须按 `targetClientId`、`requestId`、`appId`、绑定的 `sessionId` 和 effect 名验证消息，
+再将 payload 应用到对应 UI。`effectId` 与单调递增的 `sequence` 用于去重和按序消费。页面不能在
+首轮 `completed` 后丢弃最后一次 request/Session 路由：用户从主对话直接继续时，后续 effect 仍沿
+该路由送达。此时必须用 App 当前状态（例如当前 revision）重新验证 payload，不能沿用首轮捕获的
+旧基线。
+
+带 tools 的 action 完成或失败只结束当前 turn 的预览；tool 与 effect execution 继续绑定该 App
+Session，直到 App Client/Plugin 被卸载、绑定被显式替换、Agent 被销毁或 Session 运行时结束。
 
 状态语义：
 
@@ -283,7 +288,7 @@ App 页面必须按 `targetClientId`、`requestId`、`appId` 和 effect 名验�
 | `preparing` | 正在验证 action、准备 Workspace 和 Session |
 | `running` | prompt 已接受；可能同时携带增量预览文本 |
 | `attention` | Session 等待用户交互，应转到主窗口处理 |
-| `completed` | 当前 turn 已完成 |
+| `completed` | 当前 turn 已完成；Session-bound tools 仍可供直接 follow-up 使用 |
 | `failed` | action、Session 或轮询失败；`error` 提供说明 |
 
 `openSession: true` 表示 prompt 被接受后立即打开 canonical Session，不在 App 页面等待完整回答。否则 Client 最多轮询 10 分钟，并把 Assistant 的 durable message 或 live text delta 折叠成预览。
@@ -433,7 +438,7 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 | `resolve-workspace` | App Client | 只解析普通 App Workspace |
 | `resolve-creator-workspace` | Vibe Coding | 要求 loopback + 同源 |
 | `begin-agent-action` | App Client | 要求 loopback + 同源；把 Host 注册的指定 tools 绑定到 App Session/Workspace |
-| `read-agent-action-effects` | App Client | 要求 loopback + 同源；只读取本次 execution 的结构化 effects |
+| `read-agent-action-effects` | App Client | 要求 loopback + 同源；读取该 App Session execution 的结构化 effects |
 | `finish-agent-action` | App Client | 要求 loopback + 同源；卸载 tools 并清理 execution |
 | `focus-main-window` | App Client | 只请求 Electron 聚焦主窗口 |
 
@@ -455,7 +460,7 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 2. Host/Client App definition 从注册表移除；
 3. App settings slot 被释放；
 4. BroadcastChannel listener 随 `app-conversations` Client 生命周期关闭；
-5. action-scoped tools 随 turn、Agent 或 Plugin 生命周期卸载；
+5. Session-bound App tools 在 App Client/Plugin 注销、绑定替换或 Agent 销毁时卸载，不随单个 turn 结束；
 6. 已有 Workspace 和 Session 历史保留在磁盘，不因 Plugin 卸载而删除；
 7. credentials 仍由 App credential service 的清理策略负责。
 
@@ -469,7 +474,7 @@ DeepDeck profile 提供 `app-conversations` 和 `bun-plugin-builder` 基础服�
 - [ ] Client 注册 `sidebar.apps`，成功打开后调用 `closeApps()`
 - [ ] 有设置时使用 `settings.apps.item`，slot `id` 与 App `id` 一致
 - [ ] App actions 使用固定 `actionId` 并验证 payload，不接受页面提供的任意 prompt
-- [ ] App 数据回写使用 Host 注册、action 选择的 scoped tool；不要把 Assistant 最终文本隐式当成字段值
+- [ ] App 数据回写使用 Host 注册、action 选择的 Session-bound tool；保留 completed request 的 Session 路由供直接 follow-up 使用，不把 Assistant 最终文本隐式当成字段值
 - [ ] 写入草稿的 UI effect 与发布、删除等有副作用的能力分离，并测试未调用 tool、重复 effect 和错误 payload
 - [ ] 普通会话只使用 `~/DeepDeck/Apps/<slug>`，源码修改只使用 Creator Workspace
 - [ ] App UI 使用设计 token，同时检查 Light 和 Dark mode

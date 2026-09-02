@@ -1,7 +1,8 @@
 /**
  * DeepDeck's provider-aware implementation of the Harness `ctx.web` seam.
- * Search follows the provider used by the current Agent request while fetch
- * retains the provider-neutral configured/single-usable selection contract.
+ * Search prefers the provider used by the current Agent request, then falls
+ * back to another usable search provider. Fetch retains the provider-neutral
+ * configured/single-usable selection contract.
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
@@ -37,11 +38,6 @@ interface Selection<P> {
 
 type ResolveModelProvider = () => string | undefined
 
-const MODEL_SEARCH_PROVIDERS: Readonly<Record<string, string>> = Object.freeze({
-  'deepseek-official': 'deepseek-official',
-  'openai-codex': 'openai-codex',
-})
-
 /** Read the route already committed for the current turn, then fall back to Agent options. */
 export function modelProviderForAgent(agent: Agent | undefined): string | undefined {
   return agent?.session.requestHeader()?.config.provider ?? agent?.options.provider
@@ -49,7 +45,7 @@ export function modelProviderForAgent(agent: Agent | undefined): string | undefi
 
 /** Map model-provider identity to the matching search-provider identity. */
 export function searchProviderForModelProvider(modelProvider: string | undefined): string | undefined {
-  return modelProvider === undefined ? undefined : MODEL_SEARCH_PROVIDERS[modelProvider]
+  return modelProvider
 }
 
 /** Resolve one configured provider using the upstream `ctx.web` error contract. */
@@ -87,15 +83,92 @@ function resolveProvider<P extends ResolvableProvider>(selection: Selection<P>):
   return single
 }
 
+/** Put the matching provider first, followed by every other locally usable provider. */
+function resolvePreferredProviders<P extends ResolvableProvider>(
+  providers: ReadonlyMap<string, P>,
+  preferredId: string | undefined,
+): readonly P[] {
+  const preferred = preferredId === undefined ? undefined : providers.get(preferredId)
+  const candidates: P[] = []
+  if (preferred?.available() === true) candidates.push(preferred)
+
+  for (const provider of providers.values()) {
+    if (provider !== preferred && provider.available()) candidates.push(provider)
+  }
+
+  if (candidates.length === 0) {
+    throw new WebError('no usable web provider is registered', 'WEB_PROVIDER_UNAVAILABLE')
+  }
+  return candidates
+}
+
+interface SearchOutcome {
+  readonly providerIndex: number
+  readonly result: WebSearchResult
+}
+
+/** Race real searches asynchronously; the first successful provider wins. */
+async function searchConcurrently(
+  providers: readonly WebSearchProvider[],
+  request: WebSearchRequest,
+  signal?: AbortSignal,
+): Promise<WebSearchResult> {
+  signal?.throwIfAborted()
+  const controllers = providers.map(() => new AbortController())
+  const searches = providers.map((provider, providerIndex) => Promise.resolve()
+    .then(() => provider.search(request, controllers[providerIndex]?.signal))
+    .then(result => ({ providerIndex, result } satisfies SearchOutcome)))
+  const firstSuccess = Promise.any(searches)
+  let removeAbortListener: (() => void) | undefined
+
+  try {
+    let outcome: SearchOutcome
+    if (signal === undefined) {
+      outcome = await firstSuccess
+    } else {
+      const callerAbort = new Promise<never>((_resolve, reject) => {
+        const onAbort = (): void => {
+          const reason = signal.reason ?? new DOMException('Web search aborted', 'AbortError')
+          for (const controller of controllers) controller.abort(reason)
+          reject(reason)
+        }
+        signal.addEventListener('abort', onAbort, { once: true })
+        removeAbortListener = () => signal.removeEventListener('abort', onAbort)
+      })
+      outcome = await Promise.race([firstSuccess, callerAbort])
+    }
+
+    const superseded = new DOMException(
+      'Another web search provider succeeded',
+      'AbortError',
+    )
+    controllers.forEach((controller, providerIndex) => {
+      if (providerIndex !== outcome.providerIndex) controller.abort(superseded)
+    })
+    return outcome.result
+  } catch (error: unknown) {
+    if (signal?.aborted === true) throw signal.reason ?? error
+    if (!(error instanceof AggregateError)) throw error
+    const ids = providers.map(provider => provider.id).join(', ')
+    throw new WebError(
+      `all usable web search providers failed at runtime (${ids})`,
+      'WEB_PROVIDER_ERROR',
+      { cause: error },
+    )
+  } finally {
+    removeAbortListener?.()
+  }
+}
+
 function capSources(result: WebSearchResult, maxResults: number | undefined): WebSearchResult {
   if (maxResults === undefined || result.sources.length <= maxResults) return result
   return { ...result, sources: result.sources.slice(0, maxResults), truncated: true }
 }
 
 /**
- * `ctx.web` service replacement. Explicit config wins; otherwise known model
- * routes are sticky, including the missing/unavailable error state, so a GPT
- * tool call can never silently fall through to a billable DeepSeek search.
+ * `ctx.web` service replacement. Explicit config wins. Otherwise search uses
+ * the provider whose id matches the current model route first, then races all
+ * locally usable providers asynchronously and returns the first real success.
  */
 export class ProviderAwareWebRuntime extends Service {
   static Config: z<ProviderAwareWebConfig> = z.object({
@@ -149,13 +222,19 @@ export class ProviderAwareWebRuntime extends Service {
   }
 
   async search(request: WebSearchRequest, signal?: AbortSignal): Promise<WebSearchResult> {
-    const routedProviderId = searchProviderForModelProvider(this.resolveModelProvider())
-    const configuredId = this.searchProviderId ?? routedProviderId
-    const provider = resolveProvider({
-      providers: this.searchProviders,
-      ...configuredId === undefined ? {} : { configuredId },
-    })
-    return capSources(await provider.search(request, signal), request.maxResults)
+    if (this.searchProviderId !== undefined) {
+      const provider = resolveProvider({
+        providers: this.searchProviders,
+        configuredId: this.searchProviderId,
+      })
+      return capSources(await provider.search(request, signal), request.maxResults)
+    }
+
+    const providers = resolvePreferredProviders(
+      this.searchProviders,
+      searchProviderForModelProvider(this.resolveModelProvider()),
+    )
+    return capSources(await searchConcurrently(providers, request, signal), request.maxResults)
   }
 
   async fetch(request: WebFetchRequest, signal?: AbortSignal): Promise<WebFetchResult> {

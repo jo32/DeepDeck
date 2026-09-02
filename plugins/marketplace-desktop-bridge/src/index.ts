@@ -25,6 +25,7 @@ interface HostContext {
 
 export const name = 'deepdeck-app-market-desktop-bridge'
 export const MARKETPLACE_RESTART_REQUEST = 'dsh-market:restart' as const
+export const MARKETPLACE_RESTART_RESULT = 'dsh-market:restart-result' as const
 export const APP_WINDOWS_RELOAD_REQUEST = 'deepdeck:reload-app-windows' as const
 export const APP_WINDOWS_RELOAD_RESULT = 'deepdeck:reload-app-windows-result' as const
 
@@ -39,6 +40,11 @@ export interface AppWindowsReloadResponse {
   readonly reloaded: number
   readonly failed: number
   readonly error?: string
+}
+
+export interface MarketplaceRestartResponse {
+  readonly type: typeof MARKETPLACE_RESTART_RESULT
+  readonly accepted: boolean
 }
 
 export interface AppWindowReloadReceipt {
@@ -115,7 +121,25 @@ export function createMarketplaceDesktopServices(
         if (restartRequested) return
         if (send === undefined) throw new Error('DeepDeck restart requires a desktop IPC parent')
         restartRequested = true
-        defer(() => { send({ type: MARKETPLACE_RESTART_REQUEST }) }, 100)
+        let stop = (): void => {}
+        try {
+          stop = subscribe((message) => {
+            if (typeof message !== 'object' || message === null) return
+            const result = message as Partial<MarketplaceRestartResponse>
+            if (result.type !== MARKETPLACE_RESTART_RESULT || typeof result.accepted !== 'boolean') return
+            stop()
+            if (!result.accepted) restartRequested = false
+          })
+        } catch (error) {
+          restartRequested = false
+          throw error
+        }
+        defer(() => {
+          if (!send({ type: MARKETPLACE_RESTART_REQUEST })) {
+            stop()
+            restartRequested = false
+          }
+        }, 100)
       },
       reloadAppWindows: async (path: string): Promise<AppWindowReloadReceipt> => {
         if (send === undefined) throw new Error('DeepDeck App window reload requires a desktop IPC parent')

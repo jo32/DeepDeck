@@ -4,6 +4,7 @@ import {
   APP_WINDOWS_RELOAD_RESULT,
   createMarketplaceDesktopServices,
   MARKETPLACE_RESTART_REQUEST,
+  MARKETPLACE_RESTART_RESULT,
   type MarketplaceDesktopMessage,
 } from './index.js'
 
@@ -64,6 +65,10 @@ describe('createMarketplaceDesktopServices', () => {
       { type: APP_WINDOWS_RELOAD_REQUEST, requestId: expect.any(String), path: '/apps/reader' },
       { type: MARKETPLACE_RESTART_REQUEST },
     ])
+
+    receive?.({ type: MARKETPLACE_RESTART_RESULT, accepted: false })
+    await services.desktopActions.requestRestart()
+    expect(deferred).toHaveLength(2)
   })
 
   it('requires an absolute Harness CLI path', () => {

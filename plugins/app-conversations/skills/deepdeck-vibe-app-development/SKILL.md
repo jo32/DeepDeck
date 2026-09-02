@@ -30,8 +30,10 @@ If an Agent result must update an App field or UI region, make that update expli
 1. Declare a narrowly named Host `actionTools` entry with a closed JSON schema and a stable App-owned effect name.
 2. Select that tool in the prepared Client action's `tools` list.
 3. Tell the Agent in the action prompt exactly when to call the tool and what the final Assistant message should contain.
-4. Consume `action-effect` only for the matching client, request, App, and expected effect; validate its payload before applying it.
+4. Consume `action-effect` only for the matching client, App, bound Session, and expected effect. Keep the last request route after its preview completes so direct conversation follow-ups can deliver later effects, and validate every payload against current App state before applying it.
 5. Treat Assistant prose as conversation and preview content, never as an implicit data protocol.
+
+If an effect uses optimistic revisions, make the action prompt define the direct-follow-up rule explicitly: after each successful apply the Agent advances the revision and treats its last complete emitted value as current. Reject a follow-up when the App changed independently; the user must re-dispatch from the App to supply a fresh snapshot.
 
 Prefer semantic effects such as setting a draft, choosing a candidate, or appending a reviewed item. Keep them independent of irreversible operations. Creating a draft must not publish it; external writes, deletion, purchases, messages, and similar consequences retain their own confirmation or approval boundary.
 

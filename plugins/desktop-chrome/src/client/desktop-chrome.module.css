@@ -13,6 +13,54 @@
 
 .frame[data-dragging] { transition: none; }
 
+.restartDialog {
+  width: min(480px, calc(100vw - 40px));
+}
+
+.restartContent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.restartContent p,
+.restartContent ul {
+  margin: 0;
+}
+
+.restartContent ul {
+  display: flex;
+  padding: 12px 14px;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  list-style-position: inside;
+}
+
+.restartContent strong {
+  color: var(--dsw-alias-label-primary);
+}
+
+.restartDurability {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.restartError {
+  color: var(--dsw-alias-label-error);
+  font-size: 13px;
+}
+
+.restartActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .frame[data-layout-motion-ready] { transition: none; }
 }

@@ -5,6 +5,7 @@ import type { DesktopUpdateStatus } from "../shared/update.js";
 import { publicBranding, type LoadedBranding } from "./branding.js";
 import { createDesktopUpdateService } from "./auto-update.js";
 import { HarnessProcess, resolveHarnessHome } from "./harness/harness-process.js";
+import { HarnessRestartRecovery } from "./harness/restart-recovery.js";
 import { registerIpc } from "./ipc.js";
 import { configureNativeApplicationIdentity } from "./native-identity.js";
 import type { DesktopRuntimePaths } from "./runtime-paths.js";
@@ -83,8 +84,10 @@ export async function bootstrapDesktop(
 
   const telemetry = await createDesktopTelemetry(app);
 
-  const appWindows = createAppWindowManager();
+  const appWindows = createAppWindowManager(branding.name);
+  const restartRecovery = new HarnessRestartRecovery();
   let desktopWindow: DesktopWindow | undefined;
+  let restartInFlight = false;
   const focusMainWindow = (): void => {
     const window = desktopWindow?.window;
     if (!window || window.isDestroyed()) return;
@@ -109,6 +112,25 @@ export async function bootstrapDesktop(
     },
     onAppWindowsReloadRequest: async url => await appWindows.reload(url),
     onMainWindowFocusRequest: focusMainWindow,
+    onRestartRequest: () => {
+      const baseUrl = harness.getStatus().url;
+      if (baseUrl === undefined) {
+        harness.resolveRestartRequest(false);
+        return;
+      }
+      const request = restartRecovery.request(appWindows.snapshot(baseUrl));
+      if (request === undefined) {
+        harness.resolveRestartRequest(false);
+        return;
+      }
+      const current = desktopWindow;
+      if (current === undefined || current.window.isDestroyed()) {
+        restartRecovery.decide({ requestId: request.requestId, confirmed: false, sessions: [] });
+        harness.resolveRestartRequest(false);
+        return;
+      }
+      current.send(channels.runtimeRestartRequested, request);
+    },
   });
   const updates = createDesktopUpdateService(initialUpdateStatus);
   let removeIpc = (): void => {};
@@ -207,6 +229,44 @@ export async function bootstrapDesktop(
       desktopWindow?.markHarnessClientReady(senderId);
     },
     onInstallUpdate: requestInstallUpdate,
+    onPendingRestart: (senderId) => (
+      desktopWindow?.isHarnessRenderer(senderId) === true
+        ? restartRecovery.pendingRequest()
+        : undefined
+    ),
+    onRestartDecision: (senderId, decision) => {
+      if (desktopWindow?.isHarnessRenderer(senderId) !== true) return false;
+      const baseUrl = harness.getStatus().url;
+      const result = restartRecovery.decide(
+        decision,
+        baseUrl === undefined ? undefined : appWindows.snapshot(baseUrl),
+      );
+      if (result === "ignored") return false;
+      if (result === "cancelled") {
+        harness.resolveRestartRequest(false);
+        return true;
+      }
+      harness.resolveRestartRequest(true);
+      if (!restartInFlight) {
+        restartInFlight = true;
+        void harness.restart()
+          .catch((error: unknown) => {
+            console.error("Unable to restart the Harness after user confirmation", error);
+          })
+          .finally(() => { restartInFlight = false; });
+      }
+      return true;
+    },
+    onRestartRecovery: (senderId) => (
+      desktopWindow?.isHarnessRenderer(senderId) === true
+        ? restartRecovery.recovery()
+        : undefined
+    ),
+    onAcknowledgeRestartRecovery: (senderId, recoveryId, sessionIds) => (
+      desktopWindow?.isHarnessRenderer(senderId) === true
+        ? restartRecovery.acknowledge(recoveryId, sessionIds)
+        : false
+    ),
     onTelemetryScreen: screen => telemetry.trackScreen(screen),
   });
 
@@ -222,6 +282,14 @@ export async function bootstrapDesktop(
     current.send(channels.runtimeStatus, status);
     if (status.state === "ready" && status.url) {
       await current.loadHarness(status.url);
+      const appRoutes = restartRecovery.appRoutes();
+      if (appRoutes.length > 0) {
+        const receipt = await appWindows.restore(status.url, appRoutes);
+        if (receipt.failed > 0) {
+          console.error(`Unable to restore ${String(receipt.failed)} App window(s) after restart`);
+        }
+        restartRecovery.markAppsRestored();
+      }
     } else {
       current.showSplash();
     }

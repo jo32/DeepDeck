@@ -573,6 +573,9 @@ describe('App source registry', () => {
 
     expect(registry.actionTools('reader', workspace, ['reader_set_reply']))
       .toEqual([expect.objectContaining({ name: 'reader_set_reply', effect: 'reply.set' })])
+    expect(registry.legacyActionToolBinding(workspace, ['bash', 'reader_set_reply']))
+      .toEqual({ appId: 'reader', toolNames: ['reader_set_reply'] })
+    expect(registry.legacyActionToolBinding(workspace, ['bash'])).toBeUndefined()
     expect(() => registry.actionTools('reader', join(root, 'elsewhere'), ['reader_set_reply']))
       .toThrow('Workspace does not match')
     expect(() => registry.actionTools('reader', workspace, ['reader_missing']))

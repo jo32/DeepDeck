@@ -23,9 +23,8 @@
   disabled: true
 
 - insert:
-    # Follow the provider used by the current Agent request. This keeps
-    # DeepSeek search for DeepSeek sessions while ChatGPT-backed sessions use
-    # Codex Connect's OpenAI Responses web_search implementation.
+    # Schedule the current Agent provider first, then race the other usable
+    # providers asynchronously so a broken route cannot hold up the search.
     - id: deepdeck-provider-aware-web
       name: '@deepdeck/dsh-provider-aware-web'
       config: {}

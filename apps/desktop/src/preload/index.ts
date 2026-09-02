@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { DesktopApi, HarnessRuntimeStatus } from "../shared/runtime.js";
+import type {
+  DesktopApi,
+  DesktopRestartRequest,
+  HarnessRuntimeStatus,
+} from "../shared/runtime.js";
 import type { DesktopUpdateStatus } from "../shared/update.js";
 import { channels } from "./channels.js";
 
@@ -14,6 +18,19 @@ const api: DesktopApi = {
     get: () => ipcRenderer.invoke(channels.runtimeGet),
     restart: () => ipcRenderer.invoke(channels.runtimeRestart),
     readyForDisplay: () => ipcRenderer.send(channels.runtimeClientReady),
+    pendingRestart: () => ipcRenderer.invoke(channels.runtimePendingRestart),
+    decideRestart: decision => ipcRenderer.invoke(channels.runtimeDecideRestart, decision),
+    onRestartRequested: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, request: DesktopRestartRequest): void => {
+        listener(request);
+      };
+      ipcRenderer.on(channels.runtimeRestartRequested, handler);
+      return () => ipcRenderer.removeListener(channels.runtimeRestartRequested, handler);
+    },
+    restartRecovery: () => ipcRenderer.invoke(channels.runtimeRestartRecovery),
+    acknowledgeRestartRecovery: (recoveryId, sessionIds) => (
+      ipcRenderer.invoke(channels.runtimeAcknowledgeRestartRecovery, recoveryId, sessionIds)
+    ),
     onStatus: (listener) => {
       const handler = (_event: Electron.IpcRendererEvent, status: HarnessRuntimeStatus): void => {
         listener(status);

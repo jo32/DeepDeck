@@ -15,6 +15,7 @@ import { loadWindowState, saveWindowState } from "./window-state.js";
 
 export interface DesktopWindow {
   window: BaseWindow;
+  isHarnessRenderer(senderId: number): boolean;
   loadHarness(url: string): Promise<void>;
   loadSplash(): Promise<void>;
   markHarnessClientReady(senderId: number): void;
@@ -202,6 +203,7 @@ export async function createMainWindow(branding: LoadedBranding): Promise<Deskto
   window.show();
   return {
     window,
+    isHarnessRenderer: senderId => senderId === harnessContents.id,
     loadHarness: async (url) => {
       const generation = ++harnessLoadGeneration;
       gate.begin(url);

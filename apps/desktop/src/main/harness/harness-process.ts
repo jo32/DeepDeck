@@ -27,6 +27,7 @@ const START_TIMEOUT_MS = 90_000;
 const STOP_TIMEOUT_MS = 5_000;
 const MAX_LOG_LINES = 80;
 export const MARKETPLACE_RESTART_REQUEST = "dsh-market:restart";
+export const MARKETPLACE_RESTART_RESULT = "dsh-market:restart-result";
 const LEGACY_PRESET_BUNDLES = ["dshmarket"] as const;
 
 type StatusListener = (status: HarnessRuntimeStatus) => void;
@@ -59,6 +60,8 @@ export interface HarnessProcessOptions {
   onAppWindowsReloadRequest?: (url: string) => Promise<AppWindowReloadReceipt>;
   /** Restores the primary window when an app preview navigates to its canonical Session. */
   onMainWindowFocusRequest?: () => void;
+  /** Delegates an automatic restart to the desktop confirmation transaction. */
+  onRestartRequest?: () => void;
 }
 
 export function resolveHarnessWebArguments(cliPath: string, patchPath: string): string[] {
@@ -174,6 +177,16 @@ export class HarnessProcess {
   async restart(): Promise<string> {
     await this.stop();
     return this.start();
+  }
+
+  resolveRestartRequest(accepted: boolean): void {
+    const child = this.child;
+    if (!child?.connected) return;
+    try {
+      child.send({ type: MARKETPLACE_RESTART_RESULT, accepted });
+    } catch {
+      // A confirmed restart may begin while the result is in flight.
+    }
   }
 
   async stop(): Promise<void> {
@@ -300,10 +313,13 @@ export class HarnessProcess {
       child.on("message", (message: unknown) => {
         if (this.child !== child) return;
         if (isMarketplaceRestartRequest(message)) {
-          void this.restart().catch((error: unknown) => {
-            const detail = errorMessage(error);
-            this.publish({ state: "error", message: `无法重启 ${this.options.displayName}：${detail}` });
-          });
+          if (this.options.onRestartRequest !== undefined) this.options.onRestartRequest();
+          else {
+            void this.restart().catch((error: unknown) => {
+              const detail = errorMessage(error);
+              this.publish({ state: "error", message: `无法重启 ${this.options.displayName}：${detail}` });
+            });
+          }
           return;
         }
         if (isAppWindowOpenRequest(message)) {

@@ -345,6 +345,25 @@ export class DefaultAppConversationHostRegistry implements AppConversationHostRe
     })
   }
 
+  /** Recover pre-persistence App bindings from an older request/header tool list. */
+  legacyActionToolBinding(
+    cwd: string,
+    requestToolNames: readonly string[],
+  ): { readonly appId: string; readonly toolNames: readonly string[] } | undefined {
+    const workspace = canonicalPath(cwd)
+    const definition = [...this.definitions.values()].find(candidate => (
+      canonicalPath(join(this.home, APP_WORKSPACE_DIRECTORY, candidate.workspaceSlug)) === workspace
+    ))
+    if (definition === undefined) return undefined
+    const requested = new Set(requestToolNames)
+    const toolNames = (definition.actionTools ?? [])
+      .map(tool => tool.name)
+      .filter(name => requested.has(name))
+    return toolNames.length === 0
+      ? undefined
+      : Object.freeze({ appId: definition.id, toolNames: Object.freeze(toolNames) })
+  }
+
   isCreatorSource(cwd: string): boolean {
     const source = canonicalPath(cwd)
     return [...this.definitions.values()].some(
@@ -819,7 +838,7 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
   )
   ctx.effect(
     () => () => { actionTools.dispose() },
-    'deepdeck app conversations: action-scoped Agent tools',
+    'deepdeck app conversations: session-bound Agent tools',
   )
   ctx.effect(
     () => {
@@ -914,7 +933,7 @@ export async function apply(ctx: AppConversationHostContext): Promise<void> {
             return
           }
           sendJson(response, 200, {
-            execution: actionTools.begin({
+            execution: await actionTools.begin({
               sessionId: body.sessionId,
               appId: body.appId,
               toolNames: body.toolNames,

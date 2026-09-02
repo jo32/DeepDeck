@@ -49,7 +49,7 @@ export interface AppConversationPreviewMessage {
   readonly error?: string
 }
 
-/** One structured UI mutation emitted by an action-scoped Agent tool. */
+/** One structured UI mutation emitted by an App Session-bound Agent tool. */
 export interface AppConversationActionEffect {
   readonly sequence: number
   readonly effectId: string
@@ -63,6 +63,7 @@ export interface AppConversationEffectMessage {
   readonly source: typeof APP_CONVERSATION_RUNTIME_SOURCE
   readonly type: 'action-effect'
   readonly targetClientId: string
+  /** Last page request that established or refreshed this Session tool binding. */
   readonly requestId: string
   readonly appId: string
   readonly sessionId: string
@@ -73,7 +74,7 @@ export type AppConversationRuntimeMessage =
   | AppConversationPreviewMessage
   | AppConversationEffectMessage
 
-/** Declarative App tool mounted only while a dispatched action is active. */
+/** Declarative App tool mounted for the dispatched App Session and its direct follow-ups. */
 export interface AppConversationActionToolDefinition {
   readonly name: string
   readonly description: string
