@@ -16,9 +16,42 @@ export type ProductUpdate = {
   }>;
 };
 
-export const webmcpSourceUrl = "https://github.com/jo32/DeepDeck/tree/codex/browser-webmcp";
+export const webmcpSourceUrl = "https://github.com/jo32/DeepDeck/tree/v1.0.38";
+
+export const webmcpReleaseUrl = "https://github.com/jo32/DeepDeck/releases/tag/v1.0.38";
 
 export const productUpdates: readonly ProductUpdate[] = [
+  {
+    id: "webmcp-v1-0-38",
+    date: "2026-09-06",
+    status: "released",
+    href: webmcpReleaseUrl,
+    sourceHref: webmcpSourceUrl,
+    content: {
+      zh: {
+        category: "V1.0.38 / BROWSER / WEBMCP",
+        title: "Browser + WebMCP，现已正式发布。",
+        description: "在 v1.0.38 中使用网站 Agent 与 WebMCP Builder：从阅读、搜索到编辑和登录，让网站能力成为可复用的工具。",
+        highlights: [
+          "Apple Silicon 与 Intel Mac 安装包均已签名、公证，现有用户可通过应用内更新升级。",
+          "Builder 发现输入框、草稿和登录入口；Agent 完成读取、编辑、回填与复查，填写和提交分开。",
+          "编辑前检测草稿和目标变化；需要原生输入的编辑器由 Agent 接续操作，并验证页面结果。",
+        ],
+        linkLabel: "下载 v1.0.38",
+      },
+      en: {
+        category: "V1.0.38 / BROWSER / WEBMCP",
+        title: "Browser + WebMCP is now available.",
+        description: "Use the Site Agent and WebMCP Builder in v1.0.38 to turn reading, search, editing, and sign-in workflows into reusable website tools.",
+        highlights: [
+          "Signed and notarized installers for Apple Silicon and Intel Macs, with in-app updates for existing users.",
+          "Builder discovers inputs, drafts, and sign-in controls. The Agent reads, edits, fills, and checks, with submission as a separate action.",
+          "Detect draft and target changes before editing. The Agent continues through native browser input when needed and verifies the page result.",
+        ],
+        linkLabel: "Download v1.0.38",
+      },
+    },
+  },
   {
     id: "webmcp-browser-agent",
     date: "2026-09-05",
