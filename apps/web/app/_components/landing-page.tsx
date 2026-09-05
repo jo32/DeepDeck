@@ -70,7 +70,7 @@ const copy = {
       body: "工作区、模式、模型和输入，被收进一条自然的操作路径。DeepDeck 兼容现有 Harness 设置与插件生态，完成引导式首次设置后即可开始工作。",
       github: "查看 GitHub",
       imageAlt: "DeepDeck 简约桌面界面",
-      announcement: "开发预览：Browser + WebMCP",
+      announcement: "现已发布：Browser + WebMCP",
     },
     apps: {
       title: ["支持", "App。"],
@@ -172,7 +172,7 @@ const copy = {
       body: "Workspaces, modes, models, and the prompt all fall into one natural flow. DeepDeck keeps existing Harness settings and extensions compatible; after guided first-run setup, it is ready for work.",
       github: "View on GitHub",
       imageAlt: "The focused DeepDeck desktop interface",
-      announcement: "In preview: Browser + WebMCP",
+      announcement: "Now available: Browser + WebMCP",
     },
     apps: {
       title: ["Supports", "Apps."],

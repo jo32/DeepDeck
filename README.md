@@ -14,7 +14,7 @@
 
 ### Browser + WebMCP
 
-**Development preview:** available on the [`codex/browser-webmcp` source branch](https://github.com/jo32/DeepDeck/tree/codex/browser-webmcp). The latest published desktop release, v1.0.37, does not include this feature yet.
+**Available in [DeepDeck v1.0.38](https://github.com/jo32/DeepDeck/releases/tag/v1.0.38)** for Apple Silicon and Intel Macs.
 
 Browse a website and work with its Agent in the same window. Each site keeps its own conversation and workspace, so reopening it resumes your work. **Use** and **Builder** share that conversation: use available tools, or ask Builder to inspect the page and add the missing capabilities.
 

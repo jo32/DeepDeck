@@ -1,14 +1,14 @@
 import Image from "next/image";
 import type { SiteLocale } from "../../lib/locale";
-import { productUpdates, updateStatusLabels, webmcpSourceUrl } from "../../lib/product-updates";
+import { productUpdates, updateStatusLabels, webmcpReleaseUrl } from "../../lib/product-updates";
 
 const copy = {
   zh: {
     title: ["让网站", "成为工具。"],
     body: "在 DeepDeck Browser 中打开网站，旁边就有属于这个网站的 Agent。用自然语言阅读、搜索或处理页面，把可复用的操作交给 WebMCP。",
-    preview: "开发预览",
-    availability: "目前可从源码体验，尚未包含在已发布的安装包中。",
-    source: "从源码体验",
+    preview: "已发布 · v1.0.38",
+    availability: "已包含在 v1.0.38 安装包中，支持 Apple Silicon 与 Intel Mac。",
+    source: "下载 v1.0.38",
     workflowLabel: "WebMCP 使用流程",
     steps: [
       ["先发现，再构建", "Agent 优先发现已有工具。缺少某项能力时，切换 Builder，让它检查页面并生成对应工具。"],
@@ -25,15 +25,15 @@ const copy = {
     exampleBody: "Agent 可以读取论坛内容，也可以打开登录窗口、选择密码或 App 扫码方式。账号、验证码和协议操作在网站原生页面中处理，再根据页面结果复查登录状态。具体工具由实际页面能力决定。",
     changelogTitle: ["看看", "最近更新。"],
     changelogBody: "新功能、重要改进和实际用法，持续记录在这里。开发预览与正式发布会分别标明。",
-    changelogPreview: "此功能为源码开发预览，尚未随安装包发布。",
+    changelogPreview: "此条记录为正式发布前的源码开发预览。",
     changelogSource: "查看源码",
   },
   en: {
     title: ["Your browser,", "with an Agent."],
     body: "Open a website in DeepDeck Browser and work alongside its dedicated Agent. Read, search, or work with the page in natural language, and keep useful actions as reusable WebMCP tools.",
-    preview: "Development preview",
-    availability: "Available to try from source; not yet included in published installers.",
-    source: "Try from source",
+    preview: "Available now · v1.0.38",
+    availability: "Included in v1.0.38 for Apple Silicon and Intel Macs.",
+    source: "Download v1.0.38",
     workflowLabel: "WebMCP workflow",
     steps: [
       ["Discover, then build", "The Agent looks for existing tools first. When a capability is missing, switch to Builder to inspect the page and create the tools it needs."],
@@ -50,7 +50,7 @@ const copy = {
     exampleBody: "The Agent can read forum content, open sign-in, and choose password or app QR login. Continue with credentials, verification, and agreements on the website’s own page, then check the resulting sign-in state. Available tools depend on the actual website.",
     changelogTitle: ["What’s new", "in DeepDeck."],
     changelogBody: "New capabilities, meaningful improvements, and how to use them. Development previews and published features are labeled separately.",
-    changelogPreview: "This feature is a source development preview and has not shipped in an installer yet.",
+    changelogPreview: "This entry describes the source preview before its installer release.",
     changelogSource: "View source",
   },
 } as const;
@@ -69,7 +69,7 @@ export function WebMCPSection({ locale }: { locale: SiteLocale }) {
           </div>
           <div className="story-copy">
             <p>{content.body}</p>
-            <a className="text-link webmcp-source-link" href={webmcpSourceUrl} target="_blank" rel="noreferrer">
+            <a className="text-link webmcp-source-link" href={webmcpReleaseUrl} target="_blank" rel="noreferrer">
               {content.source} <span aria-hidden="true">↗</span>
             </a>
             <p className="webmcp-availability">{content.availability}</p>
