@@ -10,6 +10,31 @@
 
 ![DeepDeck desktop app](docs/deepdeck-brand-preview.png)
 
+## Highlights
+
+### Browser + WebMCP
+
+**Development preview:** available on the [`codex/browser-webmcp` source branch](https://github.com/jo32/DeepDeck/tree/codex/browser-webmcp). The latest published desktop release, v1.0.37, does not include this feature yet.
+
+Browse a website and work with its Agent in the same window. Each site keeps its own conversation and workspace, so reopening it resumes your work. **Use** and **Builder** share that conversation: use available tools, or ask Builder to inspect the page and add the missing capabilities.
+
+![DeepDeck Browser home with Site Agent and WebMCP Builder entry points](apps/web/public/webmcp/browser-start.jpg)
+
+- **Reusable site tools.** Discover tools a website already provides, or build WebMCP tools for its observed reading and interaction workflows. Enabled tools load again when you return to the site; their source and saved versions remain available for inspection and rollback.
+- **Search, forms, and editing.** Builder looks for interactive controls as well as readable content. The Agent can read a draft, compose or revise it, write it back to the page, and verify the editor's state. Filling a field and submitting it are separate actions.
+- **Login workflows.** Tools can open a site's real login UI, select an observed login method, and check its state. Passwords and verification codes stay in the website's native form. Available actions depend on the site and must be verified against its live page.
+
+![NGA WebMCP tools, including reading and login actions](apps/web/public/webmcp/site-tools.jpg)
+
+See the [Browser guide](plugins/browser/README.md) for details and the [website updates](https://deepdeck.getmegaportal.com/#updates) for feature announcements.
+
+### Apps and the desktop workspace
+
+- **Extend your workspace.** Discover and install Harness plugins from **Settings → Apps**, or build trusted local plugin source with **Bun Builder**.
+- **Keep familiar Harness settings.** Use compatible profiles, model settings, credentials, and installed plugins in a desktop app with native browser tabs, downloads, and automatic update support.
+
+## Architecture
+
 DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, plugin-composed interface, branding, packaging, and automatic-update layer. [dsh-codex-connect](https://github.com/franksong2702/dsh-codex-connect) remains a separate pinned checkout and is preloaded as an ordinary Cordis bundle.
 
 DeepDeck reuses the official `web` profile and its complete plugin-composed UI. The desktop host starts the Harness process on an OS-assigned loopback port, waits for it to become ready, then opens the local UI in the application window. Closing the app shuts the Harness process down cleanly.

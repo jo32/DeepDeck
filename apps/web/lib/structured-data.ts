@@ -4,8 +4,8 @@ import { siteUrl } from "./site";
 const githubUrl = "https://github.com/jo32/DeepDeck";
 
 const localizedDescription: Record<SiteLocale, string> = {
-  en: "Open-source desktop client for DeepSeek Harness with installable extensions and AI-assisted app building.",
-  zh: "开源 DeepSeek Harness 桌面客户端，支持可安装扩展与 AI 辅助的 App 构建流程。",
+  en: "Open-source desktop client for DeepSeek Harness with installable Apps, AI-assisted app building, and a Browser + WebMCP development preview.",
+  zh: "开源 DeepSeek Harness 桌面客户端，支持可安装 App、AI 辅助构建，以及 Browser + WebMCP 开发预览。",
 };
 
 export function createStructuredData(locale: SiteLocale) {
@@ -43,8 +43,8 @@ export function createStructuredData(locale: SiteLocale) {
           priceCurrency: "USD",
         },
         featureList: locale === "zh"
-          ? ["本地 DeepSeek Harness 运行时", "可安装扩展", "AI 辅助构建 App", "自动检查更新"]
-          : ["Local DeepSeek Harness runtime", "Installable extensions", "AI-assisted app building", "Automatic update checks"],
+          ? ["本地 DeepSeek Harness 运行时", "可安装扩展", "AI 辅助构建 App", "自动检查更新", "Browser + WebMCP（源码开发预览）"]
+          : ["Local DeepSeek Harness runtime", "Installable extensions", "AI-assisted app building", "Automatic update checks", "Browser + WebMCP (source development preview)"],
         sameAs: [githubUrl],
       },
     ],

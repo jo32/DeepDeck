@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { localePath, type SiteLocale } from "../../lib/locale";
 import { serializeStructuredData } from "../../lib/structured-data";
+import { ChangelogSection, WebMCPSection } from "./product-updates";
 
 const githubUrl = "https://github.com/jo32/DeepDeck";
 const releaseUrl = `${githubUrl}/releases/latest`;
@@ -53,6 +54,8 @@ const copy = {
       apps: "Apps",
       install: "安装",
       vibe: "Vibe App",
+      webmcp: "WebMCP",
+      changelog: "更新日志",
       download: "下载 DeepDeck",
       downloadShort: "下载",
     },
@@ -67,6 +70,7 @@ const copy = {
       body: "工作区、模式、模型和输入，被收进一条自然的操作路径。DeepDeck 兼容现有 Harness 设置与插件生态，完成引导式首次设置后即可开始工作。",
       github: "查看 GitHub",
       imageAlt: "DeepDeck 简约桌面界面",
+      announcement: "开发预览：Browser + WebMCP",
     },
     apps: {
       title: ["支持", "App。"],
@@ -138,7 +142,7 @@ const copy = {
     closing: {
       lineOne: "简单地工作。",
       lineTwo: "把想法变成 App。",
-      note: "一个桌面，三件事。",
+      note: "工作、浏览、构建，都在一个桌面。",
     },
     aria: {
       home: "DeepDeck 首页",
@@ -152,6 +156,8 @@ const copy = {
       apps: "Apps",
       install: "Install",
       vibe: "Vibe App",
+      webmcp: "WebMCP",
+      changelog: "What’s new",
       download: "Download DeepDeck",
       downloadShort: "Download",
     },
@@ -166,6 +172,7 @@ const copy = {
       body: "Workspaces, modes, models, and the prompt all fall into one natural flow. DeepDeck keeps existing Harness settings and extensions compatible; after guided first-run setup, it is ready for work.",
       github: "View on GitHub",
       imageAlt: "The focused DeepDeck desktop interface",
+      announcement: "In preview: Browser + WebMCP",
     },
     apps: {
       title: ["Supports", "Apps."],
@@ -237,7 +244,7 @@ const copy = {
     closing: {
       lineOne: "Work simply.",
       lineTwo: "Turn ideas into Apps.",
-      note: "One desktop. Three things.",
+      note: "Work, browse, and build. One desktop.",
     },
     aria: {
       home: "DeepDeck home",
@@ -263,11 +270,11 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             <span>DeepDeck</span>
           </a>
           <nav className="nav-links" aria-label={content.aria.navigation}>
-            <a href="#interface">{content.nav.simple}</a>
+            <a href="#webmcp">{content.nav.webmcp}</a>
             <a href="#showcase">{content.nav.apps}</a>
             <a href="#install">{content.nav.install}</a>
             <a href="#vibe">{content.nav.vibe}</a>
-            <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>
+            <a href="#updates">{content.nav.changelog}</a>
           </nav>
           <div className="nav-actions">
             <a
@@ -312,6 +319,9 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
                   {content.interface.github} <span aria-hidden="true">→</span>
                 </a>
               </div>
+              <a className="feature-announcement" href="#webmcp">
+                {content.interface.announcement} <span aria-hidden="true">→</span>
+              </a>
             </div>
           </div>
 
@@ -335,10 +345,12 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
           </div>
         </section>
 
+        <WebMCPSection locale={locale} />
+
         <section id="apps" className="story story-app page-shell">
           <div className="story-heading">
             <div className="story-index">
-              <span>02</span>
+              <span>03</span>
               <span>APP SUPPORT</span>
             </div>
             <div className="story-title">
@@ -405,7 +417,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
           <div className="page-shell">
             <div className="story-heading">
               <div className="story-index">
-                <span>03</span>
+                <span>04</span>
                 <span>APP SHOWCASE</span>
               </div>
               <div className="story-title">
@@ -465,7 +477,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
         <section id="install" className="story story-install page-shell">
           <div className="story-heading">
             <div className="story-index">
-              <span>04</span>
+              <span>05</span>
               <span>INSTALL</span>
             </div>
             <div className="story-title">
@@ -540,7 +552,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
           <div className="page-shell">
             <div className="story-heading story-heading-dark">
               <div className="story-index">
-                <span>05</span>
+                <span>06</span>
                 <span>VIBE APP</span>
               </div>
               <div className="story-title">
@@ -607,6 +619,8 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             </div>
           </div>
         </section>
+
+        <ChangelogSection locale={locale} />
       </main>
 
       <footer className="site-footer page-shell">
@@ -616,6 +630,8 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
         </a>
         <p>Built on DeepSeek Harness. Composed with Cordis.</p>
         <div className="footer-links">
+          <a href="#webmcp">{content.nav.webmcp}</a>
+          <a href="#updates">{content.nav.changelog}</a>
           <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>
           <a href={`${githubUrl}/blob/main/LICENSE`} target="_blank" rel="noreferrer">MIT License</a>
         </div>

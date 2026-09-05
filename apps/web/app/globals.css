@@ -43,6 +43,12 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 5px;
+}
+
 main {
   overflow: hidden;
 }
@@ -91,7 +97,7 @@ main {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 24px;
   font-size: 13px;
 }
 
@@ -340,6 +346,273 @@ main {
 
 .story-app {
   padding-top: 140px;
+}
+
+.feature-announcement {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line-strong);
+  color: #606060;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.feature-announcement:hover {
+  color: #111111;
+}
+
+.story-webmcp {
+  background: var(--panel);
+}
+
+.preview-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 9px;
+  border: 1px solid #d6d6d6;
+  border-radius: 5px;
+  color: #595959;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.webmcp-source-link {
+  margin-top: 25px;
+}
+
+.story-copy > .webmcp-availability {
+  margin-top: 13px;
+  color: #757575;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.webmcp-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 72px;
+}
+
+.webmcp-shot {
+  overflow: hidden;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.webmcp-shot-main {
+  grid-column: 1 / -1;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.07);
+}
+
+.webmcp-image-link {
+  position: relative;
+  display: block;
+  background: #eeeeee;
+}
+
+.webmcp-image-link:focus-visible {
+  z-index: 1;
+  outline-offset: -4px;
+}
+
+.webmcp-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.screenshot-expand {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #d2d2d2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #333333;
+  font-size: 16px;
+}
+
+.webmcp-shot figcaption {
+  display: flex;
+  gap: 18px;
+  min-height: 114px;
+  padding: 25px 27px;
+  border-top: 1px solid #e3e3e3;
+}
+
+.webmcp-shot-number {
+  padding-top: 3px;
+  color: #999999;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+
+.webmcp-shot h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 560;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+}
+
+.webmcp-shot p {
+  margin: 0;
+  color: #737373;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.webmcp-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 56px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+  list-style: none;
+}
+
+.webmcp-steps li {
+  padding: 29px 30px 32px;
+}
+
+.webmcp-steps li + li {
+  border-left: 1px solid var(--line-strong);
+}
+
+.webmcp-steps li > span {
+  color: #999999;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+
+.webmcp-steps h3 {
+  margin: 25px 0 12px;
+  font-size: 18px;
+  font-weight: 560;
+  letter-spacing: -0.025em;
+}
+
+.webmcp-steps p {
+  margin: 0;
+  color: #6d6d6d;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.webmcp-example {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 35px;
+  margin-top: 28px;
+}
+
+.webmcp-example > span {
+  padding-top: 3px;
+  color: #707070;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  line-height: 1.7;
+  letter-spacing: 0.04em;
+}
+
+.webmcp-example p {
+  max-width: 780px;
+  margin: 0;
+  color: #737373;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.changelog-list {
+  margin-top: 70px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.changelog-entry {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 50px;
+  padding: 44px 0;
+  border-bottom: 1px solid var(--line-strong);
+  scroll-margin-top: 90px;
+}
+
+.changelog-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  padding-top: 2px;
+}
+
+.changelog-meta time,
+.changelog-category {
+  color: #737373;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.changelog-content {
+  max-width: 800px;
+}
+
+.changelog-content > .changelog-category {
+  margin: 0 0 15px;
+  font-size: 9px;
+}
+
+.changelog-content h3 {
+  margin: 0 0 19px;
+  font-size: clamp(25px, 2.6vw, 34px);
+  font-weight: 540;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+}
+
+.changelog-content > p,
+.changelog-content li {
+  margin: 0;
+  color: #6c6c6c;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.changelog-content ul {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 27px;
+  padding-left: 18px;
+}
+
+.changelog-content li::marker {
+  color: #a0a0a0;
+}
+
+.changelog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 30px;
+}
+
+.changelog-content > .changelog-availability {
+  margin-top: 19px;
+  color: #797979;
+  font-size: 11px;
 }
 
 .hn-window {
@@ -1061,6 +1334,19 @@ main {
 }
 
 @media (max-width: 980px) {
+  .nav-links {
+    gap: 17px;
+    font-size: 12px;
+  }
+
+  .nav-cta-long {
+    display: none;
+  }
+
+  .nav-cta-short {
+    display: inline;
+  }
+
   .story-heading {
     grid-template-columns: 80px 1fr;
   }
@@ -1107,6 +1393,16 @@ main {
   .developer-install > div {
     border-right: 0;
     border-bottom: 1px solid var(--line-strong);
+  }
+
+  .webmcp-steps li {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+
+  .changelog-entry {
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 30px;
   }
 }
 
@@ -1295,6 +1591,62 @@ main {
     font-size: 12px;
   }
 
+  .webmcp-gallery {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 44px;
+  }
+
+  .webmcp-shot {
+    border-radius: 9px;
+  }
+
+  .webmcp-shot figcaption {
+    min-height: 0;
+    gap: 13px;
+    padding: 21px 18px;
+  }
+
+  .webmcp-steps {
+    grid-template-columns: 1fr;
+    margin-top: 35px;
+  }
+
+  .webmcp-steps li {
+    padding: 24px 18px;
+  }
+
+  .webmcp-steps li + li {
+    border-top: 1px solid var(--line-strong);
+    border-left: 0;
+  }
+
+  .webmcp-steps h3 {
+    margin-top: 17px;
+  }
+
+  .webmcp-example {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    margin-top: 24px;
+  }
+
+  .changelog-list {
+    margin-top: 44px;
+  }
+
+  .changelog-entry {
+    grid-template-columns: 1fr;
+    gap: 29px;
+    padding: 30px 0;
+  }
+
+  .changelog-meta {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
   .showcase-grid {
     grid-template-columns: 1fr;
     gap: 15px;
@@ -1441,6 +1793,7 @@ main {
 
   .footer-links {
     justify-self: start;
+    flex-wrap: wrap;
   }
 }
 
