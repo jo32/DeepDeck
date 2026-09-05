@@ -50,6 +50,9 @@
     - id: deepdeck-app-conversations
       name: '@deepdeck/dsh-app-conversations'
 
+    - id: deepdeck-browser
+      name: '@deepdeck/dsh-browser'
+
     # The management plugin remains loaded so Settings can re-enable the
     # feature. Its live preference controls the nested MCP loader entry, which
     # fully disposes the native process and unregisters its tools.

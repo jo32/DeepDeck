@@ -95,6 +95,10 @@ export function resolveDesktopRuntimePaths(
           ),
         },
         {
+          packageName: "@deepdeck/dsh-browser",
+          path: join(options.resourcesPath, "plugins", "browser"),
+        },
+        {
           packageName: "dsh-codex-connect",
           path: join(options.resourcesPath, "harness", "node_modules", "dsh-codex-connect"),
           presetBundle: true,
@@ -197,6 +201,14 @@ export function resolveDesktopRuntimePaths(
           environment,
           "DEEPDECK_PROVIDER_AWARE_WEB_PLUGIN",
           join(workspaceRepository, "plugins", "provider-aware-web"),
+        ),
+      },
+      {
+        packageName: "@deepdeck/dsh-browser",
+        path: environmentValue(
+          environment,
+          "DEEPDECK_BROWSER_PLUGIN",
+          join(workspaceRepository, "plugins", "browser"),
         ),
       },
       {

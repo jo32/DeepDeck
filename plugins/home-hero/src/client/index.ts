@@ -2,6 +2,10 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { HomeHeroArtwork, type HomeHeroKey } from './HomeHeroArtwork.tsx'
+import { AlienOrbIcon } from '../icon.tsx'
+import { AlienCharacter } from './AlienCharacter.tsx'
+import { DockedComposer } from './ComposerPresentation.tsx'
+import type { DeepDeckCharacterService } from '../character-contract.js'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -29,6 +33,8 @@ interface BrandCompositionReporter {
 export function apply(ctx: ClientContext): void {
   const brandComposition = ctx.get('deepdeckBrandComposition') as BrandCompositionReporter
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'deepdeck home hero: dictionaries')
+  const character: DeepDeckCharacterService = { Icon: AlienOrbIcon, Character: AlienCharacter, DockedComposer }
+  ctx.effect(() => ctx.reflect.provide('deepdeckCharacter', character), 'deepdeck home hero: shared character')
 
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',

@@ -60,6 +60,11 @@ export function apply(ctx: ClientContext): void {
     subscribe: (listener: () => void) => ctx.slots.subscribe('sidebar.apps', listener),
     version: () => ctx.slots.getVersion('sidebar.apps'),
   }
+  const surfaces = {
+    count: () => ctx.slots.entries('desktop.surface').length,
+    subscribe: (listener: () => void) => ctx.slots.subscribe('desktop.surface', listener),
+    version: () => ctx.slots.getVersion('desktop.surface'),
+  }
   ctx.effect(() => ctx.locale.register(DESKTOP_SIDEBAR_LOCALE, {
     zh: desktopSidebarZh,
     en: desktopSidebarEn,
@@ -82,6 +87,7 @@ export function apply(ctx: ClientContext): void {
         conversation: { kind: 'single', scope: 'session-maybe' },
         details: { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
+        'desktop.surface': { kind: 'single', scope: 'root' },
       },
       store: createLayoutStore,
       inject: (actions: PanelActions) => {
@@ -89,6 +95,7 @@ export function apply(ctx: ClientContext): void {
         return {
           startSession: () => { ctx.workspaces.startSession() },
           brandComposition,
+          surfaces,
         }
       },
     }, AppFrame)
@@ -104,6 +111,7 @@ export function apply(ctx: ClientContext): void {
     children: {
       'sidebar.workspaces': { kind: 'single', scope: 'root' },
       'sidebar.apps': { kind: 'list', scope: 'root' },
+      'sidebar.launchers': { kind: 'list', scope: 'root' },
       'sidebar.settings': { kind: 'single', scope: 'root' },
       'sidebar.footer.action': { kind: 'list', scope: 'root' },
     },

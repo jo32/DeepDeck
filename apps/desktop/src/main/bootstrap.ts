@@ -29,6 +29,7 @@ import {
 } from "./update-transaction.js";
 import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
 import { createAppWindowManager } from "./windows/app-window.js";
+import { createBrowserWindowManager } from "./windows/browser-window.js";
 import { isSameOriginHttpUrl } from "./windows/app-window-request.js";
 
 export async function bootstrapDesktop(
@@ -85,6 +86,7 @@ export async function bootstrapDesktop(
   const telemetry = await createDesktopTelemetry(app);
 
   const appWindows = createAppWindowManager(branding.name);
+  const browserWindows = createBrowserWindowManager(branding.name, snapshot => harness.sendBrowserSnapshot(snapshot));
   const restartRecovery = new HarnessRestartRecovery();
   let desktopWindow: DesktopWindow | undefined;
   let restartInFlight = false;
@@ -102,6 +104,14 @@ export async function bootstrapDesktop(
     patchPath: runtimePaths.patchPath,
     plugins: runtimePaths.plugins,
     displayName: branding.name,
+    onBrowserRequest: async (command, baseUrl) => {
+      if (command.action === "open") {
+        if (!isSameOriginHttpUrl(command.shellUrl, baseUrl)) throw new Error("Browser shell must be served by the current Harness.");
+        const url = new URL(command.shellUrl);
+        if (url.pathname !== "/" || url.searchParams.get("deepdeck-surface") !== "browser") throw new Error("Invalid Browser shell route.");
+      }
+      return await browserWindows.execute(command);
+    },
     onAppWindowOpenRequest: (url) => {
       // The child may only promote pages served by this very Harness server;
       // everything else is dropped without surfacing a window.
@@ -156,6 +166,7 @@ export async function bootstrapDesktop(
         removeUpdateListener();
         removeIpc();
         appWindows.dispose();
+        browserWindows.dispose();
         updates.dispose();
         quitReady = true;
       });
@@ -282,6 +293,8 @@ export async function bootstrapDesktop(
     current.send(channels.runtimeStatus, status);
     if (status.state === "ready" && status.url) {
       await current.loadHarness(status.url);
+      await browserWindows.restoreShell(status.url);
+      harness.sendBrowserSnapshot(browserWindows.snapshot());
       const appRoutes = restartRecovery.appRoutes();
       if (appRoutes.length > 0) {
         const receipt = await appWindows.restore(status.url, appRoutes);

@@ -19,11 +19,16 @@ import css from './desktop-chrome.module.css'
 export interface AppFrameInjected {
   startSession: () => void
   brandComposition: BrandCompositionLedger
+  surfaces: {
+    count: () => number
+    subscribe: (listener: () => void) => () => void
+    version: () => number
+  }
 }
 
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay'>
+  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay' | 'desktop.surface'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & AppFrameInjected
 
@@ -90,8 +95,16 @@ function DragHandle({ side, left, onStart, onDrag, onEnd }: DragHandleProps) {
   )
 }
 
+/** Standalone capabilities own their layout through a declared Cordis slot. */
+export function AppFrame(props: AppFrameProps) {
+  useSyncExternalStore(props.surfaces.subscribe, props.surfaces.version, props.surfaces.version)
+  return props.surfaces.count() > 0
+    ? props.renderSlot('desktop.surface', { renderConversation: () => props.renderSlot('conversation', {}) })
+    : <DesktopAppFrame {...props} />
+}
+
 /** Three-column desktop frame with a real zero-width sidebar state. */
-export function AppFrame({
+function DesktopAppFrame({
   useStore,
   useSessions,
   actions,

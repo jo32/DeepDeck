@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -12,6 +13,7 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import SpiderOrbThree, { type OrbActionMode } from './SpiderOrbThree.tsx'
 import type { OrbExpression } from './orb-expressions.ts'
 import css from './home-hero.module.css'
+import { DockedComposerContext } from './ComposerPresentation.tsx'
 
 export type HomeHeroKey = 'characterLabel'
 export const TYPING_IDLE_MS = 1_000
@@ -195,20 +197,22 @@ export function HomeHeroArtwork({
   t,
   onCompositionReady,
 }: HomeHeroArtworkProps) {
+  const docked = useContext(DockedComposerContext)
+  const visualPhase = docked && session.composerPhase === 'blank' ? 'active' : session.composerPhase
   const [presentation, setPresentation] = useState<{
     expression: OrbExpression
     epoch: number
   }>({ expression: 'auto', epoch: 0 })
   const [rendererReady, setRendererReady] = useState(false)
   const [instantReveal, setInstantReveal] = useState(
-    () => session.composerPhase !== 'blank' || pendingReturnOrigin !== null,
+    () => visualPhase !== 'blank' || pendingReturnOrigin !== null,
   )
   const [motion, setMotion] = useState<HeroMotion>(() =>
-    session.composerPhase === 'blank'
+    visualPhase === 'blank'
       ? RESTING
       : { kind: 'docked', target: null, epoch: 0 })
   const previousDraftRev = useRef(input.draftRev)
-  const previousComposerPhase = useRef(session.composerPhase)
+  const previousComposerPhase = useRef(visualPhase)
   const lastBlankRect = useRef<LaunchRect | null>(null)
   const artworkRef = useRef<HTMLDivElement>(null)
   const mascotRef = useRef<HTMLDivElement>(null)
@@ -233,32 +237,32 @@ export function HomeHeroArtwork({
   // Publish the compact position before a session-key remount. The new blank
   // instance consumes it in its first layout pass and continues the motion.
   useLayoutEffect(() => {
-    if (session.composerPhase === 'blank') return
+    if (visualPhase === 'blank') return
     if (motion.kind === 'docked' && motion.target !== null) {
       rememberReturnOrigin(motion.target)
     }
-  }, [motion, session.composerPhase])
+  }, [motion, visualPhase])
 
   // Capture the transformed frame on phase exit/unmount as well, covering a
   // New Session click that lands during the short launch animation.
   useLayoutEffect(() => {
-    if (session.composerPhase === 'blank') return
+    if (visualPhase === 'blank') return
     return () => {
       const visibleRect = launchRect(mascotRef.current)
       if (visibleRect !== null) rememberReturnOrigin(visibleRect)
     }
-  }, [session.composerPhase])
+  }, [visualPhase])
 
   // The composer changes posture during blank -> engaging. Freeze the last
   // hero rect for that commit, then measure only our own target marker.
-  const arming = session.composerPhase === 'engaging'
+  const arming = visualPhase === 'engaging'
     && previousComposerPhase.current === 'blank'
     && motion.kind === 'resting'
   const geometry = motion.kind === 'launching' ? motion.geometry : undefined
   const frozenStart = geometry?.start ?? (arming ? lastBlankRect.current : null)
 
   useLayoutEffect(() => {
-    const phase = session.composerPhase
+    const phase = visualPhase
     const previous = previousComposerPhase.current
     previousComposerPhase.current = phase
 
@@ -345,7 +349,7 @@ export function HomeHeroArtwork({
     if (motion.kind === 'resting') {
       setMotion({ kind: 'docked', target: readDockTarget(), epoch: performance.now() })
     }
-  }, [motion.kind, session.composerPhase])
+  }, [motion.kind, visualPhase])
 
   // In both directions, hold the inverse FLIP until Three has rendered and the
   // new composer posture has painted twice. The transition then starts on an
@@ -381,7 +385,7 @@ export function HomeHeroArtwork({
 
   // Keep the compact frame centered when the window or composer geometry moves.
   useLayoutEffect(() => {
-    if (session.composerPhase === 'blank') return
+    if (visualPhase === 'blank') return
 
     const measure = () => {
       const target = readDockTarget()
@@ -411,7 +415,7 @@ export function HomeHeroArtwork({
       window.removeEventListener('scroll', measure, true)
       observer?.disconnect()
     }
-  }, [session.composerPhase])
+  }, [visualPhase])
 
   const finishLaunch = () => {
     setMotion(current => current.kind !== 'launching' || !current.started
@@ -438,7 +442,7 @@ export function HomeHeroArtwork({
   }, [motion.kind, transitionStarted])
 
   useEffect(() => {
-    if (session.composerPhase !== 'blank') {
+    if (visualPhase !== 'blank') {
       previousDraftRev.current = input.draftRev
       setPresentation(current => current.expression === 'auto'
         ? current
@@ -455,9 +459,9 @@ export function HomeHeroArtwork({
     }, TYPING_IDLE_MS)
 
     return () => { window.clearTimeout(idleTimer) }
-  }, [input.draftRev, session.composerPhase])
+  }, [input.draftRev, visualPhase])
 
-  const motionName = session.composerPhase === 'blank'
+  const motionName = visualPhase === 'blank'
     ? motion.kind === 'returning'
       ? motion.started ? 'returning' : 'return-preparing'
       : motion.kind === 'docked'
@@ -481,7 +485,7 @@ export function HomeHeroArtwork({
     || motionName === 'returning'
   const actionMode: OrbActionMode = heroFacing
     ? 'face'
-    : stops || session.composerPhase === 'engaging' ? 'doing' : 'send'
+    : stops || visualPhase === 'engaging' ? 'doing' : 'send'
   const expression: OrbExpression = motionName === 'resting'
     ? presentation.expression
     : actionMode === 'doing' ? 'doing' : 'neutral'

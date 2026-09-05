@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { access, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.20";
@@ -49,8 +49,10 @@ async function findSymlink(directory) {
 async function run(command, arguments_) {
   let output = "";
   await new Promise((resolveRun, rejectRun) => {
+    const environment = { ...process.env, PATH: "" };
+    delete environment.ESBUILD_BINARY_PATH;
     const child = spawn(command, arguments_, {
-      env: { ...process.env, PATH: "" },
+      env: environment,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -134,7 +136,7 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
       [cli, "web", "--patch", join(runtimeRoot, "cordis.patch.yml"), "--port", "0"],
       {
         cwd: runtimeRoot,
-        env: { ...process.env, DSH_HOME: dshHome, PATH: "" },
+        env: { ...process.env, DSH_HOME: dshHome, DEEPDECK_BROWSER_HOME: join(dshHome, "browser"), PATH: "" },
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
       },
@@ -181,6 +183,17 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
       throw new Error(`Bundled Harness readiness endpoint was unreachable: ${String(lastFetchError)}\n${output}`);
     }
     if (!response.ok) throw new Error(`Bundled Harness readiness endpoint returned HTTP ${response.status}`);
+    const browserResponse = await fetch(new URL("/api/deepdeck/browser", url), {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: url },
+      body: JSON.stringify({ action: "state" }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!browserResponse.ok) throw new Error(`Bundled Browser plugin returned HTTP ${browserResponse.status}`);
+    const browserState = await browserResponse.json();
+    if (!Array.isArray(browserState.sites) || !Array.isArray(browserState.native?.tabs) || browserState.available !== false) {
+      throw new Error("Bundled Browser plugin did not expose its standalone runtime state.");
+    }
   } catch (error) {
     if (child && exitPromise) await stopChild(child, exitPromise);
     throw error;
@@ -210,6 +223,8 @@ const requiredRuntimePaths = [
 ];
 let bundledBun;
 let bundledComputerUse;
+let bundledWebMCPCompiler;
+let bundledDevToolsMcp;
 for (const plugin of manifest.plugins) {
   const root = pluginRoot(runtimeRoot, plugin);
   const pluginManifestPath = join(root, "package.json");
@@ -226,6 +241,14 @@ for (const plugin of manifest.plugins) {
       requiredRuntimePaths.push(
         join(root, "skills", "deepdeck-vibe-app-development", "SKILL.md"),
       );
+    }
+    if (plugin === "browser") {
+      bundledWebMCPCompiler = join(root, "node_modules", "esbuild", "lib", "main.js");
+      bundledDevToolsMcp = join(root, "node_modules", "chrome-devtools-mcp", "build", "src", "bin", "chrome-devtools-mcp.js");
+      const binary = join(root, "node_modules", "@esbuild", `${manifest.platform}-${manifest.architecture}`,
+        manifest.platform === "win32" ? "esbuild.exe" : "bin/esbuild");
+      requiredRuntimePaths.push(bundledWebMCPCompiler, bundledDevToolsMcp, binary, join(root, "src", "native-contract.d.ts"),
+        join(root, "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm", "client", "index.js"));
     }
     const clientExport = pluginManifest.exports?.["./client"];
     const clientEntry = typeof clientExport === "string" ? clientExport : clientExport?.default;
@@ -266,7 +289,8 @@ for (const required of requiredRuntimePaths) {
   if (!(await pathExists(required))) throw new Error(`Runtime resource is missing: ${required}`);
 }
 
-const remainingLink = await findSymlink(join(runtimeRoot, "harness"));
+const remainingLink = await findSymlink(join(runtimeRoot, "harness"))
+  ?? await findSymlink(join(runtimeRoot, "plugins"));
 if (remainingLink) throw new Error(`Runtime contains a non-portable symbolic link: ${remainingLink}`);
 
 const help = await run(nodeBinary, [cli, "--help"]);
@@ -281,6 +305,16 @@ const computerUseVersion = await run(nodeBinary, [bundledComputerUse.launcher, "
 if (computerUseVersion.trim() !== bundledComputerUse.version) {
   throw new Error(`Bundled Open Computer Use returned ${JSON.stringify(computerUseVersion.trim())}`);
 }
+if (!bundledWebMCPCompiler) throw new Error("Runtime manifest omitted the Browser WebMCP compiler");
+if (!bundledDevToolsMcp) throw new Error("Runtime manifest omitted Chrome DevTools MCP");
+const devtoolsVersion = await run(nodeBinary, [bundledDevToolsMcp, "--version"]);
+if (devtoolsVersion.trim() !== "1.8.0") throw new Error(`Bundled Chrome DevTools MCP returned ${JSON.stringify(devtoolsVersion.trim())}`);
+const devtoolsHelp = await run(nodeBinary, [bundledDevToolsMcp, "--help"]);
+if (!devtoolsHelp.includes("categoryExperimentalWebmcp") || !devtoolsHelp.includes("wsEndpoint")) throw new Error("Bundled Chrome DevTools MCP is missing Browser integration capabilities");
+await run(nodeBinary, [
+  "--input-type=module", "-e",
+  `const {transform} = await import(${JSON.stringify(pathToFileURL(bundledWebMCPCompiler).href)}); const result = await transform('const answer: number = 42', {loader:'ts', platform:'browser'}); if (!result.code.includes('42')) throw new Error('WebMCP compiler failed');`,
+]);
 await verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli);
 console.log(
   `verify-runtime: DeepDeck ${manifest.applicationVersion}, Node ${manifest.nodeVersion}, ${manifest.platform}-${manifest.architecture}`,

@@ -33,11 +33,15 @@ export const desktopSidebarZh = {
   'update.open': '查看可用更新',
   'update.close': '关闭更新提示',
   'restart.title': '重启 DeepDeck？',
-  'restart.description': '重启会暂停所有正在运行的 Session。确认后会自动恢复运行状态。',
-  'restart.runningSessions': '个正在运行的 Session 将在重启后自动续跑',
-  'restart.waitingSessions': '个等待用户处理的 Session 将恢复原等待状态',
-  'restart.openApps': '个当前打开的 App 将在重启后重新打开',
-  'restart.durability': '已排队的消息和待处理内容会保留，不会因重启丢失。',
+  'restart.description': 'DeepDeck 将短暂退出，随后恢复你当前的工作。',
+  'restart.sessionsLabel': '会话',
+  'restart.runningSessions': '正在运行',
+  'restart.waitingSessions': '等待处理',
+  'restart.sessionsHint': '重启后恢复原状态',
+  'restart.appsLabel': '应用',
+  'restart.openApps': '当前打开',
+  'restart.appsHint': '重启后自动重新打开',
+  'restart.durability': '排队中的消息和待处理内容不会丢失',
   'restart.cancel': '暂不重启',
   'restart.confirm': '确认重启',
   'restart.restarting': '正在重启…',
@@ -66,11 +70,15 @@ export const desktopSidebarEn = {
   'update.open': 'View available update',
   'update.close': 'Close update prompt',
   'restart.title': 'Restart DeepDeck?',
-  'restart.description': 'Restarting pauses every running Session. DeepDeck will restore their state after you confirm.',
-  'restart.runningSessions': 'running Session(s) will continue automatically after restart',
-  'restart.waitingSessions': 'Session(s) awaiting input will return to the same wait state',
-  'restart.openApps': 'currently open App(s) will reopen after restart',
-  'restart.durability': 'Queued messages and pending work are preserved across the restart.',
+  'restart.description': 'DeepDeck will briefly close, then return you to where you left off.',
+  'restart.sessionsLabel': 'Sessions',
+  'restart.runningSessions': 'running',
+  'restart.waitingSessions': 'awaiting input',
+  'restart.sessionsHint': 'Restore after restart',
+  'restart.appsLabel': 'Apps',
+  'restart.openApps': 'open',
+  'restart.appsHint': 'Reopen automatically',
+  'restart.durability': 'Queued messages and pending work stay safe.',
   'restart.cancel': 'Not now',
   'restart.confirm': 'Restart',
   'restart.restarting': 'Restarting…',
@@ -98,7 +106,7 @@ export interface DesktopSidebarInjected {
 export type DesktopSidebarProps =
   & PropsRuntime<'sidebar'>
   & PropsRenderSlots<
-    'sidebar.workspaces' | 'sidebar.apps' | 'sidebar.settings' | 'sidebar.footer.action'
+    'sidebar.workspaces' | 'sidebar.apps' | 'sidebar.settings' | 'sidebar.footer.action' | 'sidebar.launchers'
   >
   & PropsLocale<typeof DESKTOP_SIDEBAR_LOCALE>
   & DesktopSidebarInjected
@@ -168,6 +176,7 @@ export function DesktopSidebar({ renderSlot, startSession, apps, t }: DesktopSid
       </div>
 
       <div className={css.sidebarFoot}>
+        {renderSlot('sidebar.launchers', { wide: true })}
         {hasApps && (
           <div className={css.sidebarAppsLauncherRow}>
             <button

@@ -172,12 +172,11 @@
 
 /* Harness currently has no slot for its resident ContextMeter. Hide only that
    semantic dialog trigger inside the stable composer-card boundary; the
-   plugin-owned trigger opts out with its data attribute. */
-:global([data-composer-card]) :global(button[aria-haspopup="dialog"]:not([data-deepdeck-session-meter])) {
+   session meter and other plugin-owned composer controls opt out explicitly. */
+:global([data-composer-card]) :global(button[aria-haspopup="dialog"]:not([data-deepdeck-session-meter]):not([data-deepdeck-composer-control])) {
   display: none;
 }
 
 @media (max-width: 520px) {
   .panel { width: min(300px, calc(100vw - 32px)); }
 }
-

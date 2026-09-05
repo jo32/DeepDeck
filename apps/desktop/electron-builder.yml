@@ -44,6 +44,8 @@ mac:
   extendInfo:
     CFBundleName: DeepDeck
     CFBundleDisplayName: DeepDeck
+    NSCameraUsageDescription: Allow websites you approve in DeepDeck Browser to use your camera.
+    NSMicrophoneUsageDescription: Allow websites you approve in DeepDeck Browser to use your microphone.
   target:
     - target: dmg
       arch:

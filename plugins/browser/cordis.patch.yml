@@ -1,0 +1,3 @@
+- insert:
+    - id: deepdeck-browser
+      name: '@deepdeck/dsh-browser'

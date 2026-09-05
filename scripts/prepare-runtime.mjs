@@ -50,6 +50,7 @@ const PLUGINS = Object.freeze([
   "app-conversations",
   "computer-use",
   "provider-aware-web",
+  "browser",
   "dsh-codex-connect",
 ]);
 
@@ -465,13 +466,14 @@ async function copyPluginDependencies(source, destination, dependencies) {
   }));
   const copied = new Set();
   while (pending.length > 0) {
-    const { issuer, packageName } = pending.pop();
+    const { issuer, packageName, optional } = pending.pop();
     if (!packageName || copied.has(packageName)) continue;
-    copied.add(packageName);
     const dependencySource = await resolveInstalledDependency(issuer, packageName);
     if (!dependencySource) {
+      if (optional) continue;
       throw new Error(`Plugin dependency is not installed for ${issuer}: ${packageName}`);
     }
+    copied.add(packageName);
     const dependencyDestination = join(destination, "node_modules", packageName);
     await mkdir(dirname(dependencyDestination), { recursive: true });
     await cp(dependencySource, dependencyDestination, { recursive: true, dereference: true });
@@ -482,6 +484,11 @@ async function copyPluginDependencies(source, destination, dependencies) {
       ...Object.keys(dependencyManifest.dependencies ?? {}).map((dependencyName) => ({
         issuer: dependencySource,
         packageName: dependencyName,
+      })),
+      ...Object.keys(dependencyManifest.optionalDependencies ?? {}).map((dependencyName) => ({
+        issuer: dependencySource,
+        packageName: dependencyName,
+        optional: true,
       })),
     );
   }

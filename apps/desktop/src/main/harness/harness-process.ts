@@ -13,6 +13,8 @@ import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:pa
 import type { HarnessRuntimeStatus } from "../../shared/runtime.js";
 import { parseReadinessUrl } from "./readiness.js";
 import { migratePresetBundles } from "./preset-profile.js";
+import { isBrowserNativeRequest } from "../windows/browser-policy.js";
+import type { BrowserNativeCommand, BrowserNativeEvent, BrowserNativeResult, BrowserSnapshot } from "../../../../../plugins/browser/src/native-contract.js";
 import {
   APP_WINDOWS_RELOAD_RESULT,
   isAppMainWindowFocusRequest,
@@ -62,6 +64,8 @@ export interface HarnessProcessOptions {
   onMainWindowFocusRequest?: () => void;
   /** Delegates an automatic restart to the desktop confirmation transaction. */
   onRestartRequest?: () => void;
+  /** Browser guest actions stay in the native desktop process. */
+  onBrowserRequest?: (command: BrowserNativeCommand, baseUrl: string) => Promise<unknown>;
 }
 
 export function resolveHarnessWebArguments(cliPath: string, patchPath: string): string[] {
@@ -189,6 +193,13 @@ export class HarnessProcess {
     }
   }
 
+  sendBrowserSnapshot(snapshot: BrowserSnapshot): void {
+    const child = this.child;
+    if (!child?.connected) return;
+    try { child.send({ type: "deepdeck:browser:event", snapshot } satisfies BrowserNativeEvent); }
+    catch { /* The host may exit while Browser is navigating. */ }
+  }
+
   async stop(): Promise<void> {
     this.intentionalStop = true;
     const child = this.child;
@@ -312,6 +323,17 @@ export class HarnessProcess {
       child.stderr?.on("data", (chunk: Buffer) => consume(chunk, "stderr"));
       child.on("message", (message: unknown) => {
         if (this.child !== child) return;
+        if (isBrowserNativeRequest(message)) {
+          const reply = (ok: boolean, value?: unknown, error?: string): void => {
+            if (!child.connected) return;
+            try { child.send({ type: "deepdeck:browser:result", requestId: message.requestId, ok,
+              ...(value === undefined ? {} : { value }), ...(error ? { error } : {}) } satisfies BrowserNativeResult); }
+            catch { /* A restart may finish before an in-flight browser request. */ }
+          };
+          if (!readyUrl || !this.options.onBrowserRequest) { reply(false, undefined, "Browser runtime is unavailable."); return; }
+          void this.options.onBrowserRequest(message.command, readyUrl).then(value => reply(true, value), error => reply(false, undefined, errorMessage(error)));
+          return;
+        }
         if (isMarketplaceRestartRequest(message)) {
           if (this.options.onRestartRequest !== undefined) this.options.onRestartRequest();
           else {

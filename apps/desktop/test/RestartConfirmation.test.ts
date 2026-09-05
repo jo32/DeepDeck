@@ -9,10 +9,14 @@ import { RestartConfirmation } from "../../../plugins/desktop-chrome/src/client/
 
 const copy: Record<string, string> = {
   "restart.title": "重启 DeepDeck？",
-  "restart.description": "重启会暂停所有正在运行的 Session。",
-  "restart.runningSessions": "个正在运行的 Session 将续跑",
-  "restart.waitingSessions": "个等待用户处理的 Session 将恢复",
-  "restart.openApps": "个 App 将重新打开",
+  "restart.description": "DeepDeck 将短暂退出。",
+  "restart.sessionsLabel": "会话",
+  "restart.runningSessions": "正在运行",
+  "restart.waitingSessions": "等待处理",
+  "restart.sessionsHint": "重启后恢复原状态",
+  "restart.appsLabel": "应用",
+  "restart.openApps": "当前打开",
+  "restart.appsHint": "重启后自动重新打开",
   "restart.durability": "排队消息不会丢失",
   "restart.cancel": "暂不重启",
   "restart.confirm": "确认重启",
@@ -65,7 +69,7 @@ describe("RestartConfirmation", () => {
     });
 
     expect(container.textContent).toContain("排队消息不会丢失");
-    expect(container.textContent).toContain("2 个 App 将重新打开");
+    expect(container.textContent).toContain("2 当前打开");
     expect(decideRestart).not.toHaveBeenCalled();
 
     const confirm = [...container.querySelectorAll("button")]

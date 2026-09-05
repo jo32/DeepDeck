@@ -1,0 +1,22 @@
+.inline { display: flex; align-items: center; gap: 12px; }
+.trigger { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 28px; height: 28px; padding: 5px; border: 0; border-radius: 8px; color: var(--dsw-alias-label-secondary); background: transparent; cursor: pointer; }
+.trigger[hidden] { display: none; }
+.trigger:hover, .trigger[aria-expanded='true'] { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.trigger:focus-visible { outline: 2px solid var(--browser-accent); outline-offset: 2px; }
+.popup { position: absolute; right: 12px; width: calc(100% - 24px); max-width: 300px; z-index: 60; padding: 10px; border: 1px solid var(--browser-line); border-radius: 14px; background: var(--dsw-specific-menu, var(--browser-bg)); color: var(--browser-text); box-shadow: var(--dsw-shadow-lv3); visibility: hidden; pointer-events: none; font: 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.popup[data-open='true'] { visibility: visible; pointer-events: auto; }
+.popup:focus { outline: none; }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 0 6px 6px; color: var(--browser-muted); font-size: 11px; }
+.controls { display: flex; flex-direction: column; gap: 2px; }
+.control { display: flex; align-items: center; gap: 14px; }
+.control[data-compact='true'] { justify-content: space-between; min-height: 38px; padding: 3px 6px; }
+.control[data-available='false'] { position: absolute; visibility: hidden; pointer-events: none; }
+.content { display: inline-flex; flex: none; width: max-content; }
+.modelDestination { display: contents; }
+.control[data-control='model'] { flex-direction: column; align-items: stretch; gap: 6px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--browser-line-soft); }
+.control[data-control='model'] .content { max-width: 100%; align-self: flex-end; }
+.control[data-control='model'] :global([role='menu']) { max-width: min(300px, calc(100vw - 48px)); max-height: min(320px, calc(100vh - 300px)); }
+.label { font-size: 12px; }
+.empty { margin: 4px 6px 8px; color: var(--browser-muted); font-size: 12px; }
+.popup:has(.control[data-available='true']) .empty { display: none; }
+.inline:not(:has(.control[data-available='true'])) { position: absolute; visibility: hidden; }

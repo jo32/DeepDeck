@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { DockedComposer } from '../../../plugins/home-hero/src/client/ComposerPresentation.tsx';
 import type { ConversationSnapshot } from "@deepseek-ai/dsh-client-runtime/client";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import {
@@ -29,6 +30,16 @@ function input(draftRev = 0): HomeHeroArtworkProps["input"] {
 }
 
 describe("HomeHeroArtwork", () => {
+  it('keeps an empty Browser composer compact without changing session facts', () => {
+    const snapshot = session('blank');
+    const html = renderToStaticMarkup(createElement(DockedComposer, {
+      children: createElement(HomeHeroArtwork, { session: snapshot, input: input(), t }),
+    }));
+    expect(html).toContain('data-motion="docked"');
+    expect(html).toContain('data-action="send"');
+    expect(html).not.toContain('data-motion="resting"');
+    expect(snapshot.composerPhase).toBe('blank');
+  });
   it("renders only the alien orb character on a blank session", () => {
     const html = renderToStaticMarkup(createElement(HomeHeroArtwork, {
       session: session("blank"),

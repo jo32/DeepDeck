@@ -22,7 +22,10 @@
       "types": "./lib/types/icon.d.ts",
       "default": "./lib/icon.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./character-contract": {
+      "types": "./src/character-contract.d.ts"
+    }
   },
   "dsh": {
     "bundle": {
@@ -57,6 +60,7 @@
     "lib/invariant.js",
     "lib/icon.js",
     "lib/types/**/*.d.ts",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "src/character-contract.d.ts"
   ]
 }

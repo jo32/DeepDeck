@@ -9,10 +9,10 @@
    stable destination even while the real canvas stays fixed at the button. */
 .heroTarget {
   position: absolute;
-  right: -40px;
-  bottom: 68px;
-  width: 184px;
-  height: 232px;
+  right: var(--deepdeck-hero-rest-right, -40px);
+  bottom: var(--deepdeck-hero-rest-bottom, 68px);
+  width: var(--deepdeck-hero-rest-width, 184px);
+  height: var(--deepdeck-hero-rest-height, 232px);
   visibility: hidden;
   pointer-events: none;
 }
@@ -24,7 +24,7 @@
 .sendTargetRail {
   position: absolute;
   right: var(--dsh-composer-side-clearance, 16px);
-  bottom: 16px;
+  bottom: var(--deepdeck-send-target-bottom, 16px);
   left: var(--dsh-composer-side-clearance, 16px);
   width: auto;
   max-width: var(--dsh-composer-card-max-width, 780px);
@@ -36,7 +36,7 @@
 .sendTarget {
   position: absolute;
   top: 0;
-  right: 8px;
+  right: var(--deepdeck-send-target-right, 8px);
   z-index: 19;
   width: 34px;
   height: 34px;
@@ -66,13 +66,13 @@
   right: 0;
   left: 0;
   height: 80px;
-  background: color-mix(in srgb, rgb(97 135 216) 4.5%, var(--dsw-alias-bg-base));
-  mask-image: radial-gradient(
+  background: var(--deepdeck-hero-title-mask-background, color-mix(in srgb, rgb(97 135 216) 4.5%, var(--dsw-alias-bg-base)));
+  mask-image: var(--deepdeck-hero-title-mask, radial-gradient(
     ellipse 48% 48% at 50% 50%,
     #000 0%,
     #000 60%,
     transparent 100%
-  );
+  ));
 }
 
 .artwork:not([data-motion='resting']) .heroTitleMask {
@@ -81,12 +81,12 @@
 
 .mascot {
   position: absolute;
-  right: -40px;
-  bottom: 68px;
-  width: 184px;
-  height: 232px;
+  right: var(--deepdeck-hero-rest-right, -40px);
+  bottom: var(--deepdeck-hero-rest-bottom, 68px);
+  width: var(--deepdeck-hero-rest-width, 184px);
+  height: var(--deepdeck-hero-rest-height, 232px);
   pointer-events: none;
-  filter: drop-shadow(0 16px 22px rgb(16 24 40 / 10%));
+  filter: var(--deepdeck-hero-shadow, drop-shadow(0 16px 22px rgb(16 24 40 / 10%)));
 }
 
 .liquidBody {
@@ -128,7 +128,7 @@
   height: var(--deepdeck-hero-height, 60px);
   right: auto;
   bottom: auto;
-  filter: drop-shadow(0 5px 9px rgb(5 8 20 / 26%));
+  filter: var(--deepdeck-hero-docked-shadow, drop-shadow(0 5px 9px rgb(5 8 20 / 26%)));
   opacity: 1;
   pointer-events: none;
   transform: none;
@@ -138,7 +138,7 @@
 .mascot[data-motion='docked'][data-disabled='true'] {
   /* Keep the orb opaque so the resident blue button cannot bleed through the
      WebGL surface; dim the rendered material instead of the whole layer. */
-  filter: brightness(.62) saturate(.72) drop-shadow(0 5px 9px rgb(5 8 20 / 18%));
+  filter: brightness(.62) saturate(.72) var(--deepdeck-hero-docked-shadow, drop-shadow(0 5px 9px rgb(5 8 20 / 18%)));
 }
 
 .mascot[data-motion='docked'][data-positioned='false'] {
@@ -309,20 +309,20 @@
 @media (max-width: 720px) {
   .mascot,
   .heroTarget {
-    right: -12px;
-    bottom: 82px;
-    width: 140px;
-    height: 176px;
+    right: var(--deepdeck-hero-rest-right, -12px);
+    bottom: var(--deepdeck-hero-rest-bottom, 82px);
+    width: var(--deepdeck-hero-rest-width, 140px);
+    height: var(--deepdeck-hero-rest-height, 176px);
   }
 }
 
 @media (max-width: 480px) {
   .mascot,
   .heroTarget {
-    right: -2px;
-    bottom: 87px;
-    width: 116px;
-    height: 146px;
+    right: var(--deepdeck-hero-rest-right, -2px);
+    bottom: var(--deepdeck-hero-rest-bottom, 87px);
+    width: var(--deepdeck-hero-rest-width, 116px);
+    height: var(--deepdeck-hero-rest-height, 146px);
   }
 }
 

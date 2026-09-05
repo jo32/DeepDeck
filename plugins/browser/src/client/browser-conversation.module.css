@@ -1,0 +1,3 @@
+.welcome { padding: 32px; }
+.welcome h3 { margin: 0 0 10px; color: var(--browser-text); font-size: 20px; line-height: 1.4; font-weight: 500; letter-spacing: -.02em; }
+.welcome p { margin: 0; max-width: 360px; color: var(--browser-muted); font-size: 13px; line-height: 1.8; }

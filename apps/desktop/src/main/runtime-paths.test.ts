@@ -23,7 +23,8 @@ describe("resolveDesktopRuntimePaths", () => {
     expect(paths.plugins[1]?.path).toBe("/custom/home-hero");
     expect(paths.plugins[7]?.path).toBe("/repo/plugins/computer-use");
     expect(paths.plugins[8]?.path).toBe("/repo/plugins/provider-aware-web");
-    expect(paths.plugins[9]?.path).toBe("/repo/node_modules/dsh-codex-connect");
+    expect(paths.plugins[9]?.path).toBe("/repo/plugins/browser");
+    expect(paths.plugins[10]?.path).toBe("/repo/node_modules/dsh-codex-connect");
   });
 
   it("pins program resources inside the packaged bundle", () => {
@@ -58,6 +59,7 @@ describe("resolveDesktopRuntimePaths", () => {
       "/Applications/DeepDeck.app/Contents/Resources/plugins/app-conversations",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/computer-use",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/@deepdeck/dsh-provider-aware-web",
+      "/Applications/DeepDeck.app/Contents/Resources/plugins/browser",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-codex-connect",
     ]);
     expect(paths.plugins.slice(-1).map((plugin) => ({
