@@ -15,8 +15,8 @@ let child;
 try {
   await symlink(join(root, 'plugins/browser/node_modules'), join(temporary, 'node_modules'), 'junction');
   await build({ entryPoints: [join(root, 'apps/desktop/src/main/windows/browser-window.ts')], bundle: true, platform: 'node', format: 'cjs', external: ['electron'], outfile: join(temporary, 'native.cjs') });
-  await build({ stdin: { contents: `export { BrowserRuntime } from './runtime.ts'; export { BrowserNativeClient } from './native-client.ts'; export { BrowserSiteStore } from './site-store.ts'; export { WebMCPStore } from './webmcp-store.ts';`, resolveDir: join(root, 'plugins/browser/src'), loader: 'ts' }, bundle: true, platform: 'node', format: 'esm', packages: 'external', outfile: entry });
-  const { BrowserRuntime, BrowserNativeClient, BrowserSiteStore, WebMCPStore } = await import(pathToFileURL(entry).href);
+  await build({ stdin: { contents: `export { BrowserRuntime } from './runtime.ts'; export { BrowserNativeClient } from './native-client.ts'; export { BrowserSiteStore } from './site-store.ts'; export { WebMCPStore } from './webmcp-store.ts'; export { WEBMCP_TEXT_EDITING_EXAMPLE } from './builder-editing-example.ts';`, resolveDir: join(root, 'plugins/browser/src'), loader: 'ts' }, bundle: true, platform: 'node', format: 'esm', packages: 'external', outfile: entry });
+  const { BrowserRuntime, BrowserNativeClient, BrowserSiteStore, WebMCPStore, WEBMCP_TEXT_EDITING_EXAMPLE } = await import(pathToFileURL(entry).href);
   const environment = { ...process.env, DEEPDECK_BROWSER_TEST_BUNDLE: join(temporary, 'native.cjs'), DEEPDECK_BROWSER_TEST_PROFILE: join(temporary, 'profile') };
   delete environment.ELECTRON_RUN_AS_NODE;
   child = spawn(electron, [fileURLToPath(new URL('./browser-devtools-fixture.cjs', import.meta.url))], { env: environment, stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
@@ -75,6 +75,85 @@ try {
     const nativeScreenshot = await invoke('browser_screenshot');
     assert.equal(nativeScreenshot.attachment.attachmentId, 'test-image');
     assert(tools.get('browser_screenshot').output.render({}, JSON.stringify(nativeScreenshot)).some(block => block.type === 'image'));
+
+    // Execute the exact skill example through compiler -> native WebMCP -> Host
+    // tools; simulate the Agent's content decision between read and write calls.
+    const inspection = await invoke('browser_inspect');
+    assert(inspection.content.elements.some(element => element.id === 'reply' && element.contentEditable && element.role === 'textbox' && element.label === 'Reply'));
+    assert(inspection.content.elements.some(element => element.name === 'body' && element.maxLength === 2000 && !element.readOnly));
+    await invoke('webmcp_write_source', { source: WEBMCP_TEXT_EDITING_EXAMPLE + `
+      sdk.registerTool({name:'read_rich_reply',description:'Read rich reply and preview',inputSchema:{type:'object'},execute:()=>({
+        text:document.getElementById('reply').textContent, formatted:document.querySelector('#reply strong').textContent,
+        preview:document.getElementById('reply-preview').textContent
+      })});
+      sdk.registerTool({name:'prepare_rich_reply_edit',description:'Request native replacement of the reply text while keeping formatting; does not submit',
+        inputSchema:{type:'object',properties:{text:{type:'string'},expectedValue:{type:'string'}},required:['text','expectedValue']},
+        execute:({text,expectedValue})=>{
+          if(document.getElementById('reply').textContent!==expectedValue) throw new Error('Reply changed');
+          return {status:'requires_browser_action',target:{role:'textbox',label:'Reply'},operation:'replace_selection',
+            selectedText:document.getElementById('reply-text').textContent,expectedValue,text,reason:'Editor requires trusted native input'};
+        }});
+    ` });
+    await invoke('webmcp_apply');
+    const pageTool = async (name, input = {}) => {
+      const context = await invoke('browser_context');
+      const tool = context.tabs.find(tab => tab.id === first.id).tools.find(tool => tool.name === `deepdeck_${name}`);
+      assert(tool, `Discovered ${name}`);
+      return invoke('browser_webmcp_call', { name: tool.name, frameId: tool.frameId, documentId: tool.documentId, revision: tool.revision, input });
+    };
+    const draft = await pageTool('read_reply_draft');
+    assert.equal(draft.text, '原有草稿');
+    await mcp('evaluate_script', { pageId, function: '()=>{document.getElementById("draft-controls").disabled=true}' });
+    assert.equal((await pageTool('read_reply_draft')).editable, false, 'fieldset disability applies to its textarea');
+    await assert.rejects(pageTool('write_reply_draft', { editorId: draft.editorId, text: 'Must not edit a disabled fieldset', expectedValue: draft.text }), /unavailable/);
+    assert.equal((await pageTool('read_reply_draft')).text, draft.text);
+    await mcp('evaluate_script', { pageId, function: '()=>{document.getElementById("draft-controls").disabled=false}' });
+    const replacement = `${draft.text}\n补充中文、emoji 🙂 和多行内容`;
+    await pageTool('write_reply_draft', { editorId: draft.editorId, text: replacement, expectedValue: draft.text });
+    assert.equal((await pageTool('read_reply_draft')).text, replacement);
+    await until(async () => text(await mcp('evaluate_script', { pageId, function: '()=>document.getElementById("draft-preview").textContent' })).includes('补充中文'), 'site preview accepts textarea input');
+    await assert.rejects(pageTool('write_reply_draft', { editorId: draft.editorId, text: 'Must not overwrite', expectedValue: draft.text }), /changed/);
+    await assert.rejects(pageTool('write_reply_draft', { editorId: draft.editorId, text: 'x'.repeat(2001), expectedValue: replacement }), /length/);
+    assert.equal((await pageTool('read_reply_draft')).text, replacement);
+    await mcp('evaluate_script', { pageId, function: `()=>{
+      const previous=document.querySelector('textarea[name="body"]');
+      const next=previous.cloneNode(true);next.value=previous.value;previous.replaceWith(next);
+    }` });
+    await assert.rejects(pageTool('write_reply_draft', { editorId: draft.editorId, text: 'Must not edit a replacement composer', expectedValue: replacement }), /changed/);
+    const replacedDraft = await pageTool('read_reply_draft');
+    assert.notEqual(replacedDraft.editorId, draft.editorId, 'same-value replacement editor has a new identity');
+    assert.equal(replacedDraft.text, replacement);
+
+    // Handoff completes before the next Browser action, including in Use mode.
+    await invoke('browser_set_mode', { mode: 'use' });
+    const originalReply = await pageTool('read_rich_reply');
+    const handoff = await pageTool('prepare_rich_reply_edit', { text: '主 Agent 修改后的回复 🙂', expectedValue: originalReply.text });
+    assert.equal(handoff.status, 'requires_browser_action');
+    assert.equal((await pageTool('read_rich_reply')).text, originalReply.text, 'handoff does not mutate or wait for another Agent turn');
+    assert.equal((await pageTool('read_rich_reply')).text, handoff.expectedValue);
+    const freshSnapshot = text(await mcp('take_snapshot', { pageId }));
+    assert.match(freshSnapshot, /textbox "Reply"/);
+    // Use the observed editor interface to select only the requested text;
+    // Chromium input performs the mutation, preserving the bold sibling.
+    await mcp('evaluate_script', { pageId, function: `()=>{
+      const editor=document.getElementById('reply');editor.focus();
+      const range=document.createRange();range.selectNodeContents(document.getElementById('reply-text'));
+      const selection=getSelection();selection.removeAllRanges();selection.addRange(range);return selection.toString();
+    }` });
+    await mcp('type_text', { pageId, text: handoff.text });
+    const editedReply = await pageTool('read_rich_reply');
+    assert.equal(editedReply.text, `保留格式${handoff.text}`);
+    assert.equal(editedReply.formatted, '保留格式');
+    assert.equal(editedReply.preview, editedReply.text, 'site received trusted input');
+    assert.match(text(await mcp('evaluate_script', { pageId, function: '()=>document.body.dataset.posts' })), /"0"/, 'editing never submits');
+    const searchSnapshot = text(await mcp('take_snapshot', { pageId }));
+    const searchUid = searchSnapshot.match(/uid=(\S+) (?:searchbox|textbox) "Search"/)[1];
+    await mcp('fill', { pageId, uid: searchUid, value: '中文搜索 WebMCP' });
+    await mcp('press_key', { pageId, key: 'Enter' });
+    assert.match(text(await mcp('evaluate_script', { pageId, function: '()=>document.getElementById("results").textContent' })), /Results for: 中文搜索 WebMCP/);
+    await invoke('browser_set_mode', { mode: 'builder' });
+    console.log('PASS Builder editing: exact bundled example, Chinese/multiline round trip, inherited disabled state, editor identity, stale draft and length checks, rich-editor native-input handoff in Use mode, preserved formatting, site preview, separate search submission.');
+
     await invoke('webmcp_write_source', { source: `__deepdeckWebMCP.registerTool({name:'articles',description:'Read articles',inputSchema:{type:'object'},execute:async()=>await (await fetch('/api')).json()})` });
     await invoke('webmcp_apply');
     const available = JSON.stringify(await invoke('browser_context'));

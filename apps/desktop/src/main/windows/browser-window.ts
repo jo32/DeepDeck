@@ -945,7 +945,23 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
       case "page.inspect": {
         const tab = target(command); await tab.ready; target(command);
         const ax = await send(tab, "Accessibility.getFullAXTree");
-        const content = await evaluate(tab, `({ title: document.title, url: location.href, text: document.body?.innerText.slice(0, 30000) ?? '', elements: [...document.querySelectorAll('a,button,input,select,textarea,[role="button"]')].slice(0,300).map(el => { const r=el.getBoundingClientRect(); return {tag:el.tagName, text:(el.innerText||el.getAttribute('aria-label')||'').slice(0,200), name:el.getAttribute('name'), type:el.getAttribute('type'), href:el.href, id:el.id, rect:{x:r.x,y:r.y,width:r.width,height:r.height}}; }) })`, true);
+        const content = await evaluate(tab, `({
+          title: document.title, url: location.href, text: document.body?.innerText.slice(0, 30000) ?? '',
+          elements: [...document.querySelectorAll('a,button,input,select,textarea,[role="button"],[role="textbox"],[role="searchbox"],[role="combobox"],[contenteditable]:not([contenteditable="false"])')].slice(0,300).map(el => {
+            const r = el.getBoundingClientRect();
+            return {
+              tag: el.tagName, text: (el.innerText || el.getAttribute('aria-label') || '').slice(0,200),
+              label: (el.getAttribute('aria-label') || [...(el.labels || [])].map(label => label.innerText).join(' ')).slice(0,200),
+              role: el.getAttribute('role'), name: el.getAttribute('name'), type: el.getAttribute('type'),
+              placeholder: el.getAttribute('placeholder'), contentEditable: el.isContentEditable,
+              readOnly: Boolean(el.readOnly) || el.getAttribute('aria-readonly') === 'true',
+              disabled: el.matches(':disabled') || el.getAttribute('aria-disabled') === 'true',
+              required: Boolean(el.required) || el.getAttribute('aria-required') === 'true',
+              maxLength: typeof el.maxLength === 'number' ? el.maxLength : undefined,
+              href: el.href, id: el.id, rect: { x:r.x, y:r.y, width:r.width, height:r.height }
+            };
+          })
+        })`, true);
         target(command);
         return reply(command.action, { documentId: command.documentId, content: content as BrowserInspection['content'], accessibility: (ax.nodes ?? []).slice(0, 600), frames: [...tab.frames].map(([id, frame]) => ({ id, ...frame })), console: tab.console, tools: tab.state.tools });
       }

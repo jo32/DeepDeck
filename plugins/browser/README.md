@@ -151,6 +151,44 @@ site-owned registrations. They may compose existing native WebMCP tools.
 - The browser uses its own persistent login profile. WebMCP remains subject to
   Chromium support and the website's Permissions Policy, including frame access.
 
+## Editing and page actions
+
+For a site-wide WebMCP build, Builder inventories the site's main discoverable
+reading and interaction workflows: login/account controls, search fields, form
+controls, plain and rich-text editors, draft/preview actions and separate submit
+actions. A focused repair stays within its requested capability. Builder inspects
+opened composers and dialogs when needed; the native element summary includes
+contenteditable and ARIA text controls, labels and editability/length constraints.
+
+Login support separates account-state discovery, opening the real login UI,
+selecting observed methods, submitting the native form when requested, and
+checking the resulting state. Passwords and verification codes stay in the
+website's native UI; generated tools return state and necessary user actions
+without secret values. Opening or submitting a login window does not establish
+authentication. Cross-origin login uses the real browser flow and a later check
+on the bound site. After login, the Agent refreshes context and discovers tools
+and account-dependent controls that were previously unavailable.
+
+Login dialogs and method switches can navigate nested frames and invalidate a
+pending call. Generated actions return promptly; the Agent refreshes context
+and verifies the resulting UI in a separate read. An interrupted action has an
+unknown outcome and must be inspected before any retry.
+
+The bundled skill describes an editing round trip: WebMCP reads the existing
+draft, the current site Agent composes or revises it, WebMCP writes back with an
+target-identity and expected-value checks, and the Agent verifies the actual
+editor/preview state.
+The plain-textarea example is executable source shared with the Electron
+integration verifier. Rich editors must preserve formatting and application
+state rather than merely changing visible DOM text.
+
+For editors requiring native input, a generated tool can return a
+`requires_browser_action` result with target, expected value and replacement
+text. The Agent checks it against the user's task and a fresh snapshot, uses
+the existing DevTools input tools, then verifies the editor through WebMCP.
+This is an Agent-mediated workflow, not a new automatic bridge or a nested
+model invocation from page code. Filling and submitting remain separate.
+
 ## Boundaries and verification
 
 `plugins/browser` owns UI, Host services, site bindings and generation storage.

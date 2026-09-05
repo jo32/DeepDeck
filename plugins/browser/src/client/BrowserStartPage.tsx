@@ -72,7 +72,7 @@ export function BrowserStartPage({ sites, onOpen, character, t }: BrowserStartPa
           <span className={css.actionLink}>{t('chooseSite')}<BrowserIcon name="forward" /></span>
         </button>
         <button type="button" className={css.action} aria-pressed={intent === 'builder'} onClick={() => { choose('builder') }}>
-          <span className={css.actionHeader}><span className={css.actionIcon}><BrowserIcon name="tools" /></span><span className={css.actionLabel}>WEBMCP BUILDER</span></span>
+          <span className={css.actionHeader}><span className={css.actionIcon}><BrowserIcon name="webmcp" /></span><span className={css.actionLabel}>WEBMCP BUILDER</span></span>
           <strong>{t('startBuilderTitle')}</strong><span className={css.actionDescription}>{t('startBuilderDescription')}</span>
           <span className={css.actionLink}>{t('chooseSite')}<BrowserIcon name="forward" /></span>
         </button>

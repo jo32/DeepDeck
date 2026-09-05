@@ -459,16 +459,16 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
           </div>
         </>}
         {panelTab === 'tools' && <div className={css.panelScroll}>
-          <div className={css.toolsHero}><div className={css.toolsHeroIcon}><BrowserIcon name="tools" /></div><div><span className={css.eyebrow}>WEBMCP</span><h3>{t('tools')}</h3></div><strong>{active?.tools.length ?? 0}</strong></div>
+          <div className={css.toolsHero}><div className={css.toolsHeroIcon}><BrowserIcon name="webmcp" /></div><div><span className={css.eyebrow}>WEBMCP</span><h3>{t('tools')}</h3></div><strong>{active?.tools.length ?? 0}</strong></div>
           <p className={css.hint}>{t('merge')}</p>
           {active?.webmcpError && <div role="status" className={css.notice}><strong>{t('toolError')}</strong><p>{active.webmcpError}</p></div>}
-          {(active?.tools.length ?? 0) === 0 && <div className={css.emptyTools}><BrowserIcon name="tools" /><p>{t(active?.loading ? 'discovering' : 'noTools')}</p>
+          {(active?.tools.length ?? 0) === 0 && <div className={css.emptyTools}><BrowserIcon name="webmcp" /><p>{t(active?.loading ? 'discovering' : 'noTools')}</p>
             {!blank && <button type="button" className={css.secondaryButton} disabled={busy || running} onClick={() => { void startAgent('builder') }}>{t('builder')}</button>}
           </div>}
           {([{ source: 'site', count: sourceCount, label: 'siteTools' }, { source: 'deepdeck', count: generatedCount, label: 'generatedTools' }] as const).map(group => group.count > 0 && <section key={group.source} className={css.toolGroup}>
             <h4>{t(group.label)}<span>{group.count}</span></h4>
             {active?.tools.filter(tool => tool.source === group.source).map(tool => <details className={css.tool} key={`${tool.documentId}:${tool.frameId}:${tool.name}`}>
-              <summary><BrowserIcon name="tools" /><code>{tool.name}</code><BrowserIcon name="chevron" /></summary>
+              <summary><BrowserIcon name="webmcp" /><code>{tool.name}</code><BrowserIcon name="chevron" /></summary>
               <p>{tool.description}</p><span className={css.hint} title={tool.revision}>{tool.origin}{tool.revision ? ` · ${tool.revision.slice(0, 12)}` : ''}</span>
               <pre>{JSON.stringify(tool.inputSchema, null, 2)}</pre>
             </details>)}
@@ -478,7 +478,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
             <p className={css.hint}>{t(site.enabled ? 'enabled' : 'disabled')}{site.activeRevision && <span title={site.activeRevision}> · {site.activeRevision.slice(0, 12)}</span>}</p>
             {site.revisions.slice().reverse().map(revision => <div className={css.version} key={revision}><code title={revision}>{revision.slice(0, 12)}</code><button type="button" disabled={running || revision === site.activeRevision} onClick={() => { void updateSite('rollback', revision) }}>{t('rollback')}</button></div>)}
           </section>}
-          {!blank && (active?.tools.length ?? 0) > 0 && <button type="button" className={css.secondaryButton} disabled={busy || running} onClick={() => { void startAgent('builder') }}><BrowserIcon name="spark" />{t('builder')}</button>}
+          {!blank && (active?.tools.length ?? 0) > 0 && <button type="button" className={css.secondaryButton} disabled={busy || running} onClick={() => { void startAgent('builder') }}><BrowserIcon name="webmcp" />{t('builder')}</button>}
         </div>}
         {panelTab === 'downloads' && <BrowserDownloads downloads={state?.native.downloads ?? []} command={command} t={t} />}
       </aside>}

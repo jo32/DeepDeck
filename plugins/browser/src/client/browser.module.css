@@ -103,6 +103,7 @@
 .panelScroll { flex: 1; overflow: auto; padding: 24px 20px; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--browser-hover) transparent; }
 .toolsHero { display: flex; align-items: center; gap: 12px; }
 .toolsHeroIcon { width: 42px; height: 42px; border: 1px solid var(--browser-line); border-radius: 12px; background: var(--browser-raised); color: var(--browser-text); display: grid; place-items: center; }
+.toolsHeroIcon > .icon { width: 26px; height: 26px; }
 .toolsHero h3 { margin: 3px 0 0; font-size: 17px; letter-spacing: -.025em; font-weight: 500; }
 .toolsHero > strong { margin-left: auto; min-width: 42px; padding: 4px 8px; border: 1px solid var(--browser-line-soft); border-radius: 10px; background: var(--browser-surface); text-align: center; color: var(--browser-muted); font-size: 24px; font-weight: 400; letter-spacing: -.04em; }
 .sectionHeading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
