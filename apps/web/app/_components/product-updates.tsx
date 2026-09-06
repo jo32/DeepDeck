@@ -29,14 +29,22 @@ const copy = {
       { title: "切回 Use，直接描述要做的事", caption: "输入“compose a hello world x post”，Agent 调用 WebMCP 准备 Hello, world! 👋 草稿。图中没有发布帖子；填写与提交是独立操作。", alt: "Use 模式调用 WebMCP，在 X 中准备 Hello world 草稿，未发布帖子", src: "/webmcp/use-webmcp.png" },
     ],
     fullImage: "查看完整截图",
-    benefitsTitle: "模型更懂网站，操作更高效、更省 token。",
-    comparison: "Computer use 通常需要反复读取截图或页面快照、定位控件、点击和输入。WebMCP 把搜索、读取帖子、编辑草稿等能力声明为工具，让模型按明确的参数调用，并读取结果。",
-    benefits: [
-      ["更懂功能", "工具名称、描述和参数直接告诉模型网站能做什么，以及如何使用。"],
-      ["更高效，也更省 token", "在工具覆盖的任务中，减少反复读图、定位控件和多轮交互，可以缩短执行时间并降低 token 消耗。"],
-      ["把探索经验留给下次任务", "Agent 验证过的操作成为可以反复调用的工具，让现有产品逐步具备 Agent 可用的能力。"],
+    comparisonLink: "与 Computer use 对比",
+    comparisonTitle: "WebMCP 与普通 Computer use",
+    comparisonIntro: "普通 Computer use 让 Agent 看页面、找控件，再逐步点击和输入。WebMCP 将网站功能声明为工具，让模型明确知道能做什么、需要哪些参数，并直接调用。",
+    comparisonColumns: ["对比", "普通 Computer use", "WebMCP"],
+    comparisonRows: [
+      ["理解网站", "从截图或页面结构推断按钮含义、页面状态和操作流程。", "通过工具名称、功能描述和参数结构，明确知道网站提供哪些能力。"],
+      ["执行任务", "观察页面 → 定位控件 → 点击或输入 → 再观察，逐步推进。", "选择合适的工具 → 传入参数 → 读取执行结果；工具负责对应的页面操作。"],
+      ["重复使用", "通常仍沿界面逐步操作；复用经验需要另行保存为脚本或流程。", "DeepDeck 将验证过的操作保存成工具，后续任务可以复用这份使用经验。"],
+      ["时间与 token", "多轮页面读取和模型决策会增加上下文与交互开销。", "在工具覆盖的任务中，减少重复读图、定位和多轮交互，可以更快、更省 token。"],
+      ["适用场景", "没有现成工具、需要探索网站，或处理临时的页面交互。", "网站已有工具，或希望把经常使用的流程保存下来反复调用。"],
     ],
-    efficiencyNote: "实际收益取决于网站、工具设计和任务。需要时，Agent 仍可结合浏览器操作完成工作。",
+    comparisonExample: "同一个任务：搜索关键词，并读取结果",
+    computerUseExample: "查看页面 → 找到搜索框 → 点击、输入 → 提交搜索 → 再读页面 → 提取结果",
+    webmcpExample: "调用搜索工具（关键词）→ 读取返回结果；按工具设计，必要时再调用结果读取工具",
+    comparisonBridge: "在 DeepDeck 中，两种方式可以一起工作：Agent 先用浏览器探索和验证网站，再把有效的操作保存成 WebMCP。下次优先复用这些工具，未覆盖的交互仍可由浏览器操作完成。",
+    efficiencyNote: "首次构建需要探索和验证；实际效率与 token 收益取决于网站、工具设计和任务，网站变化后可能需要更新工具。",
     changelogTitle: ["看看", "最近更新。"],
     changelogBody: "新功能、重要改进和实际用法，持续记录在这里。开发预览与正式发布会分别标明。",
     changelogPreview: "此条记录为正式发布前的源码开发预览。",
@@ -66,14 +74,22 @@ const copy = {
       { title: "Switch to Use and describe your task", caption: "Ask “compose a hello world x post” and the Agent calls WebMCP to prepare a Hello, world! 👋 draft. The post is not published; filling and submitting are separate actions.", alt: "Use mode calls WebMCP to prepare a Hello world draft on X without publishing it", src: "/webmcp/use-webmcp.png" },
     ],
     fullImage: "View full screenshot",
-    benefitsTitle: "Clearer capabilities. Faster actions. Fewer tokens.",
-    comparison: "Computer use typically involves repeated screenshots or page snapshots, finding controls, clicking, and typing. WebMCP describes actions such as search, read a post, or edit a draft as tools the model can call with explicit arguments and read the results.",
-    benefits: [
-      ["Understand the website", "Tool names, descriptions, and parameters tell the model what the website can do and how to use it."],
-      ["Work faster with fewer tokens", "For tasks covered by tools, fewer page inspections, control lookups, and interaction rounds can reduce execution time and token use."],
-      ["Keep experience for the next task", "Operations the Agent has verified become tools it can call again, helping existing products become easier to use through an agent."],
+    comparisonLink: "Compare with computer use",
+    comparisonTitle: "WebMCP vs. ordinary computer use",
+    comparisonIntro: "With ordinary computer use, an Agent reads the page, finds controls, then clicks and types step by step. WebMCP declares website features as tools, so the model knows what it can do, which arguments to provide, and how to call them.",
+    comparisonColumns: ["Compare", "Ordinary computer use", "WebMCP"],
+    comparisonRows: [
+      ["Discovery", "Infer what controls do, the page state, and the workflow from screenshots or page structure.", "Discover explicit capabilities through tool names, descriptions, and input schemas."],
+      ["Execution", "Observe → locate a control → click or type → observe again, one step at a time.", "Choose a tool → supply arguments → read its result. The tool handles the corresponding page operations."],
+      ["Reuse", "Typically repeat the UI steps; reuse requires separately saving a script or workflow.", "DeepDeck saves verified operations as tools, so later tasks can reuse that experience."],
+      ["Time and tokens", "Repeated page reads and model decisions add context and interaction overhead.", "For tasks covered by tools, fewer page reads, control lookups, and interaction rounds can save time and tokens."],
+      ["Best suited to", "Exploring a website, working without existing tools, or handling a one-off page interaction.", "Using tools a site already offers, or saving recurring workflows as tools for later tasks."],
     ],
-    efficiencyNote: "Results depend on the website, tool design, and task. The Agent can still combine tools with browser interaction when needed.",
+    comparisonExample: "Same task: search for a keyword and read the results",
+    computerUseExample: "Read the page → find the search field → click and type → submit → read the page again → extract results",
+    webmcpExample: "Call the search tool with a keyword → read its result; call a results-reading tool if the tool design requires it",
+    comparisonBridge: "DeepDeck uses both approaches together: the Agent first explores and verifies the website through browser interaction, then saves working operations as WebMCP tools. Later tasks reuse those tools, with browser interaction available for anything they do not cover.",
+    efficiencyNote: "Building tools first takes exploration and verification. Time and token savings depend on the site, tool design, and task; site changes may require tool updates.",
     changelogTitle: ["What’s new", "in DeepDeck."],
     changelogBody: "New capabilities, meaningful improvements, and how to use them. Development previews and published features are labeled separately.",
     changelogPreview: "This entry describes the source preview before its installer release.",
@@ -99,6 +115,9 @@ export function WebMCPSection({ locale }: { locale: SiteLocale }) {
               {content.source} <span aria-hidden="true">↗</span>
             </a>
             <p className="webmcp-availability">{content.availability}</p>
+            <a className="text-link webmcp-compare-link" href="#webmcp-vs-computer-use">
+              {content.comparisonLink} <span aria-hidden="true">↓</span>
+            </a>
           </div>
         </div>
 
@@ -119,6 +138,34 @@ export function WebMCPSection({ locale }: { locale: SiteLocale }) {
             </a>
           </div>
         </div>
+
+        <section id="webmcp-vs-computer-use" className="webmcp-comparison" aria-labelledby="webmcp-comparison-title">
+          <h3 id="webmcp-comparison-title">{content.comparisonTitle}</h3>
+          <p className="webmcp-comparison-intro">{content.comparisonIntro}</p>
+          <table className="webmcp-comparison-table" aria-labelledby="webmcp-comparison-title">
+            <thead>
+              <tr>{content.comparisonColumns.map((heading) => <th scope="col" key={heading}>{heading}</th>)}</tr>
+            </thead>
+            <tbody>
+              {content.comparisonRows.map(([dimension, computerUse, webmcp]) => (
+                <tr key={dimension}>
+                  <th scope="row">{dimension}</th>
+                  <td>{computerUse}</td>
+                  <td>{webmcp}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="webmcp-comparison-example">
+            <h4>{content.comparisonExample}</h4>
+            <dl>
+              <div><dt>{content.comparisonColumns[1]}</dt><dd>{content.computerUseExample}</dd></div>
+              <div><dt>{content.comparisonColumns[2]}</dt><dd>{content.webmcpExample}</dd></div>
+            </dl>
+          </div>
+          <p className="webmcp-comparison-bridge">{content.comparisonBridge}</p>
+          <p className="webmcp-efficiency-note">{content.efficiencyNote}</p>
+        </section>
 
         <ol className="webmcp-paths" aria-label={content.pathsLabel}>
           {content.paths.map(([title, description], index) => (
@@ -144,21 +191,6 @@ export function WebMCPSection({ locale }: { locale: SiteLocale }) {
             </figure>
           ))}
         </div>
-
-        <div className="webmcp-benefits-heading">
-          <h3 id="webmcp-benefits-title">{content.benefitsTitle}</h3>
-          <p>{content.comparison}</p>
-        </div>
-        <ul className="webmcp-steps" aria-labelledby="webmcp-benefits-title">
-          {content.benefits.map(([title, description], index) => (
-            <li key={title}>
-              <span aria-hidden="true">0{index + 1}</span>
-              <h4>{title}</h4>
-              <p>{description}</p>
-            </li>
-          ))}
-        </ul>
-        <p className="webmcp-efficiency-note">{content.efficiencyNote}</p>
       </div>
     </section>
   );

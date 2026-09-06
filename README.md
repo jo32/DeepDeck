@@ -24,7 +24,21 @@ That experience lives in inspectable, executable tools: how to search, read resu
 
 [WebMCP](https://github.com/webmachinelearning/webmcp) is a proposed web API that lets websites expose JavaScript functions or HTML forms as tools with natural-language descriptions and structured input schemas. An agent can discover what a website does, supply the right arguments, and call its tools within the current page, sharing the user's browser context and visible interface. It complements backend MCP integrations.
 
-With computer use, a model interprets screenshots or page snapshots, locates controls, clicks, types, and checks the result across multiple steps. WebMCP gives it explicit capabilities such as search, read a post, or edit a draft. For workflows covered by well-designed tools, fewer repeated page inspections and interaction rounds can mean **faster execution and lower token use**. The savings depend on the site, tools, and task; browser interaction remains available when needed. See the [WebMCP project's motivation and goals](https://github.com/webmachinelearning/webmcp#background-and-motivation).
+#### WebMCP vs. ordinary computer use
+
+Computer use operates a website through its interface: observe, locate controls, click or type, then observe again. WebMCP exposes named capabilities with descriptions and input schemas, so the model can call a tool and read its result. See the [WebMCP project's motivation and goals](https://github.com/webmachinelearning/webmcp#background-and-motivation).
+
+| | Ordinary computer use | WebMCP |
+| --- | --- | --- |
+| Understanding | Infer functionality and state from screenshots or page structure. | Discover explicit tool names, descriptions, and parameters. |
+| Execution | Locate and operate controls across multiple observation/action steps. | Supply arguments to a tool; it performs the corresponding operations and returns a result. |
+| Reuse | Usually repeat the UI steps; reuse requires separately saving a script or workflow. | DeepDeck saves verified operations as tools that later tasks can reuse. |
+| Time and tokens | Repeated page reads and model decisions add overhead. | For tasks covered by tools, fewer observation and interaction rounds can save time and tokens. |
+| Best suited to | Exploring sites and handling interactions without existing tools. | Calling existing tools and reusing recurring website workflows. |
+
+For example, **searching for a keyword and reading the results** with computer use typically means finding the search field, typing, submitting, reading the new page, and extracting results. With WebMCP, the Agent calls a search tool with the keyword and reads the result, using a separate results-reading tool if needed.
+
+**DeepDeck combines both approaches.** The Agent explores and verifies a website through browser interaction, then saves working operations as WebMCP tools. Later tasks can reuse that experience, with browser interaction available for anything the tools do not cover. Initial tool building takes exploration and verification; savings depend on the website, tool design, and task, and site changes may require tool updates.
 
 #### 1. Reuse existing WebMCP
 
