@@ -18,7 +18,7 @@ export type ProductUpdate = {
 
 export const webmcpSourceUrl = "https://github.com/jo32/DeepDeck/tree/v1.0.38";
 
-export const webmcpReleaseUrl = "https://github.com/jo32/DeepDeck/releases/tag/v1.0.38";
+export const webmcpReleaseUrl = "https://github.com/jo32/DeepDeck/releases/latest";
 
 export const productUpdates: readonly ProductUpdate[] = [
   {
@@ -37,7 +37,7 @@ export const productUpdates: readonly ProductUpdate[] = [
           "Builder 发现输入框、草稿和登录入口；Agent 完成读取、编辑、回填与复查，填写和提交分开。",
           "编辑前检测草稿和目标变化；需要原生输入的编辑器由 Agent 接续操作，并验证页面结果。",
         ],
-        linkLabel: "下载 v1.0.38",
+        linkLabel: "下载最新版",
       },
       en: {
         category: "V1.0.38 / BROWSER / WEBMCP",
@@ -48,7 +48,7 @@ export const productUpdates: readonly ProductUpdate[] = [
           "Builder discovers inputs, drafts, and sign-in controls. The Agent reads, edits, fills, and checks, with submission as a separate action.",
           "Detect draft and target changes before editing. The Agent continues through native browser input when needed and verifies the page result.",
         ],
-        linkLabel: "Download v1.0.38",
+        linkLabel: "Download latest",
       },
     },
   },

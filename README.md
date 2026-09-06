@@ -14,7 +14,7 @@
 
 ### Browser + WebMCP
 
-**Available in [DeepDeck v1.0.38](https://github.com/jo32/DeepDeck/releases/tag/v1.0.38)** for Apple Silicon and Intel Macs.
+**[Download the latest DeepDeck release](https://github.com/jo32/DeepDeck/releases/latest)** for Apple Silicon and Intel Macs.
 
 **Let the Agent use a website, then keep what it learns as WebMCP tools.** You describe the goal. The Agent explores the real site, tries its workflows, checks the results, and saves the working operations as reusable tools. Building WebMCP is like preserving the Agent's experience of using the website, so future tasks can reuse it without a person writing step-by-step instructions.
 
