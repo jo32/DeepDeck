@@ -392,11 +392,106 @@ main {
   line-height: 1.6;
 }
 
+.webmcp-philosophy {
+  margin-top: 64px;
+  padding: 32px 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.webmcp-philosophy h3 {
+  margin: 0 0 18px;
+  font-size: clamp(24px, 2.5vw, 32px);
+  font-weight: 560;
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+}
+
+.webmcp-philosophy p {
+  max-width: 920px;
+  margin: 0;
+  color: #626262;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.webmcp-learning-loop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 30px;
+  margin: 28px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  counter-reset: learning-step;
+}
+
+.webmcp-learning-loop li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  counter-increment: learning-step;
+}
+
+.webmcp-learning-loop li::before {
+  content: counter(learning-step, decimal-leading-zero);
+  color: #898989;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+
+.webmcp-definition {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 36px;
+  margin-top: 36px;
+  padding: 32px 0;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.webmcp-definition h3,
+.webmcp-paths h3 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 560;
+  line-height: 1.35;
+  letter-spacing: -0.035em;
+}
+
+.webmcp-definition p,
+.webmcp-paths p,
+.webmcp-benefits-heading p {
+  margin: 0;
+  color: #626262;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.webmcp-definition .text-link {
+  margin-top: 20px;
+}
+
+.webmcp-paths {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 48px;
+  margin: 48px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.webmcp-paths h3 {
+  margin: 16px 0 14px;
+}
+
 .webmcp-gallery {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
-  margin-top: 72px;
+  margin-top: 36px;
 }
 
 .webmcp-shot {
@@ -406,11 +501,6 @@ main {
   border: 1px solid #dcdcdc;
   border-radius: 12px;
   background: #ffffff;
-}
-
-.webmcp-shot-main {
-  grid-column: 1 / -1;
-  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.07);
 }
 
 .webmcp-image-link {
@@ -475,10 +565,23 @@ main {
   line-height: 1.7;
 }
 
+.webmcp-benefits-heading {
+  max-width: 860px;
+  margin-top: 64px;
+}
+
+.webmcp-benefits-heading h3 {
+  margin: 0 0 18px;
+  font-size: clamp(25px, 2.6vw, 34px);
+  font-weight: 560;
+  line-height: 1.3;
+  letter-spacing: -0.04em;
+}
+
 .webmcp-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 56px 0 0;
+  margin: 28px 0 0;
   padding: 0;
   border-top: 1px solid var(--line-strong);
   border-bottom: 1px solid var(--line-strong);
@@ -499,7 +602,7 @@ main {
   font-size: 10px;
 }
 
-.webmcp-steps h3 {
+.webmcp-steps h4 {
   margin: 25px 0 12px;
   font-size: 18px;
   font-weight: 560;
@@ -513,25 +616,8 @@ main {
   line-height: 1.8;
 }
 
-.webmcp-example {
-  display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 35px;
-  margin-top: 28px;
-}
-
-.webmcp-example > span {
-  padding-top: 3px;
-  color: #707070;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
-  line-height: 1.7;
-  letter-spacing: 0.04em;
-}
-
-.webmcp-example p {
-  max-width: 780px;
-  margin: 0;
+.webmcp-efficiency-note {
+  margin: 20px 0 0;
   color: #737373;
   font-size: 12px;
   line-height: 1.8;
@@ -1594,6 +1680,32 @@ main {
   .webmcp-gallery {
     grid-template-columns: 1fr;
     gap: 18px;
+    margin-top: 32px;
+  }
+
+  .webmcp-definition {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 40px;
+    padding: 28px 0;
+  }
+
+  .webmcp-philosophy {
+    margin-top: 40px;
+    padding: 26px 20px;
+  }
+
+  .webmcp-learning-loop {
+    flex-direction: column;
+  }
+
+  .webmcp-paths {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    margin-top: 32px;
+  }
+
+  .webmcp-benefits-heading {
     margin-top: 44px;
   }
 
@@ -1621,14 +1733,8 @@ main {
     border-left: 0;
   }
 
-  .webmcp-steps h3 {
+  .webmcp-steps h4 {
     margin-top: 17px;
-  }
-
-  .webmcp-example {
-    grid-template-columns: 1fr;
-    gap: 9px;
-    margin-top: 24px;
   }
 
   .changelog-list {

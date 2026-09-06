@@ -16,15 +16,37 @@
 
 **Available in [DeepDeck v1.0.38](https://github.com/jo32/DeepDeck/releases/tag/v1.0.38)** for Apple Silicon and Intel Macs.
 
-Browse a website and work with its Agent in the same window. Each site keeps its own conversation and workspace, so reopening it resumes your work. **Use** and **Builder** share that conversation: use available tools, or ask Builder to inspect the page and add the missing capabilities.
+**Let the Agent use a website, then keep what it learns as WebMCP tools.** You describe the goal. The Agent explores the real site, tries its workflows, checks the results, and saves the working operations as reusable tools. Building WebMCP is like preserving the Agent's experience of using the website, so future tasks can reuse it without a person writing step-by-step instructions.
 
-![DeepDeck Browser home with Site Agent and WebMCP Builder entry points](apps/web/public/webmcp/browser-start.jpg)
+That experience lives in inspectable, executable tools: how to search, read results, or edit and verify a draft. DeepDeck Browser supports both **reusing WebMCP tools that already exist** and **quickly building tools for websites that do not have them**, making existing products easier for agents to work with.
 
-- **Reusable site tools.** Discover tools a website already provides, or build WebMCP tools for its observed reading and interaction workflows. Enabled tools load again when you return to the site; their source and saved versions remain available for inspection and rollback.
-- **Search, forms, and editing.** Builder looks for interactive controls as well as readable content. The Agent can read a draft, compose or revise it, write it back to the page, and verify the editor's state. Filling a field and submitting it are separate actions.
-- **Login workflows.** Tools can open a site's real login UI, select an observed login method, and check its state. Passwords and verification codes stay in the website's native form. Available actions depend on the site and must be verified against its live page.
+#### What is WebMCP?
 
-![NGA WebMCP tools, including reading and login actions](apps/web/public/webmcp/site-tools.jpg)
+[WebMCP](https://github.com/webmachinelearning/webmcp) is a proposed web API that lets websites expose JavaScript functions or HTML forms as tools with natural-language descriptions and structured input schemas. An agent can discover what a website does, supply the right arguments, and call its tools within the current page, sharing the user's browser context and visible interface. It complements backend MCP integrations.
+
+With computer use, a model interprets screenshots or page snapshots, locates controls, clicks, types, and checks the result across multiple steps. WebMCP gives it explicit capabilities such as search, read a post, or edit a draft. For workflows covered by well-designed tools, fewer repeated page inspections and interaction rounds can mean **faster execution and lower token use**. The savings depend on the site, tools, and task; browser interaction remains available when needed. See the [WebMCP project's motivation and goals](https://github.com/webmachinelearning/webmcp#background-and-motivation).
+
+#### 1. Reuse existing WebMCP
+
+Open a website, select **Site Agent → WebMCP**, and inspect the tools discovered under **Website**. In **Use** mode, describe your task and the Agent can call the available tools. The screenshot below shows DeepDeck discovering `search_openai` on openai.com.
+
+![DeepDeck automatically discovers the search_openai tool under Website on openai.com](apps/web/public/webmcp/existing-webmcp.png)
+
+#### 2. Quickly add WebMCP to an existing website
+
+For a site without WebMCP, open **WebMCP Builder** or switch the Site Agent to **Builder**. Describe the capabilities you want, for example: “Build WebMCP tools for this site so I can search, read posts, and edit drafts.” You provide the goal; the Agent works out how to use the site. Builder explores its real controls, tries the relevant workflows, and turns verified operations into tools. This saves that experience in DeepDeck without needing to modify the website's source or deploy a separate MCP server.
+
+![WebMCP Builder reports building and verifying tools for X](apps/web/public/webmcp/building-webmcp.png)
+
+The X example produces **23 tools**, shown under **Built with DeepDeck**, including reading account state, posts, profiles, and search state. Website-provided tools and tools built with DeepDeck appear together, with their sources distinguished. Enabled tools are saved per website and load again when you return; source and saved versions remain available for inspection and rollback.
+
+![The WebMCP tab lists 23 tools built with DeepDeck for X](apps/web/public/webmcp/built-webmcp.png)
+
+Switch back to **Use** and ask for the task. In this example, “compose a hello world x post” calls WebMCP tools to prepare **Hello, world! 👋** as a draft. **The post is not published**; filling and submitting are separate actions. Use and Builder share the site's conversation, so you can build the missing capability and continue your work in place.
+
+![The Site Agent calls WebMCP tools to compose a Hello world draft on X without publishing it](apps/web/public/webmcp/use-webmcp.png)
+
+**Explore → use → verify → save → reuse.** The Agent's work on a website becomes a reusable capability for the next task, helping an existing product become easier to use through an agent while keeping its familiar web interface.
 
 See the [Browser guide](plugins/browser/README.md) for details and the [website updates](https://deepdeck.getmegaportal.com/#updates) for feature announcements.
 
