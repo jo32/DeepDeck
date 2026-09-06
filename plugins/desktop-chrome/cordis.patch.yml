@@ -29,6 +29,8 @@
       name: '@deepdeck/dsh-provider-aware-web'
       config: {}
 
+    # The desktop composer claims ordinary questions before the stock entry;
+    # ui-user-questions remains loaded for its protocol, copy, and plan reviews.
     - id: deepdeck-desktop-chrome
       name: '@deepdeck/dsh-client-ui-desktop-chrome'
 

@@ -35,9 +35,13 @@
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-ui-theme"
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-ui-user-questions"
       ],
-      "platform": "web"
+      "platform": "web",
+      "external": [
+        "@deepseek-ai/dsh-client-ui-user-questions/client"
+      ]
     }
   },
   "scripts": {

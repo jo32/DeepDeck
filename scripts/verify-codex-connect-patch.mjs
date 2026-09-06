@@ -4,10 +4,12 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import assert from "node:assert/strict";
+import { zstdDecompressSync } from "node:zlib";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const expectedPackageVersion = "0.1.0-alpha.4.20";
+const expectedPackageVersion = "0.1.0-alpha.4.21";
 const expectedDshVersion = "0.1.1-rc.2";
 const expectedReactRange = "^18.2.0 || ^19.1.1";
 const expectedPiAiVersion = "0.82.1";
@@ -77,7 +79,12 @@ for (const path of textFiles) {
   if (/registerConfigurableProviders\(\[\{\s*provider:\s*OPENAI_CODEX_PROVIDER/u.test(text)) {
     claimsConfigurableProvider = true;
   }
-  const staleVersion = staleDshVersions.find((version) => text.includes(version));
+  // Alpha 4.21 documents the old version pair and diagnoses it as unsupported.
+  // Neither is a claim that this build implements the old plugin API.
+  const contractText = relative(packageRoot, path) === "INSTALL.md" ? "" : text.replace(
+    "DSH 0.1.0-rc.7 requires Codex Connect 0.1.0-alpha.4.14.", "",
+  );
+  const staleVersion = staleDshVersions.find((version) => contractText.includes(version));
   if (staleVersion !== undefined) {
     fail(`stale ${staleVersion} contract remains in ${relative(packageRoot, path)}`);
   }
@@ -245,6 +252,106 @@ if (report.status !== "compatible") fail(`compiled compatibility evaluation retu
 const installedReport = await plugin.detectCompatibility();
 if (installedReport.status !== "compatible") {
   fail(`installed 0.1.1-rc.2 dependency detection returned ${installedReport.status}`);
+}
+
+// Exercise the installed, patched plugin through Cordis and the real pi-ai
+// adapter. Source-only upstream tests cannot cover the packaged model backfill.
+const pluginRequire = createRequire(manifestPath);
+const { Context } = await import(pathToFileURL(pluginRequire.resolve("@deepseek-ai/cordis")));
+const { default: LlmRuntime, createUserMessage, BlockAssembler } = await import(
+  pathToFileURL(pluginRequire.resolve("@deepseek-ai/dsh-llm")),
+);
+const modelRoot = await mkdtemp(join(tmpdir(), "deepdeck-codex-models-"));
+const originalDshHome = process.env.DSH_HOME;
+process.env.DSH_HOME = modelRoot;
+let modelContext;
+try {
+  const credentials = new plugin.OpenAICodexCredentialStore();
+  await credentials.modify(plugin.OPENAI_CODEX_PROVIDER, async () => ({
+    type: "oauth", access: accessToken, refresh: "verification-refresh-token",
+    expires: Date.now() + 3_600_000, accountId: "deepdeck-patch-account",
+  }));
+  const boot = async (config = {}) => {
+    const ctx = new Context();
+    modelContext = ctx;
+    await ctx.plugin(LlmRuntime);
+    await ctx.plugin(plugin, config);
+    return ctx;
+  };
+  const ctx = await boot();
+  const catalog = await ctx.llm.listModels("openai-codex");
+  assert.equal(catalog.filter(model => model.id === "gpt-6-astra").length, 1);
+  assert.ok(catalog.some(model => model.id === "gpt-5.6-sol"));
+  const astra = await ctx.llm.resolveModelInfo("openai-codex", "gpt-6-astra");
+  assert.equal(astra.name, "GPT-6 Astra");
+  assert.deepEqual(astra.inputModalities, ["text", "image"]);
+  assert.equal(astra.context.contextWindow, 1_050_000);
+  assert.deepEqual(astra.reasoning.efforts.map(effort => effort.id), ["low", "medium", "high", "xhigh", "max"]);
+
+  const requests = [];
+  globalThis.fetch = async (endpoint, init) => {
+    assert.equal(String(endpoint), "https://chatgpt.com/backend-api/codex/responses");
+    const headers = new Headers(init.headers);
+    assert.equal(headers.get("authorization"), `Bearer ${accessToken}`);
+    assert.equal(headers.get("chatgpt-account-id"), "deepdeck-patch-account");
+    const bytes = headers.get("content-encoding") === "zstd" ? zstdDecompressSync(init.body) : init.body;
+    const body = JSON.parse(typeof bytes === "string" ? bytes : Buffer.from(bytes).toString("utf8"));
+    requests.push(body);
+    const item = { type: "message", id: "msg_astra", role: "assistant", status: "completed",
+      content: [{ type: "output_text", text: "Astra verified.", annotations: [] }] };
+    const events = [
+      { type: "response.created", response: { id: "resp_astra" } },
+      { type: "response.output_item.added", output_index: 0, item: { ...item, content: [] } },
+      { type: "response.output_text.delta", output_index: 0, content_index: 0, delta: "Astra verified." },
+      { type: "response.output_item.done", output_index: 0, item },
+      { type: "response.done", response: { id: "resp_astra", status: "completed", output: [item],
+        usage: { input_tokens: 20, output_tokens: 3, total_tokens: 23 } } },
+    ];
+    return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(""), {
+      headers: { "content-type": "text/event-stream" },
+    });
+  };
+  const stream = async (reasoningEffort) => {
+    const assembler = new BlockAssembler();
+    for await (const chunk of ctx.llm.stream({
+      provider: "openai-codex", model: "gpt-6-astra", reasoningEffort,
+      system: "Verify the installed plugin.",
+      messages: [createUserMessage({ content: [{ type: "text", text: "Reply briefly." }] })],
+    })) {
+      if (chunk.type === "finish" && chunk.reason.kind === "error") {
+        throw Object.assign(new Error(chunk.reason.failure.message), { code: chunk.reason.failure.code });
+      }
+      assembler.push(chunk);
+    }
+    assert.deepEqual(assembler.message({ kind: "model", provider: "openai-codex", model: "gpt-6-astra" }).content,
+      [{ type: "text", text: "Astra verified." }]);
+  };
+  for (const effort of [undefined, "low", "medium", "high", "xhigh", "max"]) {
+    await stream(effort);
+    assert.equal(requests.at(-1).model, "gpt-6-astra");
+    assert.equal(requests.at(-1).reasoning?.effort, effort);
+    assert.equal(requests.at(-1).stream, true);
+    assert.equal(requests.at(-1).store, false);
+  }
+  for (const effort of ["off", "minimal"]) {
+    await assert.rejects(stream(effort), { code: "UNSUPPORTED_REASONING_EFFORT" });
+  }
+  assert.equal(requests.length, 6, "unsupported efforts must fail before a request is sent");
+  await ctx.fiber.dispose();
+
+  for (const models of [[], ["gpt-6-astra"], ["gpt-5.6-sol"]]) {
+    const filtered = await boot({ models });
+    assert.deepEqual((await filtered.llm.listModels("openai-codex")).map(model => model.id), models);
+    assert.equal((await filtered.llm.resolveModelInfo("openai-codex", "gpt-6-astra")).id, "gpt-6-astra",
+      "hiding Astra must preserve existing sessions' ability to resolve it");
+    await filtered.fiber.dispose();
+  }
+} finally {
+  await modelContext?.fiber.dispose();
+  globalThis.fetch = originalFetch;
+  if (originalDshHome === undefined) delete process.env.DSH_HOME;
+  else process.env.DSH_HOME = originalDshHome;
+  await rm(modelRoot, { recursive: true, force: true });
 }
 
 console.log(

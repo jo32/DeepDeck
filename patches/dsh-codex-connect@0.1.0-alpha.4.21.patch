@@ -1,17 +1,17 @@
 diff --git a/README.md b/README.md
-index 29729f3c078749ca04dc1d648c496c7b57bf3b17..64706dbaffab1d30aee9a2d096e5a7fb8497ca2f 100644
+index d62a4cd..eeb1176 100644
 --- a/README.md
 +++ b/README.md
-@@ -157,7 +157,7 @@ Choose **Use this proxy** only after reviewing a candidate, then click **Save ch
+@@ -163,7 +163,7 @@ Choose **Use this proxy** only after reviewing a candidate, then click **Save ch
  
  ### Enable only the capability you intend to use
  
 -- `enableSearch: true` registers Codex as an available search provider. It does not select the profile's global search route.
 +- `enableSearch: true` registers Codex as an available search provider. When selected, it sends the query to the ChatGPT-authenticated Codex Responses endpoint with the hosted `{ type: "web_search" }` tool forced to run. It does not select the profile's global search route.
  - `enableImageTool: true` enables `view_image` for approved local reads and public-network image fetches on vision-capable models.
- - `enableImageGeneration: true` enables the prompt-only image generation tool. Use the image generation capability included with your current GPT subscription. Generated images are saved as DSH attachments and shown in the Codex Connect result gallery.
+ - `enableImageGeneration: true` enables the prompt-only image generation tool. Use the image generation capability included with your current GPT subscription. Codex Connect preserves the exact generated file in plugin-owned storage and saves a DSH attachment as the conversation preview.
  
-@@ -225,7 +225,7 @@ Selecting Codex as the profile's global search route is another explicit change:
+@@ -233,7 +233,7 @@ Selecting Codex as the profile's global search route is another explicit change:
  | `enableImageTool` | `false` | boolean |
  | `enableImageGeneration` | `false` | boolean |
  | `searchModel` | `gpt-5.6-sol` | Codex model id |
@@ -21,19 +21,19 @@ index 29729f3c078749ca04dc1d648c496c7b57bf3b17..64706dbaffab1d30aee9a2d096e5a7fb
  | `searchMaxOutputTokens` | `10000` | positive integer |
  
 diff --git a/docs/README.zh.md b/docs/README.zh.md
-index a7141cd531059e44771f763a8e5b75d529fc3f83..5ded432b81e55fead2553ef3f26813b96e5a4c07 100644
+index f217d46..3a08704 100644
 --- a/docs/README.zh.md
 +++ b/docs/README.zh.md
-@@ -157,7 +157,7 @@ Codex Connect 默认使用**直连**。代理是可选项，只作用于本插
+@@ -163,7 +163,7 @@ Codex Connect 默认使用**直连**。代理是可选项，只作用于本插
  
  ### 只开启你准备使用的能力
  
 -- `enableSearch: true` 会把 Codex 注册为可选择的搜索提供方，不会把它选为 profile 的全局搜索路由。
 +- `enableSearch: true` 会把 Codex 注册为可选择的搜索提供方。选中后，查询会通过 ChatGPT OAuth 发送到 Codex Responses 端点，并强制调用托管的 `{ type: "web_search" }` 工具；它不会自行改动 profile 的全局搜索路由。
  - `enableImageTool: true` 会为具备视觉能力的模型启用 `view_image`，用于审批后的本地读取和公网图片获取。
- - `enableImageGeneration: true` 会启用只接受文字描述的图片生成工具。使用你当前 GPT 订阅计划提供的图片生成能力。生成结果会保存为 DSH 附件，并通过 Codex Connect 结果画廊展示。
+ - `enableImageGeneration: true` 会启用只接受文字描述的图片生成工具。使用你当前 GPT 订阅计划提供的图片生成能力。Codex Connect 会把生成结果的精确原文件保存到插件自有存储，同时另存一份 DSH 附件作为对话预览。
  
-@@ -225,7 +225,7 @@ Codex Connect 默认使用**直连**。代理是可选项，只作用于本插
+@@ -233,7 +233,7 @@ Codex Connect 默认使用**直连**。代理是可选项，只作用于本插
  | `enableImageTool` | `false` | boolean |
  | `enableImageGeneration` | `false` | boolean |
  | `searchModel` | `gpt-5.6-sol` | Codex model id |
@@ -43,7 +43,7 @@ index a7141cd531059e44771f763a8e5b75d529fc3f83..5ded432b81e55fead2553ef3f26813b9
  | `searchMaxOutputTokens` | `10000` | 正整数 |
  
 diff --git a/docs/design.md b/docs/design.md
-index b7694c3bc988641242dc89ce004dcdd7c25996d3..b8c3a453bd5cfe1da04d0a7a7e3ebd95026a03c9 100644
+index b7694c3..b8c3a45 100644
 --- a/docs/design.md
 +++ b/docs/design.md
 @@ -16,7 +16,7 @@ The settings routes and CLI reuse the existing OAuth path and route names for mi
@@ -56,7 +56,7 @@ index b7694c3bc988641242dc89ce004dcdd7c25996d3..b8c3a453bd5cfe1da04d0a7a7e3ebd95
  When `enableImageTool: true`, `view_image` is registered only after tools, filesystem, and attachment services are available. Local files remain bounded by the Harness filesystem surface. Remote images allow only credential-free public HTTP(S): all DNS answers must be public unicast, each redirect is revalidated, and each socket is pinned to the validated address to close DNS-rebinding gaps. The tool also checks bounded bytes, accepted media signatures, and current-model image support before saving a Harness attachment.
  
 diff --git a/docs/design.zh.md b/docs/design.zh.md
-index 0817da189a048289872a99a8e5645e7e0711f5ea..9977f8795011a602bfe0938a9d2231c6b5501205 100644
+index 0817da1..9977f87 100644
 --- a/docs/design.zh.md
 +++ b/docs/design.zh.md
 @@ -16,7 +16,7 @@ Host 将 `llm-openai-codex` 注册为插件自有的能力 settings namespace。
@@ -69,7 +69,7 @@ index 0817da189a048289872a99a8e5645e7e0711f5ea..9977f8795011a602bfe0938a9d2231c6
  ## 冲突、诊断与兼容边界
  
 diff --git a/lib/client.js b/lib/client.js
-index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc556e82fbc 100644
+index 9093c53..f2054ce 100644
 --- a/lib/client.js
 +++ b/lib/client.js
 @@ -1615,7 +1615,7 @@ window.__ModuleLoader__.load({
@@ -96,7 +96,7 @@ index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc5
  			modeLive: "Live web",
  			searchContextSize: "Search context",
  			contextLow: "Low",
-@@ -3034,11 +3034,11 @@ window.__ModuleLoader__.load({
+@@ -3040,11 +3040,11 @@ window.__ModuleLoader__.load({
  			proxyTestFailed: "代理测试失败：{reason}。",
  			invalidProxyUrl: "请输入不含凭据或路径的 HTTP(S) 代理 origin。",
  			enableSearch: "启用 Codex 搜索提供方",
@@ -111,7 +111,7 @@ index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc5
  			modeLive: "实时联网",
  			searchContextSize: "搜索上下文",
  			contextLow: "低",
-@@ -4249,12 +4249,12 @@ window.__ModuleLoader__.load({
+@@ -4358,12 +4358,12 @@ window.__ModuleLoader__.load({
  		function apply(ctx) {
  			const namespace = "settings.openai-codex";
  			const updater = new OpenAICodexUpdateStore(CODEX_CONNECT_VERSION);
@@ -126,7 +126,7 @@ index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc5
  			ctx.effect(() => ctx.locale.register(namespace, {
  				zh,
  				en
-@@ -4272,13 +4272,6 @@ window.__ModuleLoader__.load({
+@@ -4382,13 +4382,6 @@ window.__ModuleLoader__.load({
  					updater
  				})
  			}, OpenAICodexPluginCard));
@@ -141,7 +141,7 @@ index 2ff13b65ad9ad7ec1e3d724ce35d03ac43fd5709..9f4e40fd8d49b0563c8ffc3f6eaeedc5
  				name: "tool.call.toolview",
  				key: "codex_connect_image_generate",
 diff --git a/lib/index.d.ts b/lib/index.d.ts
-index a28e41b7ca2dc29dbbef6640ed7be66b75ca8458..386e431725d45aa7c420b8b7ad62f181a07185c5 100644
+index a28e41b..386e431 100644
 --- a/lib/index.d.ts
 +++ b/lib/index.d.ts
 @@ -356,17 +356,17 @@ declare const OPENAI_CODEX_SETTINGS_NAMESPACE = "llm-openai-codex";
@@ -225,11 +225,61 @@ index a28e41b7ca2dc29dbbef6640ed7be66b75ca8458..386e431725d45aa7c420b8b7ad62f181
   * @returns normalized answer and citeable sources.
   */
  declare function mapOpenAICodexSearchResponse(value: unknown): WebSearchResult;
-diff --git a/lib/src-B2d5HLN5.js b/lib/src-B2d5HLN5.js
-index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a50cacd66 100644
---- a/lib/src-B2d5HLN5.js
-+++ b/lib/src-B2d5HLN5.js
-@@ -1156,13 +1156,13 @@ function normalizeOpenAICodexProxyUrl(value) {
+diff --git a/lib/src-Cxq99TvF.js b/lib/src-Cxq99TvF.js
+index f40c128..3c46ec7 100644
+--- a/lib/src-Cxq99TvF.js
++++ b/lib/src-Cxq99TvF.js
+@@ -165,11 +165,39 @@ var OpenAICodexCredentialStore = class {
+ 	}
+ };
+ //#endregion
++/**
++ * Backfill Astra until DeepDeck can adopt the Harness 0.1.2 / pi-ai catalog.
++ * Model metadata verified 2026-09-05:
++ * https://developers.openai.com/api/docs/models/gpt-6-astra
++ * Keep the provider-owned OAuth, SSE transport, and existing model descriptors.
++ */
++function deepDeckOpenAICodexProvider() {
++	const provider = openaiCodexProvider();
++	const catalog = provider.getModels();
++	if (catalog.some((model) => model.id === "gpt-6-astra")) return provider;
++	const astra = {
++		id: "gpt-6-astra",
++		name: "GPT-6 Astra",
++		api: "openai-codex-responses",
++		provider: OPENAI_CODEX_PROVIDER,
++		baseUrl: "https://chatgpt.com/backend-api",
++		reasoning: true,
++		input: ["text", "image"],
++		cost: {
++			input: 10, output: 50, cacheRead: 1, cacheWrite: 12.5,
++			tiers: [{ inputTokensAbove: 272000, input: 20, output: 75, cacheRead: 2, cacheWrite: 25 }]
++		},
++		contextWindow: 1050000,
++		maxTokens: 128000,
++		thinkingLevelMap: { off: null, minimal: null, xhigh: "xhigh", max: "max" }
++	};
++	return { ...provider, getModels: () => [...catalog, structuredClone(astra)] };
++}
+ //#region src/adapter.ts
+ /** OpenAI Codex adapter assembled from public dsh-llm-pi-ai extension points. */
+ /** Return a detached copy of the complete pi-ai Codex model catalog. */
+ function openAICodexModelCatalog() {
+-	return openaiCodexProvider().getModels().map((model) => ({
++	return deepDeckOpenAICodexProvider().getModels().map((model) => ({
+ 		id: model.id,
+ 		name: model.name
+ 	}));
+@@ -262,7 +290,7 @@ function createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxy
+ * plugin supplies its provider-native OAuth token for each request.
+ */
+ function createOpenAICodexAdapter(credentials, resolveAttachments, fastMode, visibleModelIds, proxyManager, resolveProxyUrl) {
+-	const provider = openaiCodexProvider();
++	const provider = deepDeckOpenAICodexProvider();
+ 	const profiles = /* @__PURE__ */ new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl)]]);
+ 	const models = createModels({ credentials });
+ 	models.setProvider(provider);
+@@ -1157,13 +1185,13 @@ function normalizeOpenAICodexProxyUrl(value) {
  function isValidOpenAICodexProxyUrl(value) {
  	return normalizeOpenAICodexProxyUrl(value) !== void 0;
  }
@@ -245,7 +295,7 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 1e4;
  const DEFAULT_OPENAI_CODEX_SETTINGS = Object.freeze({
  	models: void 0,
-@@ -3194,15 +3194,13 @@ var OpenAICodexTransport = class extends Service {
+@@ -3585,15 +3613,13 @@ var OpenAICodexImageAssetStore = class {
  const OPENAI_CODEX_SEARCH_PROVIDER = OPENAI_CODEX_PROVIDER;
  /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
  const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
@@ -267,7 +317,7 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  }
  /** Extract the account id paired with one OAuth access token. */
  function accountIdFromToken(access) {
-@@ -3237,39 +3235,94 @@ function citeableUrl(value) {
+@@ -3628,39 +3654,94 @@ function citeableUrl(value) {
  		return;
  	}
  }
@@ -384,7 +434,7 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  /** Stable cancellation error for every provider phase. */
  function searchAborted(signal, fallback) {
  	return new WebError("OpenAI Codex search aborted", "WEB_ABORTED", { cause: signal?.aborted === true ? signal.reason : fallback });
-@@ -3302,9 +3355,8 @@ function abortable(operation, signal) {
+@@ -3693,9 +3774,8 @@ function abortable(operation, signal) {
  }
  /** Keep provider diagnostics bounded and remove JWT-like material. */
  function providerMessage(value) {
@@ -396,7 +446,7 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  }
  /** OpenAI Codex standalone-search provider using the same refreshable OAuth store as the LLM route. */
  var OpenAICodexSearchProvider = class {
-@@ -3343,9 +3395,12 @@ var OpenAICodexSearchProvider = class {
+@@ -3734,9 +3814,12 @@ var OpenAICodexSearchProvider = class {
  		if (access === void 0 || access.length === 0) throw new WebError("OpenAI Codex search is signed out; run \"dsh openai-codex login\"", "WEB_PROVIDER_CREDENTIAL_MISSING");
  		const accountId = accountIdFromToken(access);
  		throwIfSearchAborted(signal);
@@ -410,7 +460,7 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  			input: [{
  				type: "message",
  				role: "user",
-@@ -3354,13 +3409,14 @@ var OpenAICodexSearchProvider = class {
+@@ -3745,13 +3828,14 @@ var OpenAICodexSearchProvider = class {
  					text: request.query
  				}]
  			}],
@@ -430,7 +480,7 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  		};
  		this.options.recordRequest?.({
  			endpoint: OPENAI_CODEX_SEARCH_URL,
-@@ -3376,8 +3432,11 @@ var OpenAICodexSearchProvider = class {
+@@ -3767,8 +3851,11 @@ var OpenAICodexSearchProvider = class {
  					authorization: `Bearer ${access}`,
  					"chatgpt-account-id": accountId,
  					"content-type": "application/json",
@@ -444,7 +494,7 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  				},
  				body: JSON.stringify(body),
  				...signal === void 0 ? {} : { signal }
-@@ -3387,20 +3446,24 @@ var OpenAICodexSearchProvider = class {
+@@ -3778,20 +3865,24 @@ var OpenAICodexSearchProvider = class {
  			if (isAbortError(error)) throw searchAborted(signal, error);
  			throw new WebError("OpenAI Codex search request failed", "WEB_PROVIDER_ERROR", { cause: error });
  		}
@@ -473,10 +523,10 @@ index aa4bf7a034881846fc70539bdc7ed2d0827dbf28..c9d97f2dacdb6801168a78cad9ab066a
  };
  //#endregion
 diff --git a/package.json b/package.json
-index 5f64a64fcbf093561db013697b37941d22ce27e6..e73eb459e419427b0087ae185018327feeed427d 100644
+index 7e95b42..c4e3910 100644
 --- a/package.json
 +++ b/package.json
-@@ -120,7 +120,7 @@
+@@ -121,7 +121,7 @@
      "@deepseek-ai/dsh-tools": "0.1.1-rc.2",
      "@deepseek-ai/dsh-web": "0.1.1-rc.2",
      "@deepseek-ai/schemastery": "^3.18.1-rc.1",

@@ -27,6 +27,7 @@ import {
 import { installArchiveSessionContinuity } from './archive-session-continuity.ts'
 import { trackDesktopScreen } from './desktop-runtime.ts'
 import { installDesktopSettingsShell } from './settings-shell.tsx'
+import { installDesktopQuestions } from './DesktopQuestionComposer.tsx'
 import { RestartConfirmation } from './RestartConfirmation.tsx'
 import { installRestartContinuity, type RestartContinuityRuntime } from './restart-continuity.ts'
 
@@ -122,6 +123,7 @@ export function apply(ctx: ClientContext): void {
   }, DesktopSidebar), 'deepdeck desktop: wide-only sidebar shell')
 
   installDesktopSettingsShell(ctx)
+  installDesktopQuestions(ctx)
 
   ctx.effect(() => {
     const presenter = new ThemePresenter()

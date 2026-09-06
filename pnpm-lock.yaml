@@ -169,18 +169,18 @@ overrides:
   '@deepseek-ai/dsh-workspace': 0.1.1-rc.2
   use-sync-external-store: 1.6.0
 
-packageExtensionsChecksum: sha256-gEk3RD65T5+l69MeSUIFedRAhXapukd3lTrn6tzhR9o=
+packageExtensionsChecksum: sha256-35UZaXZI0P7MfLQ8lZqXjz/0eabnu5xQoiyzF64adZg=
 
 patchedDependencies:
-  dsh-codex-connect@0.1.0-alpha.4.20: ff3ca710960cb2170458f3ce57170a99ef4110269f05c55abb92a0db9bc4b99b
+  dsh-codex-connect@0.1.0-alpha.4.21: 0e35902eb1def500ffdcefd325a2e86efbed20bf1217b7d256fc1e3875eafa1f
 
 importers:
 
   .:
     dependencies:
       dsh-codex-connect:
-        specifier: 0.1.0-alpha.4.20
-        version: 0.1.0-alpha.4.20(patch_hash=ff3ca710960cb2170458f3ce57170a99ef4110269f05c55abb92a0db9bc4b99b)(072a39a180a152f8e68afeb5a1f2ddb8)
+        specifier: 0.1.0-alpha.4.21
+        version: 0.1.0-alpha.4.21(patch_hash=0e35902eb1def500ffdcefd325a2e86efbed20bf1217b7d256fc1e3875eafa1f)(072a39a180a152f8e68afeb5a1f2ddb8)
     devDependencies:
       pnpm:
         specifier: 12.0.0
@@ -2984,8 +2984,8 @@ packages:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
 
-  dsh-codex-connect@0.1.0-alpha.4.20:
-    resolution: {integrity: sha512-2skPgXP5QTBqasPMZV+8onMhlu5f3svNjmpPci3vo01nvWlmKHbNCZqe0W2ah1DxEY/0ZLRUE+UOVTgoa70PNA==}
+  dsh-codex-connect@0.1.0-alpha.4.21:
+    resolution: {integrity: sha512-mmzXIB3qoVNd4HV2s2hgVje970qVkSvVICf2yoS85CKomHLjIbZA641ItpIr9FmVhgyEwTQ2C+emHHNHmBep/A==}
     engines: {node: ^22.19.0 || >=24.0.0}
     hasBin: true
     peerDependencies:
@@ -7294,7 +7294,7 @@ snapshots:
 
   dotenv@16.6.1: {}
 
-  dsh-codex-connect@0.1.0-alpha.4.20(patch_hash=ff3ca710960cb2170458f3ce57170a99ef4110269f05c55abb92a0db9bc4b99b)(072a39a180a152f8e68afeb5a1f2ddb8):
+  dsh-codex-connect@0.1.0-alpha.4.21(patch_hash=0e35902eb1def500ffdcefd325a2e86efbed20bf1217b7d256fc1e3875eafa1f)(072a39a180a152f8e68afeb5a1f2ddb8):
     dependencies:
       '@deepseek-ai/cordis': 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
       '@deepseek-ai/dsh-agent': 0.1.1-rc.2(c1537a8836b04097f168b024f1e38d85)
