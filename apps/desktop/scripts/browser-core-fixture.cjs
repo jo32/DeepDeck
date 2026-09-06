@@ -91,6 +91,31 @@ const page = `<meta charset="utf-8"><title>Browser core fixture</title><style>bo
     guest.on('found-in-page', (_event, value) => { if (process.env.DEEPDECK_BROWSER_CORE_TRACE) console.log('FIND', value); });
     const win = BaseWindow.getAllWindows()[0];
     const view = win.contentView.children.find(view => view.webContents === guest);
+    // The actual BrowserFrame select must own the whole painted control. A
+    // label-only arrow/padding click focuses a macOS select but never opens it.
+    await until(() => has('Agent mode'), 'site mode selector');
+    for (const narrow of [false, true]) {
+      if (narrow) {
+        await evaluate(wc, `document.querySelector('[aria-label="Resize Agent panel"]').focus()`);
+        for (let step = 0; step < 3; step++) {
+          await wc.debugger.sendCommand('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+          await wc.debugger.sendCommand('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+        }
+        await until(() => evaluate(wc, `document.querySelector('[aria-label="Resize Agent panel"]').getAttribute('aria-valuenow') === '360'`), 'narrow Agent panel');
+      }
+      const targets = await evaluate(wc, `(() => {
+        const select = document.querySelector('select[aria-label="Agent mode"]');
+        const r = select.parentElement.getBoundingClientRect();
+        const points = [[r.left + 3, r.top + r.height / 2], [r.right - 14, r.top + r.height / 2],
+          [r.right - 3, r.top + r.height / 2], [r.left + r.width / 2, r.top + 3],
+          [r.left + r.width / 2, r.bottom - 3], [r.left + r.width / 2, r.top + r.height / 2]];
+        return { height: select.getBoundingClientRect().height,
+          hits: points.map(([x, y]) => document.elementFromPoint(x, y) === select) };
+      })()`);
+      assert(targets.height >= 26 && targets.hits.every(Boolean), `Complete mode hit area (${narrow ? 360 : 420}px): ${JSON.stringify(targets)}`);
+    }
+    console.log('PASS Browser mode: text, arrow and all padding target the native select at 360/420px.');
+    if (process.env.DEEPDECK_BROWSER_CORE_MODE_ONLY) return;
     await click('Hide Agent'); await until(() => view.getBounds().width === win.getContentSize()[0], 'collapsed Agent gives page full width');
     await click('Browser tools');
     await until(() => evaluate(wc, `!!document.querySelector('[role="toolbar"]')`), 'tools opened');
@@ -115,7 +140,7 @@ const page = `<meta charset="utf-8"><title>Browser core fixture</title><style>bo
     await click('Unmute tab'); await until(() => !guest.isAudioMuted(), 'unmute via indicator');
     await manager.execute({ action: 'tab.open', url: `${site}/second` });
     const second = current.activeTabId;
-    await until(() => current.tabs.find(item => item.id === second && !item.loading), 'second tab');
+    await until(() => current.tabs.find(item => item.id === second && item.origin === site && !item.loading && item.tools.length), 'second tab');
     await manager.execute({ action: 'tab.move', tabId: second, index: 0 }); assert.equal(current.tabs[0].id, second);
     await manager.execute({ action: 'tab.activate', tabId: tab.id });
     await manager.execute({ action: 'zoom', tabId: tab.id, factor: 1.5 });

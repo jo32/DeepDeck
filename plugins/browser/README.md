@@ -35,6 +35,10 @@ shared `deepdeckCharacter` service; small marks use its cached icon. The Agent p
 Empty sessions show a short welcome in the message area, without a large character
 or a Start button. Existing conversations resume in the same layout.
 
+HTTP(S) links in Agent replies open in a new Browser tab; middle-click opens a
+background tab. Electron routes the original Harness anchors without replacing
+the conversation or sharing the shell's profile or opener with the website.
+
 Below 560 px of Agent-panel width, model/reasoning selection, Fast mode, Codex
 usage and session metrics move into **More**, leaving a single row of primary
 composer controls. Wider panels show them inline.
@@ -205,6 +209,8 @@ pnpm --filter @deepdeck/dsh-browser check
 pnpm --filter @deepdeck/dsh-browser test
 node apps/desktop/scripts/verify-browser-native.mjs
 node apps/desktop/scripts/verify-browser-devtools.mjs
+node apps/desktop/scripts/verify-browser-composer.mjs
+node apps/desktop/scripts/verify-browser-links.mjs
 pnpm check
 pnpm test
 pnpm build

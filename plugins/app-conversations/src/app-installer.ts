@@ -837,6 +837,8 @@ export class DeepDeckAppPackageManager {
           moved = true
         }
         recoveryId = randomUUID()
+        // pnpm 12 cannot infer a package identity from a bare link: add target.
+        // Bind the reviewed manifest name explicitly so it skips npm latest resolution.
         const handle = await this.pnpm.runPluginInstall(
           ['add', '--save-exact', linkedPackageSpec(preview.builder.packageName, preview.finalPackageDirectory)],
           this.profile.dir,

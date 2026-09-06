@@ -8,6 +8,8 @@ import { WEBMCP_BINDING, WEBMCP_WORLD, webmcpBootstrap, webmcpDispose } from "./
 import { browserShortcut } from "./browser-shortcuts.js";
 import { createDevToolsLease, type DevToolsLease } from "./browser-devtools.js";
 import { createBrowserSession, nextZoom, writeBrowserState } from "./browser-session.js";
+import { installBrowserPasskeyBridge } from "./browser-passkey-bridge.js";
+import { findPasskeyChrome } from "./passkey-chrome-pipe.js";
 import { pageMenu, PAGE_MENU_LABELS } from "./browser-page-menu.js";
 import type { BrowserAuthentication, BrowserSelection, BrowserPageMenuLabels, BrowserPageMenuAction } from "../../../../../plugins/browser/src/native-contract.js";
 
@@ -78,7 +80,9 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
   const earlyResponses = new Map<string, ProtocolRecord>();
   const statePath = join(app.getPath("userData"), "browser-tabs.json");
   const profile: Session = session.fromPartition("persist:deepdeck-browser");
+  const chromePasskeys = !!findPasskeyChrome();
   const guestPreferences: Electron.WebPreferences = { session: profile, contextIsolation: true, nodeIntegration: false,
+    ...(chromePasskeys ? { preload: join(import.meta.dirname, "../../preload/browser-passkey.cjs") } : {}),
     sandbox: true, enableBlinkFeatures: "WebMCP", navigateOnDragDrop: false, spellcheck: true, plugins: true };
   const nativeSession = createBrowserSession(profile, () => window, wc => [...tabs.values()].some(tab => tab.contents === wc), emit);
 
@@ -344,6 +348,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
       loading: false, canGoBack: false, canGoForward: false, tools: [], zoomFactor: 1, audible: false, muted: false }, frames: new Map(), contexts: new Map(),
       scripts: new Map(), generated: new Map(), network: [], console: [], ready: Promise.resolve() };
     const wc = view.webContents;
+    if (chromePasskeys) installBrowserPasskeyBridge(wc, () => window);
     wc.debugger.on("message", (_event, method, params, sessionId) => {
       // DevTools MCP owns separate CDP sessions on this same WebContents. Their
       // events must not be folded twice into Browser's document/tool registry.
@@ -610,14 +615,14 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     await tab.ready;
     syncBounds(); focusActive(); emit(); persist();
   }
-  async function openTab(url?: string, afterTabId?: string): Promise<BrowserSnapshot> {
+  async function openTab(url?: string, afterTabId?: string, activate = true): Promise<BrowserSnapshot> {
     if (afterTabId) tabById(afterTabId);
     const destination = guestUrl(url);
-    const tab = createTab();
+    const tab = createTab(true, {}, activate);
     if (afterTabId) moveTab(tab, [...tabs.keys()].indexOf(afterTabId) + 1);
     await tab.ready;
     if (destination !== "about:blank") void tab.contents.loadURL(destination).catch(error => navigationError(tab, error));
-    focusActive();
+    if (activate) focusActive();
     persist();
     return snapshot();
   }
@@ -682,8 +687,26 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     shell = new WebContentsView({ webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
     window.contentView.addChildView(shell);
     installShortcuts(shell.webContents);
-    shell.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-    shell.webContents.on("will-navigate", (event, url) => { if (new URL(url).origin !== new URL(shellUrl).origin) event.preventDefault(); });
+    // Harness Markdown uses ordinary target=_blank anchors. Route the native
+    // request to a managed website tab, keeping the privileged shell in place
+    // and giving the website neither the shell's session nor an opener to it.
+    const openConversationLink = (value: string, activate = true): void => {
+      if (closing || windowCloseRequested || !window || window.isDestroyed()) return;
+      let url: string;
+      try {
+        if (!['http:', 'https:'].includes(new URL(value).protocol)) return;
+        url = guestUrl(value);
+      } catch { return; }
+      void openTab(url, activeTabId, activate).catch(error => console.error('Browser conversation link failed', error));
+    };
+    shell.webContents.setWindowOpenHandler(({ url, disposition }) => {
+      openConversationLink(url, disposition !== 'background-tab');
+      return { action: "deny" };
+    });
+    shell.webContents.on("will-navigate", (event, url) => {
+      if (browserOrigin(url) === browserOrigin(shellUrl)) return;
+      event.preventDefault(); openConversationLink(url);
+    });
     shell.webContents.on("will-redirect", (event, url) => { if (new URL(url).origin !== new URL(shellUrl).origin) event.preventDefault(); });
     window.on("resize", syncBounds);
     window.on("close", event => {

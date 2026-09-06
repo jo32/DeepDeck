@@ -1,4 +1,4 @@
-const { app, session } = require('electron');
+const { app, session, BaseWindow } = require('electron');
 const { createServer } = require('node:http');
 const { createBrowserWindowManager } = require(process.env.DEEPDECK_BROWSER_TEST_BUNDLE);
 app.setPath('userData', process.env.DEEPDECK_BROWSER_TEST_PROFILE);
@@ -30,6 +30,7 @@ process.on('uncaughtException', error => { console.error(error); app.exit(1); })
   const manager = createBrowserWindowManager('DevTools verification', snapshot => process.send?.({ type: 'deepdeck:browser:event', snapshot }));
   process.on('message', message => {
     if (message.type === 'shutdown') { manager.dispose(); server.close(); shellServer.close(); app.quit(); return; }
+    if (message.type === 'close-window') { BaseWindow.getAllWindows()[0].close(); return; }
     if (message.type !== 'deepdeck:browser:request') return;
     void manager.execute(message.command).then(value => process.send?.({ type: 'deepdeck:browser:result', requestId: message.requestId, ok: true, value }), error => process.send?.({ type: 'deepdeck:browser:result', requestId: message.requestId, ok: false, error: String(error) }));
   });

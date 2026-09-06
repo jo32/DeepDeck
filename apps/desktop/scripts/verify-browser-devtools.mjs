@@ -14,14 +14,17 @@ const entry = join(temporary, 'runtime.mjs');
 let child;
 try {
   await symlink(join(root, 'plugins/browser/node_modules'), join(temporary, 'node_modules'), 'junction');
-  await build({ entryPoints: [join(root, 'apps/desktop/src/main/windows/browser-window.ts')], bundle: true, platform: 'node', format: 'cjs', external: ['electron'], outfile: join(temporary, 'native.cjs') });
+  await build({ entryPoints: [join(root, 'apps/desktop/src/main/windows/browser-window.ts')], bundle: true, platform: 'node', format: 'cjs', external: ['electron'], outfile: join(temporary, 'native.cjs'),
+    define: { 'import.meta.dirname': JSON.stringify(join(temporary, 'main/windows')) } });
+  await build({ entryPoints: [join(root, 'apps/desktop/src/preload/browser-passkey.ts')], bundle: true, platform: 'node', format: 'cjs', external: ['electron'], outfile: join(temporary, 'preload/browser-passkey.cjs') });
   await build({ stdin: { contents: `export { BrowserRuntime } from './runtime.ts'; export { BrowserNativeClient } from './native-client.ts'; export { BrowserSiteStore } from './site-store.ts'; export { WebMCPStore } from './webmcp-store.ts'; export { WEBMCP_TEXT_EDITING_EXAMPLE } from './builder-editing-example.ts';`, resolveDir: join(root, 'plugins/browser/src'), loader: 'ts' }, bundle: true, platform: 'node', format: 'esm', packages: 'external', outfile: entry });
   const { BrowserRuntime, BrowserNativeClient, BrowserSiteStore, WebMCPStore, WEBMCP_TEXT_EDITING_EXAMPLE } = await import(pathToFileURL(entry).href);
   const environment = { ...process.env, DEEPDECK_BROWSER_TEST_BUNDLE: join(temporary, 'native.cjs'), DEEPDECK_BROWSER_TEST_PROFILE: join(temporary, 'profile') };
   delete environment.ELECTRON_RUN_AS_NODE;
   child = spawn(electron, [fileURLToPath(new URL('./browser-devtools-fixture.cjs', import.meta.url))], { env: environment, stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
-  const exit = new Promise(resolve => child.once('exit', resolve));
+  const exit = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
   const native = new BrowserNativeClient(child);
+  child.once('exit', () => native.dispose());
   const origin = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Electron fixture startup timed out')), 20000);
     child.on('message', message => { if (message.type === 'ready') { clearTimeout(timer); resolve(message.origin); } });
@@ -47,7 +50,7 @@ try {
     return result;
   };
   const text = result => result.content.filter(block => block.type === 'text').map(block => block.text).join('\n');
-  try {
+  async function verifyAgentTools() {
     await runtime.bind(site.id, agent.session.id, first.id, 'use');
     const catalog = await invoke('mcp__chrome_devtools__list_tools');
     assert.equal(catalog.version, '1.8.0');
@@ -263,7 +266,66 @@ try {
     await revoked;
     await assert.rejects(native.request({ action: 'devtools.begin', tabId: live.id, documentId: live.documentId, leaseId: lease.id }));
     console.log('PASS Browser + official MCP: both screenshot paths, one versioned WebMCP execution entry, canceled install/disable/reload consistency, console/network/performance, bound tabs, no replay, authenticated CDP target and cookie/storage restrictions, cross-site lease revocation.');
-  } finally { runtime.dispose(); await new Promise(r => setTimeout(r, 250)); child.send({ type: 'shutdown' }); await exit; }
+  }
+
+  async function verifyClosures() {
+    async function connect(tab) {
+      const lease = await native.request({ action: 'devtools.open', tabId: tab.id, documentId: tab.documentId });
+      const socket = new WebSocket(lease.wsEndpoint, { headers: { Authorization: `Bearer ${lease.token}` } });
+      const closed = new Promise(resolve => socket.once('close', resolve));
+      await new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
+      let sequence = 0;
+      async function rpc(method, params = {}, sessionId) {
+        const id = ++sequence;
+        const result = new Promise((resolve, reject) => {
+          const cleanup = () => { socket.off('message', receive); socket.off('close', closing); };
+          const closing = () => { cleanup(); reject(new Error('CDP connection closed')); };
+          const receive = raw => { const message = JSON.parse(raw.toString()); if (message.id !== id) return; cleanup(); resolve(message); };
+          socket.on('message', receive); socket.once('close', closing);
+        });
+        socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+        return await result;
+      }
+      const attached = await rpc('Target.attachToTarget', { flatten: true });
+      assert(attached.result?.sessionId, JSON.stringify(attached));
+      return { socket, closed, lease, rpc: (method, params) => rpc(method, params, attached.result.sessionId) };
+    }
+    const snapshot = await native.request({ action: 'tab.open', url: origin + '/close-regression' });
+    const tab = await until(async () => (await native.request({ action: 'snapshot' })).tabs.find(tab => tab.id === snapshot.activeTabId && !tab.loading && tab.tools.length), 'close fixture tab');
+    const disconnect = await connect(tab);
+    disconnect.socket.close(); await disconnect.closed;
+    await until(async () => {
+      try { await native.request({ action: 'devtools.begin', tabId: tab.id, documentId: tab.documentId, leaseId: disconnect.lease.id }); return false; }
+      catch { return true; }
+    }, 'client disconnect revokes lease');
+
+    // Reconnect to the same live page: disposal must retain the shared debugger.
+    const closingTab = await connect(tab);
+    const pending = closingTab.rpc('Runtime.evaluate', { expression: "console.log('close-pending'); new Promise(() => {})", awaitPromise: true });
+    const interrupted = pending.then(result => assert(result.error, 'a closed page must not complete the pending command'), error => assert.match(error.message, /connection closed/));
+    // Commands on the same session execute in order. This confirms the pending
+    // evaluation reached Chromium before the native tab is destroyed.
+    assert.equal((await closingTab.rpc('Runtime.evaluate', { expression: 'document.title', returnByValue: true })).result.result.value, 'DevTools integration');
+    await native.request({ action: 'tab.close', tabId: tab.id });
+    await closingTab.closed; await interrupted;
+    assert(!(await native.request({ action: 'snapshot' })).tabs.some(current => current.id === tab.id));
+    console.log('PASS DevTools client disconnect/reconnect and tab close with a pending command.');
+
+    const remaining = (await native.request({ action: 'snapshot' })).tabs.find(tab => tab.origin === origin && !tab.loading);
+    const closingWindow = await connect(remaining);
+    child.send({ type: 'close-window' });
+    await closingWindow.closed;
+    await until(async () => !(await native.request({ action: 'snapshot' })).open, 'native Browser window closes');
+    console.log('PASS native Browser window close with a connected DevTools client.');
+  }
+  try {
+    if (!process.argv.includes('--lifecycle-only')) await verifyAgentTools();
+    await verifyClosures();
+  } finally {
+    runtime.dispose(); await new Promise(r => setTimeout(r, 250));
+    if (child.connected) child.send({ type: 'shutdown' });
+    assert.deepEqual(await exit, { code: 0, signal: null }, 'Electron must exit without an uncaught main-process exception');
+  }
 } finally {
   if (child?.exitCode === null) child.kill('SIGTERM');
   await rm(temporary, { recursive: true, force: true });

@@ -11,29 +11,50 @@ export interface DevToolsLease { id: string; wsEndpoint: string; token: string; 
 export async function createDevToolsLease(contents: WebContents, window: BaseWindow, valid: () => boolean, onClose: (id: string) => void = () => {}, workspacePath?: string): Promise<DevToolsLease> {
   const id = randomBytes(24).toString('hex');
   const token = randomBytes(32).toString('hex');
-  const server = createServer((_request, response) => { response.writeHead(404); response.end(); });
-  const sockets = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 * 1024 });
   let disposed = false;
-  const current = await contents.debugger.sendCommand('Target.getTargetInfo');
+  const isValid = () => !disposed && !contents.isDestroyed() && !window.isDestroyed() && valid();
+  const assertValid = () => { if (!isValid()) throw new Error('The Browser target is no longer available for this site.'); };
+  assertValid();
+  // The WebContents.debugger getter throws after its owner is destroyed. Keep
+  // the emitter itself so late socket cleanup can safely remove our listeners.
+  const protocolClient = contents.debugger;
+  const current = await protocolClient.sendCommand('Target.getTargetInfo');
+  assertValid();
   const targetId = current.targetInfo.targetId as string;
   const origin = new URL(contents.getURL()).origin;
+  const server = createServer((_request, response) => { response.writeHead(404); response.end(); });
+  const sockets = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 * 1024 });
+  const connections = new Set<() => void>();
   const targetInfo = () => ({ targetId, type: 'page', title: contents.getTitle(), url: contents.getURL(), attached: true, canAccessOpener: false });
-  const assertValid = () => { if (disposed || contents.isDestroyed() || !valid()) throw new Error('The Browser target is no longer available for this site.'); };
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    for (const cleanup of connections) cleanup();
+    for (const socket of sockets.clients) socket.terminate();
+    sockets.close(); server.close();
+    contents.removeListener('destroyed', dispose);
+    contents.removeListener('did-start-navigation', navigated);
+    window.removeListener('closed', dispose);
+    onClose(id);
+  };
+  const navigated = () => { if (!isValid()) dispose(); };
   server.on('upgrade', (request, socket, head) => {
-    if (disposed || request.url !== `/devtools/browser/${id}` || request.headers.authorization !== `Bearer ${token}` || request.headers.origin) {
+    if (!isValid() || request.url !== `/devtools/browser/${id}` || request.headers.authorization !== `Bearer ${token}` || request.headers.origin) {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return;
     }
     sockets.handleUpgrade(request, socket, head, connection => sockets.emit('connection', connection));
   });
   sockets.on('connection', socket => {
+    if (!isValid()) { socket.terminate(); return; }
     const sessions = new Set<string>();
     const targets = new Set([targetId]);
+    let cleaned = false;
     let discovering = false;
     let attaching = false;
     let rootSession: string | undefined;
-    const send = (value: unknown) => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value)); };
+    const send = (value: unknown) => { if (!cleaned && !disposed && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value)); };
     const protocol = (_event: unknown, method: string, params: Record<string, any>, sessionId?: string) => {
-      if (!valid()) { socket.close(1008, 'Site changed'); return; }
+      if (cleaned || !isValid()) { socket.close(1008, 'Site changed'); return; }
       if (!sessionId) {
         if (method === 'Target.attachedToTarget' && attaching && params.targetInfo.targetId === targetId) {
           sessions.add(params.sessionId); rootSession = params.sessionId;
@@ -47,17 +68,39 @@ export async function createDevToolsLease(contents: WebContents, window: BaseWin
       send({ method, params, sessionId });
     };
     const changed = () => {
-      if (!valid()) { socket.close(1008, 'Site changed'); return; }
+      if (cleaned || !isValid()) { socket.close(1008, 'Site changed'); return; }
       if (discovering) send({ method: 'Target.targetInfoChanged', params: { targetInfo: targetInfo() } });
     };
-    contents.debugger.on('message', protocol);
+    protocolClient.on('message', protocol);
     contents.on('did-navigate', changed);
     contents.on('did-navigate-in-page', changed);
     contents.on('page-title-updated', changed);
+    async function detach(sessionId: string): Promise<void> {
+      if (contents.isDestroyed()) return;
+      try { await protocolClient.sendCommand('Target.detachFromTarget', { sessionId }); }
+      catch { /* The target/session may have closed before its socket. */ }
+    }
+    function cleanup(): void {
+      if (cleaned) return;
+      cleaned = true;
+      connections.delete(cleanup);
+      protocolClient.removeListener('message', protocol);
+      contents.removeListener('did-navigate', changed);
+      contents.removeListener('did-navigate-in-page', changed);
+      contents.removeListener('page-title-updated', changed);
+      // Release only this lease's sessions; WebMCP shares the debugger.
+      for (const sessionId of sessions) void detach(sessionId);
+      sessions.clear();
+    }
+    connections.add(cleanup);
     async function attach(): Promise<{ sessionId: string }> {
       attaching = true;
       try {
-        const result = await contents.debugger.sendCommand('Target.attachToTarget', { targetId, flatten: true });
+        const result = await protocolClient.sendCommand('Target.attachToTarget', { targetId, flatten: true });
+        if (cleaned || !isValid()) {
+          await detach(result.sessionId);
+          throw new Error('The Browser DevTools connection is closed.');
+        }
         sessions.add(result.sessionId); rootSession = result.sessionId;
         return result;
       } finally { attaching = false; }
@@ -70,7 +113,7 @@ export async function createDevToolsLease(contents: WebContents, window: BaseWin
       if (params.sessionId && !sessions.has(params.sessionId)) throw new Error('CDP session belongs to another target.');
       if (params.targetId && !targets.has(params.targetId)) throw new Error('CDP target belongs to another Browser tab.');
       if (method.startsWith('Browser.')) {
-        if (method === 'Browser.getVersion') return contents.debugger.sendCommand(method);
+        if (method === 'Browser.getVersion') return protocolClient.sendCommand(method);
         const { x, y, width, height } = window.getBounds();
         const bounds = { left: x, top: y, width, height, windowState: 'normal' };
         if (method === 'Browser.getWindowForTarget') return { windowId: window.id, bounds };
@@ -100,12 +143,12 @@ export async function createDevToolsLease(contents: WebContents, window: BaseWin
           case 'Target.detachFromTarget':
             if (!sessions.has(params.sessionId)) throw new Error('Unknown CDP session.');
             sessions.delete(params.sessionId);
-            return contents.debugger.sendCommand(method, params);
+            return protocolClient.sendCommand(method, params);
         }
       }
       await assertDevToolsCommand(method, params, origin, workspacePath);
       assertValid();
-      return contents.debugger.sendCommand(method, params, message.sessionId);
+      return protocolClient.sendCommand(method, params, message.sessionId);
     }
     socket.on('message', raw => {
       let message: Message;
@@ -117,30 +160,18 @@ export async function createDevToolsLease(contents: WebContents, window: BaseWin
       });
     });
     socket.once('close', () => {
-      contents.debugger.removeListener('message', protocol);
-      contents.removeListener('did-navigate', changed);
-      contents.removeListener('did-navigate-in-page', changed);
-      contents.removeListener('page-title-updated', changed);
-      for (const sessionId of sessions) {
-        if (!contents.isDestroyed()) void contents.debugger.sendCommand('Target.detachFromTarget', { sessionId }).catch(() => undefined);
-      }
+      cleanup();
       dispose();
     });
   });
-  await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('DevTools bridge failed to listen.');
-  const dispose = () => {
-    if (disposed) return;
-    disposed = true;
-    for (const socket of sockets.clients) socket.terminate();
-    sockets.close(); server.close();
-    contents.removeListener('destroyed', dispose);
-    contents.removeListener('did-start-navigation', navigated);
-    onClose(id);
-  };
-  const navigated = () => { if (!valid()) dispose(); };
-  contents.once('destroyed', dispose);
-  contents.on('did-start-navigation', navigated);
-  return { id, wsEndpoint: `ws://127.0.0.1:${address.port}/devtools/browser/${id}`, token, get closed() { return disposed; }, dispose };
+  try {
+    await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+    assertValid();
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('DevTools bridge failed to listen.');
+    contents.once('destroyed', dispose);
+    contents.on('did-start-navigation', navigated);
+    window.once('closed', dispose);
+    return { id, wsEndpoint: `ws://127.0.0.1:${address.port}/devtools/browser/${id}`, token, get closed() { return disposed; }, dispose };
+  } catch (error) { dispose(); throw error; }
 }

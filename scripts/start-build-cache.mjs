@@ -52,6 +52,7 @@ export const desktopBuildInputs = [
 export const desktopBuildArtifacts = [
   "apps/desktop/dist/main/index.js",
   "apps/desktop/dist/preload/index.cjs",
+  "apps/desktop/dist/preload/browser-passkey.cjs",
   "apps/desktop/dist/renderer/index.html",
   "plugins/marketplace-desktop-bridge/lib/index.js",
   "plugins/marketplace-desktop-bridge/lib/client.js",

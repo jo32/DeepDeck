@@ -4,6 +4,7 @@ import { isAbsolute, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { BrowserDownload, BrowserNativeCommand } from '../../../../../plugins/browser/src/native-contract.js';
 import { browserOrigin } from './browser-policy.js';
+import { installBrowserPasskeySelection } from './browser-passkeys.js';
 
 export const ZOOM_STEPS = [.25, .33, .5, .67, .75, .8, .9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
 export function nextZoom(current: number, direction: number): number {
@@ -18,6 +19,7 @@ export function writeBrowserState(path: string, value: unknown): void {
 /** Native profile capabilities. No Harness UI or Agent state lives here. */
 export function createBrowserSession(profile: Session, getWindow: () => BaseWindow | undefined,
   owns: (contents: WebContents) => boolean, emit: () => void) {
+  const disposePasskeys = installBrowserPasskeySelection(profile, getWindow, owns);
   const preferencesPath = join(app.getPath('userData'), 'browser-preferences.json');
   const zoom = new Map<string, number>();
   const permissions = new Map<string, boolean>();
@@ -184,6 +186,6 @@ export function createBrowserSession(profile: Session, getWindow: () => BaseWind
       }
       emit();
     },
-    dispose() { persistDownloads(); captureMenu?.closePopup(getWindow()); profile.setDisplayMediaRequestHandler(null); profile.removeListener('will-download', willDownload); profile.setPermissionRequestHandler(null); profile.setPermissionCheckHandler(null); },
+    dispose() { disposePasskeys(); persistDownloads(); captureMenu?.closePopup(getWindow()); profile.setDisplayMediaRequestHandler(null); profile.removeListener('will-download', willDownload); profile.setPermissionRequestHandler(null); profile.setPermissionCheckHandler(null); },
   };
 }
