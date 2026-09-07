@@ -119,6 +119,10 @@ Packaged builds check for an update shortly after launch. When a release is avai
 
 See [docs/release.md](docs/release.md) for the signed release process and rollback model.
 
+## Community
+
+[LINUX DO](https://linux.do/)
+
 ## License
 
 DeepDeck is available under the [MIT License](LICENSE). The pinned DeepSeek Harness submodule and other third-party dependencies retain their own licenses.
