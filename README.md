@@ -1,14 +1,36 @@
 <p align="center">
-  <img src="branding/app-icon.png" alt="DeepDeck app icon" width="160" height="160">
+  <img src="branding/app-icon.png" alt="DeepDeck app icon" width="96" height="96">
 </p>
 
 <h1 align="center">DeepDeck</h1>
 
 <p align="center">
-  A native-feeling desktop client for DeepSeek Harness.
+  Build and reuse WebMCP tools in a macOS desktop workspace for DeepSeek Harness.
 </p>
 
-![DeepDeck desktop app](docs/deepdeck-brand-preview.png)
+<p align="center">
+  <a href="https://github.com/jo32/DeepDeck/releases/latest"><strong>Download for Mac · Apple Silicon / Intel</strong></a> ·
+  <a href="https://deepdeck.getmegaportal.com/">Website</a> ·
+  <a href="#try-it">Try it</a> ·
+  <a href="plugins/browser/README.md">Browser guide</a>
+</p>
+
+Describe a website task. DeepDeck's Agent can use the site's existing WebMCP tools, or explore its interface and build tools you can inspect and reuse later. Source and saved versions stay available for review, disabling, and rollback.
+
+| Build tools for a website | Reuse them for a task |
+| --- | --- |
+| ![Builder reports creating and validating 23 tools for X](apps/web/public/webmcp/building-webmcp.png) | ![Use mode calls saved tools to prepare a Hello world draft without publishing](apps/web/public/webmcp/use-webmcp.png) |
+| In this X example, Builder creates 23 tools for reading pages, searching, and editing drafts. | Switch to Use and ask for a Hello world draft. The example fills the draft without publishing it. |
+
+Initial exploration and verification take time and tokens. Reuse benefits depend on the task and tool design; site changes can require revalidation. Measured savings are not yet established.
+
+### Try it
+
+1. [Download the latest release](https://github.com/jo32/DeepDeck/releases/latest), choose the DMG for your Mac, and open DeepDeck. Set up a model in Settings if you have not already configured Harness.
+2. Open **Browser**, visit a site, and open **Site Agent → WebMCP** to inspect any tools the website provides.
+3. If a needed tool is missing, switch to **Builder** and describe what it should do. Review the generated tools and validation results, then return to **Use** and ask for the task.
+
+DeepDeck is a macOS desktop application. Install it from Releases; a generic `dsh plugin add` command does not install the desktop app or its native browser bridge. For development from source, see [First run](#first-run).
 
 ## Highlights
 
@@ -65,6 +87,8 @@ Switch back to **Use** and ask for the task. In this example, “compose a hello
 See the [Browser guide](plugins/browser/README.md) for details and the [website updates](https://deepdeck.getmegaportal.com/#updates) for feature announcements.
 
 ### Apps and the desktop workspace
+
+![DeepDeck desktop app](docs/deepdeck-brand-preview.png)
 
 - **Extend your workspace.** Discover and install Harness plugins from **Settings → Apps**, or build trusted local plugin source with **Bun Builder**.
 - **Keep familiar Harness settings.** Use compatible profiles, model settings, credentials, and installed plugins in a desktop app with native browser tabs, downloads, and automatic update support.
