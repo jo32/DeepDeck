@@ -82,6 +82,23 @@ function sameBinding(left: BrowserBinding | undefined, right: BrowserBinding): b
   return left?.siteId === right.siteId && left.sessionId === right.sessionId && left.tabId === right.tabId && left.mode === right.mode
 }
 
+// Native snapshots also drive the desktop UI. Agent action receipts must not
+// copy global browser state or repeatedly include the WebMCP tool directory.
+function siteTabReceipt(snapshot: BrowserSnapshot, origin: string, targetTabId?: string): RecordValue {
+  const tabs = snapshot.tabs.filter(tab => tab.origin === origin && (!targetTabId || tab.id === targetTabId)).map(tab => ({
+    id: tab.id, url: tab.url, origin: tab.origin, title: tab.title,
+    documentId: tab.documentId, loading: tab.loading,
+    ...(tab.error !== undefined ? { error: tab.error } : {}),
+    ...(tab.webmcpError !== undefined ? { webmcpError: tab.webmcpError } : {}),
+  }))
+  const target = targetTabId ? snapshot.tabs.find(tab => tab.id === targetTabId) : undefined
+  return {
+    open: snapshot.open, tabs,
+    ...(tabs.some(tab => tab.id === snapshot.activeTabId) ? { activeTabId: snapshot.activeTabId } : {}),
+    ...(targetTabId ? { target: { tabId: targetTabId, status: !target ? 'closed' : target.origin === origin ? 'present' : 'outside-site' } } : {}),
+  }
+}
+
 export function verifiedInstallation(value: unknown, origin: string, revision: string): RecordValue {
   const receipt = argsObject(value)
   if (receipt.installed !== true || receipt.origin !== origin || receipt.revision !== revision || receipt.failed !== 0
@@ -353,11 +370,11 @@ export class BrowserRuntime {
       this.tool(state, 'browser_open_tab', 'Open another native Browser tab within this site. Select it explicitly with browser_select_tab to move this Agent to it.', { url: string }, ['url'], async (args, exec, site) => {
         const url = new URL(requiredString(args, 'url'), site.origin).href
         if (siteOrigin(url) !== site.origin) throw new Error('Navigation belongs to another site.')
-        return this.native.request({ action: 'tab.open', url }, exec.signal)
+        return siteTabReceipt(await this.native.request({ action: 'tab.open', url }, exec.signal), site.origin)
       }),
       this.tool(state, 'browser_close_tab', 'Close an explicitly selected tab of this site. Closing the bound tab requires selecting another before continuing.', { tabId: string }, ['tabId'], async (args, exec, site) => {
         const tab = await this.tab(requiredString(args, 'tabId'), site.origin)
-        return this.native.request({ action: 'tab.close', tabId: tab.id }, exec.signal)
+        return siteTabReceipt(await this.native.request({ action: 'tab.close', tabId: tab.id }, exec.signal), site.origin)
       }),
       this.tool(state, 'browser_context', 'Discover this site, the bound tab, live native and generated WebMCP tools and Builder source context.', {}, [], async (_args, _exec, site) => ({ site: await this.describe(site), binding: state.binding, tabs: (await this.snapshot()).tabs.filter(tab => tab.origin === site.origin), webmcp: await this.webmcp.inspect(site.origin) })),
       this.tool(state, 'browser_set_mode', 'Switch this same site conversation between use and WebMCP Builder modes. After building, return to use and finish the original task.', { mode: { type: 'string', enum: ['use', 'builder'] } }, ['mode'], async args => {
@@ -381,11 +398,11 @@ export class BrowserRuntime {
         state.binding = binding
         return state.binding
       }),
-      this.tool(state, 'browser_navigate', 'Navigate the bound tab within this site, then rediscover tools. Cross-site work requires that site’s own Agent.', { url: string }, ['url'], async (args, exec, site) => {
+      this.tool(state, 'browser_navigate', 'Navigate the bound tab within this site. Returns compact tab state; call browser_context to rediscover tools. Cross-site work requires that site’s own Agent.', { url: string }, ['url'], async (args, exec, site) => {
         const url = new URL(requiredString(args, 'url'), site.origin).href
         if (siteOrigin(url) !== site.origin) throw new Error('Navigation belongs to another site.')
         await this.target(state, site)
-        return this.native.request({ action: 'tab.navigate', tabId: state.binding.tabId, url }, exec.signal)
+        return siteTabReceipt(await this.native.request({ action: 'tab.navigate', tabId: state.binding.tabId, url }, exec.signal), site.origin, state.binding.tabId)
       }),
       this.tool(state, 'browser_webmcp_call', 'Execute a discovered WebMCP tool and wait for its actual result. Copy frameId/documentId/revision from browser_context; never invent a tool.', { name: string, frameId: string, documentId: string, input: object, revision: string }, ['name', 'frameId', 'documentId', 'input'], async (args, exec, site) => {
         const target = await this.target(state, site)

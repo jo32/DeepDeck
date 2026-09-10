@@ -101,6 +101,12 @@ the upstream name-only WebMCP tools are excluded and rejected if called directly
 Both screenshot paths become normal Harness image attachments.
 Browser owns native tab creation/closure through `browser_open_tab` and
 `browser_close_tab`; `browser_select_tab` explicitly binds another same-site tab.
+Open/close receipts list compact state for this site's tabs; navigation receipts
+include only the bound tab. These action results omit tool schemas and global
+browser state. Call `browser_context` when tool discovery is needed. Navigation
+requests can return while loading is still in progress; the receipt is not a
+page-load assertion. A target that has left the site is marked `outside-site`
+without returning the other site's details.
 
 Each Agent uses an authenticated, loopback CDP bridge exposing only its bound
 website tab. It never exposes the Harness shell or a browser-wide debugging

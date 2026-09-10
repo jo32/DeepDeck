@@ -115,6 +115,7 @@ describe('BrowserRuntime', () => {
     call = async () => ({ articles: [{ title: 'Actual result' }] })
     request = vi.fn(async (command: BrowserNativeCommand) => {
       if (command.action === 'snapshot') return snapshot
+      if (command.action === 'tab.navigate' || command.action === 'tab.open' || command.action === 'tab.close') return snapshot
       if (command.action === 'webmcp.install') return install(command.script)
       if (command.action === 'webmcp.call') return call()
       if (command.action === 'page.screenshot') return { image: 'data:image/png;base64,AQID', documentId: command.documentId } satisfies import('./native-contract.js').BrowserScreenshot
@@ -132,6 +133,62 @@ describe('BrowserRuntime', () => {
     if (!tool) throw new Error(`Test tool missing: ${name}`)
     return JSON.parse(await tool.execute(args, { agent, signal: new AbortController().signal }))
   }
+
+  it.each([
+    ['browser_navigate', { url: '/next' }],
+    ['browser_open_tab', { url: '/next' }],
+    ['browser_close_tab', { tabId: 'tab-1' }],
+  ] as const)('%s keeps receipts on-site without tool schemas or global browser state', async (name, args) => {
+    snapshot.tabs.push({ ...snapshot.tabs[0]!, id: 'private-tab', origin: 'https://private.example', url: 'https://private.example/secret', title: 'Private tab' })
+    snapshot.activeTabId = 'private-tab'
+    snapshot.downloads = [{ id: 'download', filename: 'private.pdf', state: 'completed', receivedBytes: 1, totalBytes: 1 }]
+    snapshot.selections = [{ id: 'selection', tabId: 'private-tab', documentId: 'private-doc', text: 'Private selection', title: 'Private tab', url: 'https://private.example/secret' }]
+    snapshot.authentication = [{ id: 'auth', tabId: 'private-tab', host: 'private.example', realm: 'Private realm', isProxy: false }]
+    snapshot.tabs[0]!.tools = [{ ...GENERATED_TOOL, description: 'large schema '.repeat(1000) }]
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+
+    const result = await exec(name, args)
+    expect(result).toMatchObject({ open: true, tabs: [{ id: 'tab-1', documentId: 'document-1', loading: false }] })
+    const encoded = JSON.stringify(result)
+    for (const excluded of ['private', 'Private', 'downloads', 'selections', 'authentication', 'activeTabId', 'tools', 'large schema']) expect(encoded).not.toContain(excluded)
+    // The action projection must leave the desktop snapshot and explicit tool discovery intact.
+    expect((await runtime.state()).native).toEqual(snapshot)
+    expect(await exec('browser_context')).toMatchObject({ tabs: [{ tools: snapshot.tabs[0]!.tools }] })
+  })
+
+  it('returns only the navigated tab, retaining document, loading and error state', async () => {
+    snapshot.tabs.push({ ...snapshot.tabs[0]!, id: 'tab-2' })
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    request.mockImplementation(async (command: BrowserNativeCommand) => {
+      if (command.action === 'tab.navigate') return { ...snapshot, tabs: [{ ...snapshot.tabs[0]!, url: `${ORIGIN}/next`, documentId: 'next-doc', loading: true, error: 'Navigation failed', webmcpError: 'Discovery failed' }, snapshot.tabs[1]!] }
+      return snapshot
+    })
+    expect(await exec('browser_navigate', { url: '/next' })).toEqual({
+      open: true, activeTabId: 'tab-1', target: { tabId: 'tab-1', status: 'present' },
+      tabs: [{ id: 'tab-1', url: `${ORIGIN}/next`, origin: ORIGIN, title: 'Articles', documentId: 'next-doc', loading: true, error: 'Navigation failed', webmcpError: 'Discovery failed' }],
+    })
+  })
+
+  it.each(['outside-site', 'closed'] as const)('reports a navigated target that is %s without exposing another site', async status => {
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    request.mockImplementation(async (command: BrowserNativeCommand) => command.action === 'tab.navigate'
+      ? { ...snapshot, tabs: status === 'closed' ? [] : [{ ...snapshot.tabs[0]!, origin: 'https://private.example', url: 'https://private.example/secret', title: 'Private tab' }] }
+      : snapshot)
+    expect(await exec('browser_navigate', { url: '/next' })).toEqual({ open: true, tabs: [], target: { tabId: 'tab-1', status } })
+  })
+
+  it('rejects cross-site requests and propagates native navigation failures without retrying', async () => {
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    await expect(exec('browser_navigate', { url: 'https://other.example/' })).rejects.toThrow('another site')
+    await expect(exec('browser_open_tab', { url: 'https://other.example/' })).rejects.toThrow('another site')
+    expect(request.mock.calls.some(([command]) => command.action.startsWith('tab.'))).toBe(false)
+    request.mockImplementation(async (command: BrowserNativeCommand) => {
+      if (command.action === 'tab.navigate') throw new Error('Native connection lost; result unknown')
+      return snapshot
+    })
+    await expect(exec('browser_navigate', { url: '/next' })).rejects.toThrow('result unknown')
+    expect(request.mock.calls.filter(([command]) => command.action === 'tab.navigate')).toHaveLength(1)
+  })
 
   it('binds only the site Workspace Session and a tab on the same origin', async () => {
     await expect(runtime.bind(site.id, 'missing-session', 'tab-1', 'use')).rejects.toThrow('Workspace')
