@@ -56,10 +56,11 @@ If upstream is abandoned, suggest or maintain an explicitly requested fork with 
 
 ## Submit or update a directory listing
 
-- The default DeepDeck registry is `registry/webmcp/entries` in `https://github.com/jo32/DeepDeck`; read its current `registry/webmcp/README.md` before submitting. Respect any explicit alternative registry from the user or configuration. If the registry changes have not yet been pushed and the path is absent remotely, prepare the reference locally and report that dependency rather than inventing a working submission endpoint.
-- Submit the canonical GitHub repository URL and manifest path, plus any registry-required fields. Verify repository ID and prevent duplicate entries. Respect the registry's schema over the example in this skill.
-- Submit via its existing PR or web form as authorized. Update an existing entry when appropriate; submitting someone else's public repository does not make the submitter its maintainer.
-- A merged registry PR may still be awaiting indexing. Read the published directory before saying the project is discoverable. Where unavailable, report “submitted” or “awaiting indexing” with the actual PR link.
+- Submit to the official index at `https://deepdeck.getmegaportal.com/api/webmcp/submissions`: POST JSON with `repository` (canonical public GitHub URL) and `manifestPath` (usually `webmcp.json`). Use the normal HTTP client; no registry PR, registry-file edit, or website deployment is required. Respect any explicit alternative index provided by the user.
+- A `202` response means queued, not indexed. Read the returned relative `statusUrl` on the same official origin. Preserve the receipt ID for later checks. `indexed` means validation succeeded; `failed` means correct the upstream repository and let the service retry. Treat `429` as a request to wait and honor Retry-After. A `503` means unavailable: report GitHub publication separately and retain the submission parameters.
+- The index resolves repository identity, source, manifest, license and commit itself. Submitting someone else's public repository does not grant ownership or change its source. Repeated submissions are idempotent and cannot bypass validation or moderation.
+- Repositories with the `webmcp` GitHub topic may also be discovered automatically; this scans root `webmcp.json`. Use explicit submission for a different manifest path or immediate queueing. Topic discovery is best effort, not proof of indexing.
+- Verify `https://deepdeck.getmegaportal.com/api/webmcp/catalog` contains the repository ID and manifest path before reporting a live listing; an `X-WebMCP-Source: bundled` response is an offline fallback, not proof of current indexing. Report pending status and receipt ID accurately if the job has not completed. Do not invent an indexed state or promise future checks unless requested.
 
 ## Completion
 

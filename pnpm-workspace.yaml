@@ -6,6 +6,7 @@ packages:
   - '!plugins/community-market'
 
 allowBuilds:
+  workerd: true
   '@google/genai': false
   bun: true
   electron: true

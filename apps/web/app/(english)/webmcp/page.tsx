@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import catalog from '../../../public/webmcp/catalog.json'
+import { readCatalog } from '../../../lib/webmcp-index'
 import { WebMCPDirectory } from '../../_components/webmcp-directory'
 
 export const metadata: Metadata = {
@@ -7,4 +7,5 @@ export const metadata: Metadata = {
   description: 'Discover WebMCP tools for websites. Read the source, install a version, and collaborate on GitHub.',
   alternates: { canonical: '/webmcp', languages: { en: '/webmcp', 'zh-CN': '/zh/webmcp' } },
 }
-export default function Page() { return <WebMCPDirectory catalog={catalog} locale="en" /> }
+export const dynamic = 'force-dynamic'
+export default async function Page() { const { catalog, source } = await readCatalog(); return <WebMCPDirectory source={source} catalog={catalog} locale="en" /> }

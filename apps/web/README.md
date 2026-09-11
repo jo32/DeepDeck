@@ -4,11 +4,11 @@
 
 `/webmcp` and `/zh/webmcp` provide searchable GitHub project references, upstream
 issues/releases and installation instructions for the Browser Community panel.
-Add references under `registry/webmcp/entries`. Each website build synchronizes
-and validates these references against GitHub before generating the pages and
-`/api/webmcp/catalog`. Clients read this public mirror without connecting to
-GitHub. `/webmcp/catalog.json` serves the same data for older clients. No GitHub
-credentials reach the page or API. See `registry/webmcp/README.md` for contributions.
+Submit GitHub repository URLs through `/webmcp#submit` or POST JSON to
+`/api/webmcp/submissions`. A Cloudflare Worker and D1 validate, index and refresh
+projects. The website proxies the live catalog; `/webmcp/catalog.json` rewrites
+to the same API for older clients. No listing PR or rebuild is required.
+See `registry/webmcp/README.md` for the submission contract.
 
 DeepDeck 的官方介绍站，使用 Next.js App Router 与 Geist 构建。
 
@@ -55,12 +55,12 @@ The `/webmcp` and `/zh/webmcp` directory pages share their cards and filters wit
 
 Standalone cards use the `deepdeck://webmcp/install` protocol and retain manual repository instructions plus a download/update fallback. A desktop release containing protocol registration is required for OS handoff. Deploy the website before expecting the embedded production directory to support the handshake; no deployment is performed by the implementation or its tests.
 
-The directory UI now lives in `plugins/browser/src/client/WebMCPDirectory.tsx`, with a client re-export here. DeepDeck renders that shared component locally; it does not depend on the public HTML route being deployed. The live JSON catalog is fetched by the Host, with a packaged snapshot fallback. Explicit remote embeds retain the handshake protocol.
+The directory UI now lives in `plugins/browser/src/client/WebMCPDirectory.tsx`, with a website submission wrapper here. DeepDeck renders that shared component locally; it does not depend on the public HTML route being deployed. The live JSON catalog is fetched by the Host, with a packaged snapshot fallback. Explicit remote embeds retain the handshake protocol.
 
-## Publish the registry website
+## Live repository index
 
-The existing `deepdeck` Vercel project is connected to `jo32/DeepDeck`, with production branch `main`, Root Directory `apps/web`, and files outside the root included. A merge automatically builds and publishes the website. `ignoreCommand: "exit 1"` prevents registry-only changes outside `apps/web` from being skipped. No separate desktop deployment is involved.
+The existing `deepdeck` Vercel project remains connected to `jo32/DeepDeck`, with production branch `main` and Root Directory `apps/web`. `WEBMCP_INDEX_URL` is a server-only variable pointing to the Cloudflare index Worker origin. It must not point back to this website. For local development, put `WEBMCP_INDEX_URL=http://127.0.0.1:8787` in an ignored local environment file and run the index's Wrangler dev server.
 
-`pnpm web:build` first runs `registry:sync`, using the workspace's pinned `tsx` dependency (no Harness build is required). It fetches GitHub metadata/source and fails publication if validation fails, keeping the previous deployment live. An optional server-only `GH_TOKEN` build environment variable raises GitHub API limits. Local development uses the checked-in snapshot until you run synchronization.
+`pnpm web:build` builds the website without requesting GitHub or regenerating snapshots. Directory pages and APIs fetch the live index at runtime. If it is unavailable or unconfigured, the catalog returns the bundled fallback with `X-WebMCP-Source: bundled` and `Cache-Control: no-store`; the page shows an outage notice. Submissions return 503 when the service is unavailable. `pnpm webmcp:sync` explicitly updates offline fallback snapshots when maintaining a desktop release.
 
-For manual recovery, link the repository root to that same Vercel project, then run `vercel pull --yes --environment=production`, `vercel build --prod`, and `vercel deploy --prebuilt --prod` from the repository root. Verify `/api/webmcp/catalog`, `/webmcp/catalog.json`, `/webmcp`, and `/zh/webmcp` after deployment. Never create a replacement Vercel project or change DNS for a registry update.
+Deploy the Worker and verify the migrated NGA listing before configuring the URL and deploying the website. See `apps/webmcp-index/README.md`. For manual recovery, use the same Vercel project and verify `/api/webmcp/catalog`, `/webmcp/catalog.json`, `/api/webmcp/submissions`, `/webmcp`, and `/zh/webmcp`. No new Vercel project or DNS change is needed.

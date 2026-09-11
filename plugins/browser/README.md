@@ -151,11 +151,12 @@ publish or contribute a repair as requested. Export itself performs no GitHub wr
 The initial draft is UNLICENSED and needs license, tool metadata and verification
 review before publication. The repository skill link and runtime use the same text.
 
-The public directory lives at `/webmcp` and `/zh/webmcp`; its snapshot is generated
-from `registry/webmcp/entries` with `pnpm webmcp:sync`. The initial list is empty.
-Existing GitHub issues/releases are the source for collaboration and maintenance
-status; no account service or object-storage backend is required. Directory data
-can be stale and is not an endorsement of community source.
+The public directory lives at `/webmcp` and `/zh/webmcp`. A Cloudflare Worker and
+D1 index public repository submissions and periodically refresh verified metadata.
+The official website proxies the catalog for clients. `pnpm webmcp:sync` refreshes
+offline fallbacks from that service; listing projects no longer requires a registry
+PR. GitHub issues/releases remain the source for collaboration and maintenance.
+Directory data can be stale and is not an endorsement of community source.
 
 Run `node apps/desktop/scripts/verify-webmcp-market.mjs` for the isolated real
 Electron UI and native-registration check. The fixture simulates GitHub responses;

@@ -3,7 +3,7 @@ import { act, createElement, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, it, vi } from 'vitest'
 import { WebMCPCommunity } from '../../../plugins/browser/src/client/WebMCPCommunity.js'
-import { WebMCPDirectory } from '../../web/app/_components/webmcp-directory.js'
+import { WebMCPDirectory } from '../../../plugins/browser/src/client/WebMCPDirectory.tsx'
 import { en } from '../../../plugins/browser/src/client/locales.js'
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true

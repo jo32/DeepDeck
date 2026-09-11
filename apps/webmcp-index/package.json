@@ -1,0 +1,21 @@
+{
+  "name": "@deepdeck/webmcp-index",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 migrations apply DB --local"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260910.1",
+    "@types/node": "^22.20.2",
+    "miniflare": "5.20260908.0-alpha",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.130.0"
+  }
+}

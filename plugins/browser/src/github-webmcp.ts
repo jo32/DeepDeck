@@ -1,22 +1,14 @@
+import { boundedResponse } from './bounded-response.js'
+export { boundedResponse } from './bounded-response.js'
 import { createHash } from 'node:crypto'
 import { githubAuthor, type GitHubAuthor, packagePath, parsePackage, parseProvenance, record, repositoryUrl, type GitHubSource, type WebMCPPackage } from './webmcp-package.js'
 
 class GitHubResponseError extends Error { constructor(readonly status: number) { super(`GitHub request failed (${status}). Check repository access, releases and API rate limits.`) } }
 
-export async function boundedResponse(response: Response, maximum: number): Promise<string> {
-  if (Number(response.headers.get('content-length')) > maximum) { await response.body?.cancel(); throw new Error('Remote response exceeds its size limit.') }
-  const reader = response.body?.getReader()
-  if (!reader) throw new Error('Remote response is empty.')
-  const chunks: Uint8Array[] = []; let size = 0
-  try {
-    while (true) { const part = await reader.read(); if (part.done) break; size += part.value.length; if (size > maximum) throw new Error('Remote response exceeds its size limit.'); chunks.push(part.value) }
-    return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))
-  } finally { await reader.cancel().catch(() => {}); reader.releaseLock() }
-}
 export class GitHubWebMCP {
   constructor(private readonly request: typeof fetch = fetch, private readonly token?: string) {}
   private async api(path: string): Promise<Record<string, unknown>> {
-    const response = await this.request(`https://api.github.com${path}`, { redirect: 'error', signal: AbortSignal.timeout(15000), headers: { accept: 'application/vnd.github+json', 'user-agent': 'DeepDeck-WebMCP', ...(this.token ? { authorization: `Bearer ${this.token}` } : {}) } })
+    const response = await this.request(`https://api.github.com${path}`, { redirect: 'manual', signal: AbortSignal.timeout(15000), headers: { accept: 'application/vnd.github+json', 'user-agent': 'DeepDeck-WebMCP', ...(this.token ? { authorization: `Bearer ${this.token}` } : {}) } })
     if (!response.ok) { await response.body?.cancel(); throw new GitHubResponseError(response.status) }
     const value: unknown = JSON.parse(await boundedResponse(response, 2 * 1024 * 1024))
     if (!record(value)) throw new Error('Invalid GitHub response.')

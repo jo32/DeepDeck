@@ -6,15 +6,9 @@ const nextConfig: NextConfig = {
   turbopack: { root: resolve(import.meta.dirname, "../..") },
   outputFileTracingRoot: resolve(import.meta.dirname, "../.."),
   reactStrictMode: true,
-  async headers() {
-    return [{
-      // Older desktop clients use this URL and must receive the same fresh mirror.
-      source: "/webmcp/catalog.json",
-      headers: [
-        { key: "Access-Control-Allow-Origin", value: "*" },
-        { key: "Cache-Control", value: "public, max-age=60, s-maxage=300" },
-      ],
-    }];
+  async rewrites() {
+    // Route older desktop clients to the same live service, ahead of public assets.
+    return { beforeFiles: [{ source: '/webmcp/catalog.json', destination: '/api/webmcp/catalog' }] };
   },
   async redirects() {
     return [

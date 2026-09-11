@@ -150,6 +150,7 @@ describe('Browser session coordination', () => {
   const prompt = send.mock.calls[0]![0]
   expect(prompt).toContain('deepdeck-webmcp-github')
   expect(prompt).toContain('/site/webmcp-publish-existing')
-  expect(prompt).toContain('https://github.com/jo32/DeepDeck')
-  expect(prompt).toContain('registry/webmcp/entries')
+  expect(prompt).toContain('https://deepdeck.getmegaportal.com')
+  expect(prompt).toContain('/api/webmcp/submissions')
+  expect(prompt).toContain('Do not open a registry PR')
  })

@@ -1,7 +1,9 @@
 /** Shared, browser-safe GitHub package and directory contract. */
 export const WEBMCP_MARKET_URL = 'https://deepdeck.getmegaportal.com/webmcp'
 export const WEBMCP_CATALOG_URL = 'https://deepdeck.getmegaportal.com/api/webmcp/catalog'
-export const WEBMCP_REGISTRY_URL = 'https://github.com/jo32/DeepDeck/tree/main/registry/webmcp'
+export const WEBMCP_REGISTRY_URL = 'https://deepdeck.getmegaportal.com/webmcp#submit'
+export const WEBMCP_SUBMISSIONS_URL = 'https://deepdeck.getmegaportal.com/api/webmcp/submissions'
+export const WEBMCP_GUIDE_URL = 'https://github.com/jo32/DeepDeck/tree/main/registry/webmcp'
 export interface WebMCPPackage {
   formatVersion: 1
   name: string

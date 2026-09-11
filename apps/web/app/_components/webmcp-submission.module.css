@@ -1,0 +1,12 @@
+.notice { margin: 0; padding: 12px 24px; background: #fff4dc; color: #604800; font-size: 14px; }
+.submission { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; color: #202322; scroll-margin-top: 30px; }
+.submission h2 { font-size: 28px; margin: 0 0 16px; }
+.submission p { line-height: 1.65; color: #626863; }
+.submission form { display: grid; gap: 18px; margin: 28px 0; }
+.submission label { display: grid; gap: 8px; font-size: 14px; font-weight: 550; }
+.submission input { box-sizing: border-box; min-width: 0; width: 100%; border: 1px solid #d5d9d5; border-radius: 9px; background: #fff; color: #202322; padding: 12px; font: inherit; }
+.submission button, .submission a { width: fit-content; min-height: 44px; border-radius: 9px; border: 1px solid #cbd2cd; padding: 10px 18px; font: inherit; cursor: pointer; }
+.submission button { background: #183d2c; color: white; }
+.submission button:disabled { opacity: .5; cursor: wait; }
+.submission a { display: inline-block; margin-left: 12px; color: #183d2c; }
+.submission :focus-visible { outline: 2px solid #3c8b60; outline-offset: 3px; }

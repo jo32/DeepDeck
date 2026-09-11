@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "deepdeck-webmcp-index",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-11",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "deepdeck-webmcp-index",
+      "migrations_dir": "migrations",
+      "database_id": "95601ff8-d875-4b48-aa8e-814e89f49322"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "SUBMISSIONS",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 10,
+        "period": 60
+      }
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
+  "vars": {
+    "DISCOVER_TOPICS": "true"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "account_id": "0828e3a8588e821a5429917926138d7d"
+}

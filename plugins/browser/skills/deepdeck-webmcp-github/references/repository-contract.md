@@ -48,7 +48,7 @@ The minimal authoritative reference is GitHub repository ID + canonical reposito
 
 The directory is not required to store source, bundles, comments or account tokens. Upstream rename/transfer must be checked against the repository ID; URL reuse by another repository must not inherit trust or installed provenance. A tag is a moving reference unless otherwise guaranteed; always pin the resolved commit locally.
 
-The initial registry is `registry/webmcp/entries` in `https://github.com/jo32/DeepDeck`; its README defines references and `pnpm webmcp:sync`. Confirm this path exists in the remote branch before submitting. The checked-in website snapshot updates after sync and deployment; a local commit or unmerged PR does not make a listing live.
+The official index accepts POST JSON (`repository`, `manifestPath`) at `https://deepdeck.getmegaportal.com/api/webmcp/submissions`. It verifies and stores metadata in a server database, then refreshes it periodically. No listing PR or website rebuild is required. Check the returned job status and live catalog before claiming the repository is indexed.
 
 ## Maintainer and companion skills
 

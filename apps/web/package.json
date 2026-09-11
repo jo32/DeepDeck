@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "pnpm registry:sync && next build",
-    "registry:sync": "tsx ../../scripts/sync-webmcp-registry.ts --website-only",
+    "build": "next build",
     "start": "next start",
     "check": "tsc --noEmit"
   },

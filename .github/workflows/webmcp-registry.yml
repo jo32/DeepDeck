@@ -1,20 +1,19 @@
-name: WebMCP registry
+name: WebMCP index
 
 on:
   pull_request:
-    paths: &registry-paths
-      - 'registry/webmcp/**'
+    paths: &index-paths
+      - 'apps/webmcp-index/**'
+      - 'apps/web/lib/webmcp-index.ts'
+      - 'apps/web/app/api/webmcp/**'
       - 'scripts/sync-webmcp-registry*'
       - 'plugins/browser/src/github-webmcp.ts'
       - 'plugins/browser/src/webmcp-package.ts'
-      - 'plugins/browser/catalog.json'
-      - 'apps/web/public/webmcp/catalog.json'
-      - 'apps/web/app/api/webmcp/**'
-      - 'apps/web/package.json'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/webmcp-registry.yml'
   push:
     branches: [main]
-    paths: *registry-paths
+    paths: *index-paths
   workflow_dispatch:
 
 permissions:
@@ -32,9 +31,8 @@ jobs:
         with:
           node-version: 24.18.1
           package-manager-cache: false
-      - name: Test registry validation
-        run: npx --yes --package=tsx@4.22.4 tsx --test scripts/sync-webmcp-registry.test.mjs
-      - name: Validate registry references against GitHub
-        run: npx --yes --package=tsx@4.22.4 tsx scripts/sync-webmcp-registry.ts --validate
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Install index dependencies
+        run: npx --yes pnpm@12.0.0 install --filter @deepdeck/webmcp-index --frozen-lockfile
+      - run: npx --yes pnpm@12.0.0 --filter @deepdeck/webmcp-index check
+      - run: npx --yes pnpm@12.0.0 --filter @deepdeck/webmcp-index test
+      - run: npx --yes pnpm@12.0.0 --filter @deepdeck/webmcp-index build

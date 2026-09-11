@@ -18,3 +18,8 @@ release/
 
 # Vercel local project settings and build output
 .vercel/
+
+# Cloudflare local state and credentials
+.wrangler/
+.dev.vars
+.dev.vars.*
