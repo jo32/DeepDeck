@@ -8,6 +8,7 @@ on:
       - 'apps/web/app/api/webmcp/**'
       - 'scripts/sync-webmcp-registry*'
       - 'plugins/browser/src/github-webmcp.ts'
+      - 'plugins/browser/src/bounded-response.ts'
       - 'plugins/browser/src/webmcp-package.ts'
       - 'pnpm-lock.yaml'
       - '.github/workflows/webmcp-registry.yml'

@@ -488,6 +488,8 @@ describe('BrowserRuntime', () => {
     expect(fallback.catalog.formatVersion).toBe(1)
     remote.mockResolvedValue(new Response(JSON.stringify({ formatVersion: 1, generatedAt: null, entries: [] })))
     expect((await runtime.directory()).source).toBe('online')
+    remote.mockResolvedValue(Response.json({ formatVersion: 1, generatedAt: null, entries: [] }, { headers: { 'x-webmcp-source': 'bundled' } }))
+    expect((await runtime.directory()).source).toBe('bundled')
   })
 
   function mockPackage(origin = ORIGIN) {

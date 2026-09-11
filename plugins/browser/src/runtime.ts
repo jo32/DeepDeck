@@ -229,7 +229,10 @@ export class BrowserRuntime {
     try {
       const response = await fetch(WEBMCP_CATALOG_URL, { redirect: 'error', signal: AbortSignal.timeout(4000) })
       if (!response.ok) { await response.body?.cancel(); throw new Error('Directory unavailable.') }
-      return { catalog: parseCatalog(JSON.parse(await boundedResponse(response, 4 * 1024 * 1024))), source: 'online' as const }
+      const catalog = parseCatalog(JSON.parse(await boundedResponse(response, 32 * 1024 * 1024)))
+      return response.headers.get('x-webmcp-source') === 'bundled'
+        ? { catalog, source: 'bundled' as const }
+        : { catalog, source: 'online' as const }
     } catch {
       const catalog = parseCatalog(JSON.parse(readFileSync(new URL('../catalog.json', import.meta.url), 'utf8')))
       return { catalog, source: 'bundled' as const }
