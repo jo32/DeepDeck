@@ -1,6 +1,6 @@
 # WebMCP directory
 
-This directory stores references to public GitHub projects. Source, issues, pull requests and releases remain in each project's repository. The initial catalog is intentionally empty.
+This directory is the source of truth for the official WebMCP directory. It stores references to public GitHub projects. Source, issues, pull requests and releases remain in each project's repository.
 
 To list a project, add `entries/<short-name>.json` in a pull request to this repository:
 
@@ -17,20 +17,26 @@ Use the actual numeric GitHub repository ID, not the illustrative value above. I
 
 Projects without a stable release can be listed for discovery; installation of unreleased source requires an explicit full commit SHA. GitHub stars, a recent commit, and successful registration are not functional verification. Issues and repairs link to upstream.
 
-Run `pnpm webmcp:sync` to validate references, retrieve GitHub metadata and atomically regenerate `apps/web/public/webmcp/catalog.json`. `GH_TOKEN` is optional for authenticated API limits and is used only by the sync process. Missing references are removed, failed syncs preserve an existing entry with a warning, and duplicate references or malformed inputs fail the command. The website build does not require live GitHub access.
+Merging a registry change to `main` automatically triggers the existing `deepdeck` Vercel project's Git integration. Its website build reads the checked-out `entries/`, retrieves GitHub metadata, verifies repository identity, manifest, license and source hashes, and generates the directory. The website and API publish in the same deployment. Contributors only need to commit reference changes; generated snapshots are not required in listing PRs.
 
-Review reference changes and the generated catalog together. A listing PR does not grant the submitter ownership of the project. If a repository changes ID or becomes archived/unavailable, review its listing instead of silently replacing its source. Renames currently require updating the canonical URL in the reference.
+GitHub requests happen in the build environment, not on client devices. Clients fetch the public mirror at `https://deepdeck.getmegaportal.com/api/webmcp/catalog`. The previous `/webmcp/catalog.json` URL remains available with the same data for installed clients. Both endpoints allow cross-origin reads and cache for at most five minutes at the CDN. No desktop release or manual website deployment is needed for registry updates.
 
-The site reads the checked-in snapshot. Refresh it with this command and deploy the website to update the public directory. The WebMCP registry workflow validates reference changes and snapshot consistency on pull requests and pushes. It does not publish packages, merge submissions or deploy the website. No background schedule or GitHub webhook is configured automatically.
+`GH_TOKEN` is optional for authenticated API limits and is used only by synchronization. For larger registries, configure a read-only GitHub token as a Vercel build environment variable. Never expose it through a `NEXT_PUBLIC_` variable. If GitHub is unavailable, a reference is invalid, or integrity verification fails, the build fails and the previous production deployment remains live.
+
+Review reference changes and their upstream projects together. A listing PR does not grant the submitter ownership of the project. If a repository changes ID or becomes archived/unavailable, review its listing instead of silently replacing its source. Renames currently require updating the canonical URL in the reference.
+
+The registry workflow validates references on pull requests and pushes using GitHub's read-only workflow token. Vercel's Git integration handles previews and production publication separately. The project must include files outside `apps/web` and must not skip builds when only `registry/` changes (`apps/web/vercel.json` sets `ignoreCommand` accordingly). This workflow publishes the website only; it does not publish desktop packages or upstream WebMCP releases.
 
 ## Validation and publication
 
-The live catalog is [catalog.json](https://deepdeck.getmegaportal.com/webmcp/catalog.json); browse it at [the directory](https://deepdeck.getmegaportal.com/webmcp).
+The live catalog is [the registry API](https://deepdeck.getmegaportal.com/api/webmcp/catalog); browse it at [the directory](https://deepdeck.getmegaportal.com/webmcp).
 
 1. Add or update a reference under `entries/`, following [entry.schema.json](entry.schema.json).
-2. Run `pnpm webmcp:sync` using an existing GitHub login token in `GH_TOKEN` when needed. Never commit credentials.
-3. Include both generated snapshots: `apps/web/public/webmcp/catalog.json` and `plugins/browser/catalog.json`.
-4. Run `pnpm webmcp:sync --check` to validate without changing files. CI checks repository identity, manifest/source integrity, licenses, duplicates and the committed snapshots.
-5. Open a PR. After review and merge, deploy the website to update discovery. Desktop installations use the live JSON and may fall back to the bundled snapshot.
+2. Run `pnpm webmcp:sync --validate` to check the references without changing files. Use an existing GitHub login token in `GH_TOKEN` when needed. Never commit credentials.
+3. Open a PR containing the reference changes. Wait for registry validation and review.
+4. Merge to `main`. Vercel automatically runs the website build, including `pnpm --filter @deepdeck/web registry:sync`, and publishes the updated site and API.
+5. Verify the live API and directory. Desktop installations fetch the new catalog on refresh and may fall back to their bundled snapshot when offline.
+
+For local inspection, `pnpm webmcp:sync` still refreshes both checked-in snapshots, and `--check` verifies their consistency. Desktop maintainers can include refreshed snapshots in an app release to update its offline fallback. `--website-only` regenerates only the website snapshot and aborts without replacing output on any upstream failure; this is the website build's mode.
 
 Local synchronization and an open PR do not mean a project is indexed on the public website. Verify the live JSON after deployment.
