@@ -134,6 +134,8 @@ jobs:
           pnpm test
 
       - name: Build signed and notarized packages
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
