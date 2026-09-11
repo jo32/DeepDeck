@@ -1,5 +1,31 @@
 {
   "formatVersion": 1,
-  "generatedAt": "2026-09-10T07:42:47.177Z",
-  "entries": []
+  "generatedAt": "2026-09-11T05:39:20.043Z",
+  "entries": [
+    {
+      "id": "nga-forums-webmcp",
+      "repositoryId": 1365304362,
+      "repository": "https://github.com/jo32/nga-forums-webmcp",
+      "manifestPath": "webmcp.json",
+      "name": "NGA Forums WebMCP",
+      "description": "Browse NGA forum directories, featured topics, board topic lists and topic pages, and inspect or operate the native NGA login flow without exposing credentials.",
+      "origin": "https://bbs.nga.cn",
+      "tags": [
+        "nga",
+        "forum",
+        "community",
+        "topics",
+        "discussion",
+        "login"
+      ],
+      "status": "active",
+      "author": {
+        "login": "jo32",
+        "url": "https://github.com/jo32",
+        "avatarUrl": "https://github.com/jo32.png?size=80"
+      },
+      "syncedAt": "2026-09-11T05:39:20.041Z",
+      "commit": "8ea7f0aab887a636804650bcb0def4345cffcadd"
+    }
+  ]
 }

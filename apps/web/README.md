@@ -4,10 +4,11 @@
 
 `/webmcp` and `/zh/webmcp` provide searchable GitHub project references, upstream
 issues/releases and installation instructions for the Browser Community panel.
-The checked-in `public/webmcp/catalog.json` starts empty. Add references under
-`registry/webmcp/entries` and run `pnpm webmcp:sync` at the repository root to refresh
-the snapshot; deploy the website to publish it. No GitHub credentials reach the
-page, and builds do not call GitHub. See `registry/webmcp/README.md` for contributions.
+Add references under `registry/webmcp/entries`. Each website build synchronizes
+and validates these references against GitHub before generating the pages and
+`/api/webmcp/catalog`. Clients read this public mirror without connecting to
+GitHub. `/webmcp/catalog.json` serves the same data for older clients. No GitHub
+credentials reach the page or API. See `registry/webmcp/README.md` for contributions.
 
 DeepDeck 的官方介绍站，使用 Next.js App Router 与 Geist 构建。
 
@@ -55,3 +56,11 @@ The `/webmcp` and `/zh/webmcp` directory pages share their cards and filters wit
 Standalone cards use the `deepdeck://webmcp/install` protocol and retain manual repository instructions plus a download/update fallback. A desktop release containing protocol registration is required for OS handoff. Deploy the website before expecting the embedded production directory to support the handshake; no deployment is performed by the implementation or its tests.
 
 The directory UI now lives in `plugins/browser/src/client/WebMCPDirectory.tsx`, with a client re-export here. DeepDeck renders that shared component locally; it does not depend on the public HTML route being deployed. The live JSON catalog is fetched by the Host, with a packaged snapshot fallback. Explicit remote embeds retain the handshake protocol.
+
+## Publish the registry website
+
+The existing `deepdeck` Vercel project is connected to `jo32/DeepDeck`, with production branch `main`, Root Directory `apps/web`, and files outside the root included. A merge automatically builds and publishes the website. `ignoreCommand: "exit 1"` prevents registry-only changes outside `apps/web` from being skipped. No separate desktop deployment is involved.
+
+`pnpm web:build` first runs `registry:sync`, using the workspace's pinned `tsx` dependency (no Harness build is required). It fetches GitHub metadata/source and fails publication if validation fails, keeping the previous deployment live. An optional server-only `GH_TOKEN` build environment variable raises GitHub API limits. Local development uses the checked-in snapshot until you run synchronization.
+
+For manual recovery, link the repository root to that same Vercel project, then run `vercel pull --yes --environment=production`, `vercel build --prod`, and `vercel deploy --prebuilt --prod` from the repository root. Verify `/api/webmcp/catalog`, `/webmcp/catalog.json`, `/webmcp`, and `/zh/webmcp` after deployment. Never create a replacement Vercel project or change DNS for a registry update.

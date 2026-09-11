@@ -4,6 +4,10 @@ import { join } from 'node:path'
 import { GitHubWebMCP } from '../plugins/browser/src/github-webmcp.ts'
 import { packagePath, parseCatalog, record, repositoryUrl, type WebMCPCatalogEntry } from '../plugins/browser/src/webmcp-package.ts'
 
+const check = process.argv.includes('--check')
+const validate = process.argv.includes('--validate')
+const websiteOnly = process.argv.includes('--website-only')
+if ([check, validate, websiteOnly].filter(Boolean).length > 1) throw new Error('Choose only one synchronization mode.')
 const root = fileURLToPath(new URL('../', import.meta.url))
 const destination = join(root, 'apps/web/public/webmcp/catalog.json')
 const previous = parseCatalog(JSON.parse(await readFile(destination, 'utf8')))
@@ -36,13 +40,30 @@ for (const ref of references) {
   }
 }
 const catalog = parseCatalog({ formatVersion: 1, generatedAt: new Date().toISOString(), entries })
-await mkdir(join(root, 'apps/web/public/webmcp'), { recursive: true })
-const temporary = `${destination}.${process.pid}.tmp`
-await writeFile(temporary, JSON.stringify(catalog, null, 2) + '\n')
-await rename(temporary, destination)
-const bundledDestination = join(root, 'plugins/browser/catalog.json')
-const bundledTemporary = `${bundledDestination}.${process.pid}.tmp`
-await writeFile(bundledTemporary, JSON.stringify(catalog, null, 2) + '\n')
-await rename(bundledTemporary, bundledDestination)
-console.log(`Indexed ${entries.length} WebMCP projects.`)
+// A production build must never replace the last working directory with partial results.
+if (websiteOnly && failed) throw new Error('Registry synchronization failed; website publication aborted.')
+if (check) {
+  const normalize = (catalog: typeof previous) => JSON.stringify(catalog.entries.map(({ syncedAt, ...entry }) => entry).sort((a, b) => a.id.localeCompare(b.id)))
+  if (normalize(previous) !== normalize(catalog)) {
+    console.error('Catalog is out of date. Run pnpm webmcp:sync and commit both catalog snapshots.')
+    failed = true
+  }
+  const bundled = parseCatalog(JSON.parse(await readFile(join(root, 'plugins/browser/catalog.json'), 'utf8')))
+  if (JSON.stringify(bundled) !== JSON.stringify(previous)) {
+    console.error('Website and bundled catalog snapshots differ.')
+    failed = true
+  }
+} else if (!validate) {
+  await mkdir(join(root, 'apps/web/public/webmcp'), { recursive: true })
+  const temporary = `${destination}.${process.pid}.tmp`
+  await writeFile(temporary, JSON.stringify(catalog, null, 2) + '\n')
+  await rename(temporary, destination)
+  if (!websiteOnly) {
+    const bundledDestination = join(root, 'plugins/browser/catalog.json')
+    const bundledTemporary = `${bundledDestination}.${process.pid}.tmp`
+    await writeFile(bundledTemporary, JSON.stringify(catalog, null, 2) + '\n')
+    await rename(bundledTemporary, bundledDestination)
+  }
+}
+console.log(`${check || validate ? 'Validated' : 'Indexed'} ${entries.length} WebMCP projects.`)
 if (failed) process.exitCode = 1

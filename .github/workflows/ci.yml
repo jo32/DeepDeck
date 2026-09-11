@@ -56,3 +56,5 @@ jobs:
 
       - name: Build DeepDeck
         run: pnpm build
+        env:
+          GH_TOKEN: ${{ github.token }}

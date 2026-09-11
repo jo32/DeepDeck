@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm registry:sync && next build",
+    "registry:sync": "tsx ../../scripts/sync-webmcp-registry.ts --website-only",
     "start": "next start",
     "check": "tsc --noEmit"
   },
@@ -18,6 +19,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "tsx": "4.22.4"
   }
 }

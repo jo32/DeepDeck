@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DeepDeck WebMCP registry reference",
+  "type": "object",
+  "required": ["id", "repositoryId", "repository", "manifestPath"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,79}$" },
+    "repositoryId": { "type": "integer", "minimum": 1 },
+    "repository": { "type": "string", "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+    "manifestPath": { "type": "string", "minLength": 1, "maxLength": 300 }
+  }
+}
