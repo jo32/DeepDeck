@@ -80,6 +80,17 @@ pnpm package:local
 
 `pnpm start:packaged` performs this branded package flow and launches DeepDeck. The normal `pnpm start` command uses the raw-Electron development path so routine launches do not rebuild and verify a complete application package; `pnpm start:raw` remains an explicit alias for that path.
 
+## Signing scanner file limits
+
+The runtime contains tens of thousands of files. The pinned
+`@electron/osx-sign@1.3.3` patch limits concurrent binary probes to 32 across the
+entire application tree, preserving the normal candidate list and signature
+verification. Raising the shell descriptor limit alone did not prevent `EMFILE`
+on hosted macOS runners. Keep the patch while using this signer version.
+`pnpm test:signing` scans a large fixture under a hard 128-descriptor limit and
+checks that every binary remains in the result. Revalidate this behavior before
+upgrading the signer or removing the patch.
+
 ## Open Computer Use runtime updates
 
 `.github/workflows/update-computer-use.yml` checks npm daily and on manual

@@ -28,7 +28,7 @@
     "check": "pnpm codex-connect:check && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-bun-plugin-builder run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-app-conversations run check && pnpm --filter @deepdeck/dsh-computer-use run check && pnpm --filter @deepdeck/dsh-provider-aware-web run check && pnpm --filter @deepdeck/dsh-browser run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check && pnpm web:check",
     "test:start-cache": "node --test scripts/start-build-cache.test.mjs",
     "test:questions": "pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome build && vendor/deepseek-harness/node_modules/.bin/vitest run --config apps/desktop/scripts/question-composer.vitest.config.ts",
-    "test": "pnpm test:start-cache && pnpm test:registry && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-bun-plugin-builder run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepdeck/dsh-app-conversations run test && pnpm --filter @deepdeck/dsh-computer-use run test && pnpm --filter @deepdeck/dsh-provider-aware-web run test && pnpm --filter @deepdeck/dsh-browser run test && pnpm --filter @deepseek-harness/desktop run test",
+    "test": "pnpm test:start-cache && pnpm test:registry && pnpm test:signing && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-bun-plugin-builder run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepdeck/dsh-app-conversations run test && pnpm --filter @deepdeck/dsh-computer-use run test && pnpm --filter @deepdeck/dsh-provider-aware-web run test && pnpm --filter @deepdeck/dsh-browser run test && pnpm --filter @deepseek-harness/desktop run test",
     "computer-use:update": "node scripts/update-computer-use-version.mjs",
     "runtime:prepare": "node scripts/prepare-runtime.mjs",
     "runtime:verify": "node scripts/verify-runtime.mjs",
@@ -39,7 +39,8 @@
     "start:raw": "node scripts/start-build-cache.mjs ensure && node scripts/run-desktop.mjs",
     "start:rebuild": "pnpm build:desktop && node scripts/run-desktop.mjs",
     "start:packaged": "pnpm package:local && node scripts/run-packaged-desktop.mjs",
-    "test:registry": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs --test scripts/sync-webmcp-registry.test.mjs"
+    "test:registry": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs --test scripts/sync-webmcp-registry.test.mjs",
+    "test:signing": "node --test scripts/signing-scan.test.mjs"
   },
   "dependencies": {
     "dsh-codex-connect": "0.1.0-alpha.4.21"

@@ -139,8 +139,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # osx-sign scans all bundled runtime files concurrently. macOS defaults
-          # can exhaust descriptors before signing this 48k-file application.
+          # Keep headroom for packaging subprocesses. The pinned osx-sign patch
+          # separately bounds binary probes and is tested with a low file limit.
           ulimit -S -n 65536
           export UPDATE_FEED_URL="${UPDATE_BASE_URL%/}/stable/darwin/${{ matrix.arch }}"
           pnpm package:mac

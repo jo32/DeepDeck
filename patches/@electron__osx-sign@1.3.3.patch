@@ -1,0 +1,76 @@
+diff --git a/dist/cjs/util.js b/dist/cjs/util.js
+index 77e64b56872bc65bcb0f60ecfbec84eb3da02c6f..d76a6f6f2141dc729dcea523198ee186a58c5108 100644
+--- a/dist/cjs/util.js
++++ b/dist/cjs/util.js
+@@ -149,6 +149,24 @@ exports.validateOptsPlatform = validateOptsPlatform;
+  */
+ async function walkAsync(dirPath) {
+     (0, exports.debugLog)('Walking... ' + dirPath);
++    // DeepDeck bundles a large runtime. Bound binary probes across the entire
++    // tree so async open/read/close calls cannot exhaust macOS file descriptors.
++    let activeProbes = 0;
++    const waitingProbes = [];
++    async function inspectFile(filePath) {
++        if (activeProbes >= 32) {
++            await new Promise(resolve => waitingProbes.push(resolve));
++        } else {
++            activeProbes++;
++        }
++        try {
++            return await getFilePathIfBinary(filePath);
++        } finally {
++            const next = waitingProbes.shift();
++            if (next) next();
++            else activeProbes--;
++        }
++    }
+     async function _walkAsync(dirPath) {
+         const children = await fs.readdir(dirPath);
+         return await Promise.all(children.map(async (child) => {
+@@ -161,7 +179,7 @@ async function walkAsync(dirPath) {
+                         await fs.remove(filePath);
+                         return null;
+                     default:
+-                        return await getFilePathIfBinary(filePath);
++                        return await inspectFile(filePath);
+                 }
+             }
+             else if (stat.isDirectory() && !stat.isSymbolicLink()) {
+diff --git a/dist/esm/util.js b/dist/esm/util.js
+index d3f66d54b1a88e7410d78affe17de87302db02a3..1d7628e8a7e3340fac474e55bf43b94a6c581a53 100644
+--- a/dist/esm/util.js
++++ b/dist/esm/util.js
+@@ -113,6 +113,24 @@ export async function validateOptsPlatform(opts) {
+  */
+ export async function walkAsync(dirPath) {
+     debugLog('Walking... ' + dirPath);
++    // DeepDeck bundles a large runtime. Bound binary probes across the entire
++    // tree so async open/read/close calls cannot exhaust macOS file descriptors.
++    let activeProbes = 0;
++    const waitingProbes = [];
++    async function inspectFile(filePath) {
++        if (activeProbes >= 32) {
++            await new Promise(resolve => waitingProbes.push(resolve));
++        } else {
++            activeProbes++;
++        }
++        try {
++            return await getFilePathIfBinary(filePath);
++        } finally {
++            const next = waitingProbes.shift();
++            if (next) next();
++            else activeProbes--;
++        }
++    }
+     async function _walkAsync(dirPath) {
+         const children = await fs.readdir(dirPath);
+         return await Promise.all(children.map(async (child) => {
+@@ -125,7 +143,7 @@ export async function walkAsync(dirPath) {
+                         await fs.remove(filePath);
+                         return null;
+                     default:
+-                        return await getFilePathIfBinary(filePath);
++                        return await inspectFile(filePath);
+                 }
+             }
+             else if (stat.isDirectory() && !stat.isSymbolicLink()) {
