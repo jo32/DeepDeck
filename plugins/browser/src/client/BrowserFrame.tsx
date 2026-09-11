@@ -16,6 +16,11 @@ import type { ContextType } from 'react'
 import { BrowserAuthentication } from './BrowserAuthentication.js'
 import { BrowserDownloads } from './BrowserDownloads.js'
 import { BrowserStartPage } from './BrowserStartPage.js'
+import { GitHubAuthor } from './GitHubAuthor.js'
+import { WebMCPProjectPanel } from './WebMCPProjectPanel.js'
+import type { FilesTarget } from '../publication-file-contracts.js'
+import { PublicationFiles } from './PublicationFiles.js'
+import { WebMCPCommunity } from './WebMCPCommunity.js'
 import { tabMenu } from './tab-menu.js'
 import css from './browser.module.css'
 
@@ -50,6 +55,13 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
   const [blankPanelTabId, setBlankPanelTabId] = useState<string>()
   const [panelWidth, setPanelWidth] = useState(420)
   const [panelTab, setPanelTab] = useState<'conversation' | 'tools' | 'downloads'>('conversation')
+  const [filesRevision, setFilesRevision] = useState(0)
+  const [filesVisited, setFilesVisited] = useState(false)
+  const [filesTarget, setFilesTarget] = useState<FilesTarget>({ kind: 'workspace' })
+  const [filesOpen, setFilesOpen] = useState(false)
+  const [filesWidth, setFilesWidth] = useState(360)
+  const filesPanel = useRef<HTMLElement>(null)
+  const filesGrabOffset = useRef(0)
   const [findOpen, setFindOpen] = useState(false)
   const [findText, setFindText] = useState('')
   const [utilitiesOpen, setUtilitiesOpen] = useState(false)
@@ -182,7 +194,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
     let previous = ''
     const resize = () => {
       const top = Math.ceil(header.getBoundingClientRect().bottom)
-      const right = panelVisible ? Math.ceil(panel.current?.getBoundingClientRect().width ?? 430) : 0
+      const right = Math.ceil((panelVisible ? panel.current?.getBoundingClientRect().width ?? 430 : 0) + (filesOpen ? filesPanel.current?.getBoundingClientRect().width ?? 360 : 0))
       const dimensions = `${String(top)}:${String(right)}`
       if (dimensions === previous) return
       previous = dimensions
@@ -192,12 +204,22 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
     const observer = new ResizeObserver(resize)
     observer.observe(header)
     if (panel.current !== null) observer.observe(panel.current)
+    if (filesPanel.current !== null) observer.observe(filesPanel.current)
     resize()
     return () => observer.disconnect()
-  }, [browser, panelVisible, findOpen, utilitiesOpen, authentication?.id, error])
+  }, [browser, panelVisible, filesOpen, findOpen, utilitiesOpen, authentication?.id, error])
 
   // Switching websites switches the displayed Harness Session. A running
   // task keeps its original native tab binding until it is idle again.
+  useEffect(() => {
+    if ((!panelVisible && !filesOpen) || (panelTab !== 'tools' && !filesOpen) || blank || !active || active.loading || site) return
+    const abort = new AbortController()
+    void browser.request({ action: 'site.resolve', tabId: active.id }, abort.signal)
+      .then(() => refresh(abort.signal))
+      .catch(failure => { if (!abort.signal.aborted) setError(message(failure)) })
+    return () => abort.abort()
+  }, [browser, refresh, panelVisible, panelTab, filesOpen, blank, active?.id, active?.origin, active?.loading, site?.id])
+
   useEffect(() => {
     if (active === undefined || blank || active.loading || !panelVisible || panelTab !== 'conversation' || busy || pendingStart.current) return
     if (site?.sessionId && session === undefined) return
@@ -302,10 +324,29 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
   const pinned = selectedReady && selection.tabId !== active?.id
   const sourceCount = active?.tools.filter(tool => tool.source === 'site').length ?? 0
   const generatedCount = active?.tools.filter(tool => tool.source === 'deepdeck').length ?? 0
+  const imported = site?.provenance ?? site?.upstream
   const siteLabel = blank ? t('agent') : active?.origin.replace(/^https?:\/\//, '') ?? t('agent')
   const resizePanel = (width: number) => { setPanelWidth(Math.max(340, Math.min(640, window.innerWidth * .55, width))) }
 
-  return <div className={css.browser} data-deepdeck-browser data-deepdeck-desktop-frame style={{ '--browser-panel-width': panelVisible ? `min(${panelWidth}px, 55vw)` : '0px' } as CSSProperties}>
+  const resizeFiles = (width: number) => setFilesWidth(Math.max(280, Math.min(640, window.innerWidth * (panelVisible ? .4 : .65), width)))
+  const publishWebMCP = async (intent: 'publish' | 'contribute' | 'fork' = 'publish') => {
+    if (!site || !active || running || busy) throw new Error(t('filesConnecting'))
+    const next = await browser.prepareAgent(active.id, site.mode, true)
+    if (!next || next.siteId !== site.id) throw new Error(t('filesConnecting'))
+    const project = await browser.request<import('../publication-file-contracts.js').FsListing>({ action: 'site.webmcp.files', siteId: site.id })
+    await browser.publishWebMCP(next.sessionId, site, project.home, intent)
+    setSelection(next); setPanelOpen(true); setPanelTab('conversation')
+    setFilesTarget({ kind: 'webmcp' }); setFilesVisited(true); setFilesOpen(true)
+    await refresh()
+  }
+
+  const openFiles = (target: FilesTarget = { kind: 'workspace' }) => {
+    setFilesTarget(target)
+    if (target.kind === 'draft') setFilesRevision(value => value + 1)
+    setFilesVisited(true); setFilesOpen(true)
+  }
+
+  return <div className={css.browser} data-deepdeck-browser data-deepdeck-desktop-frame style={{ '--browser-panel-width': panelVisible ? `min(${panelWidth}px, ${filesOpen ? 40 : 55}vw)` : '0px', '--browser-files-width': filesOpen ? `min(${filesWidth}px, ${panelVisible ? 40 : 65}vw)` : '0px' } as CSSProperties}>
     <header ref={toolbar} className={css.chrome}>
       <div className={css.tabBar}>
         <div className={css.trafficSpace} data-mac={/Mac/i.test(navigator.platform)} aria-hidden="true" />
@@ -370,6 +411,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
         </form>
         {zoom !== 1 && <button type="button" className={css.zoomBadge} aria-label={t('zoomReset')} title={t('zoomReset')} onClick={() => { if (active) void command({ action: 'zoom', tabId: active.id, factor: 1 }) }}>{Math.round(zoom * 100)}%</button>}
         <IconButton icon="more" label={t('moreBrowser')} pressed={utilitiesOpen} onClick={() => { setUtilitiesOpen(value => !value) }} />
+        <IconButton icon="folder" label={t('filesOpenSidebar')} pressed={filesOpen} onClick={() => { if (filesOpen) setFilesOpen(false); else openFiles() }} />
         <IconButton icon="download" label={t('downloads')} pressed={panelVisible && panelTab === 'downloads'} onClick={() => { setBlankPanelTabId(active?.id); setPanelOpen(true); setPanelTab('downloads') }} />
         <button type="button" className={css.agentToggle} aria-pressed={panelVisible} onClick={() => { setBlankPanelTabId(active?.id); setPanelOpen(!panelVisible) }} title={t(panelVisible ? 'hideAgent' : 'agent')}>
           <BrowserIcon name="panel" /><span>{t('agent')}</span>
@@ -420,7 +462,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
             // newly resized edge. A release over another WebContents may not
             // deliver pointerup here, so also stop on the next buttonless move.
             if (event.buttons !== 1) { event.currentTarget.releasePointerCapture(event.pointerId); return }
-            resizePanel(window.innerWidth - event.clientX + resizeGrabOffset.current)
+            resizePanel((panel.current?.getBoundingClientRect().right ?? window.innerWidth) - event.clientX + resizeGrabOffset.current)
           }}
           onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }}
           onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); resizePanel(panelWidth + (event.key === 'ArrowLeft' ? 20 : -20)) } }} />
@@ -460,19 +502,35 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
         </>}
         {panelTab === 'tools' && <div className={css.panelScroll}>
           <div className={css.toolsHero}><div className={css.toolsHeroIcon}><BrowserIcon name="webmcp" /></div><div><span className={css.eyebrow}>WEBMCP</span><h3>{t('tools')}</h3></div><strong>{active?.tools.length ?? 0}</strong></div>
-          <p className={css.hint}>{t('merge')}</p>
+          <p className={css.hint}>{t(imported ? 'importedToolsHint' : 'merge')}</p>
           {active?.webmcpError && <div role="status" className={css.notice}><strong>{t('toolError')}</strong><p>{active.webmcpError}</p></div>}
           {(active?.tools.length ?? 0) === 0 && <div className={css.emptyTools}><BrowserIcon name="webmcp" /><p>{t(active?.loading ? 'discovering' : 'noTools')}</p>
             {!blank && <button type="button" className={css.secondaryButton} disabled={busy || running} onClick={() => { void startAgent('builder') }}>{t('builder')}</button>}
           </div>}
           {([{ source: 'site', count: sourceCount, label: 'siteTools' }, { source: 'deepdeck', count: generatedCount, label: 'generatedTools' }] as const).map(group => group.count > 0 && <section key={group.source} className={css.toolGroup}>
-            <h4>{t(group.label)}<span>{group.count}</span></h4>
+            <h4>{t(group.source === 'deepdeck' && imported ? 'importedTools' : group.label)}<span>{group.count}</span></h4>
+            {group.source === 'deepdeck' && imported && <div className={css.importedProject}>
+              <div className={css.projectHeading}>
+                <a className={css.projectName} href={imported.repository} target="_blank" rel="noreferrer">{imported.repository.split('/').pop()}<BrowserIcon name="arrowUpRight" /></a>
+              </div>
+              <div className={css.projectMeta}>
+                <GitHubAuthor author={imported.author} />
+                <span className={css.projectVersion}>{site?.upstream ? t('projectCustomized') : imported.release ?? t('communityDevelopment')}</span>
+                <a className={css.projectCommit} href={`${imported.repository}/tree/${imported.commit}`} title={imported.commit} target="_blank" rel="noreferrer"><code>{imported.commit.slice(0, 7)}</code></a>
+              </div>
+            </div>}
+            <div className={css.toolList} data-imported={group.source === 'deepdeck' && !!imported}>
             {active?.tools.filter(tool => tool.source === group.source).map(tool => <details className={css.tool} key={`${tool.documentId}:${tool.frameId}:${tool.name}`}>
-              <summary><BrowserIcon name="webmcp" /><code>{tool.name}</code><BrowserIcon name="chevron" /></summary>
+              <summary><BrowserIcon name="webmcp" /><code title={tool.name}>{tool.name}</code><BrowserIcon name="chevron" /></summary>
               <p>{tool.description}</p><span className={css.hint} title={tool.revision}>{tool.origin}{tool.revision ? ` · ${tool.revision.slice(0, 12)}` : ''}</span>
               <pre>{JSON.stringify(tool.inputSchema, null, 2)}</pre>
-            </details>)}
+            </details>)}</div>
           </section>)}
+          {site && imported && <WebMCPProjectPanel key={`project:${site.id}`} site={site} browser={browser} running={running} t={t} onPublish={publishWebMCP} onFiles={() => openFiles({ kind: 'webmcp' })} onContinue={async () => {
+            await browser.request({ action: 'project.start', siteId: site.id })
+            openFiles({ kind: 'webmcp' }); await startAgent('builder')
+          }} />}
+          {site !== undefined && <WebMCPCommunity key={site.id} site={site} browser={browser} running={running} refresh={refresh} t={t} onOpenFiles={openFiles} onPublish={publishWebMCP} />}
           {site !== undefined && site.revisions.length > 0 && <section className={css.versions}>
             <div className={css.sectionHeading}><h3>{t('versions')}</h3><button type="button" className={css.linkButton} disabled={running} onClick={() => { void updateSite('toggle') }}>{t(site.enabled ? 'disable' : 'enable')}</button></div>
             <p className={css.hint}>{t(site.enabled ? 'enabled' : 'disabled')}{site.activeRevision && <span title={site.activeRevision}> · {site.activeRevision.slice(0, 12)}</span>}</p>
@@ -481,6 +539,19 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
           {!blank && (active?.tools.length ?? 0) > 0 && <button type="button" className={css.secondaryButton} disabled={busy || running} onClick={() => { void startAgent('builder') }}><BrowserIcon name="webmcp" />{t('builder')}</button>}
         </div>}
         {panelTab === 'downloads' && <BrowserDownloads downloads={state?.native.downloads ?? []} command={command} t={t} />}
+      </aside>}
+      {filesVisited && <aside ref={filesPanel} className={css.filesColumn} hidden={!filesOpen} aria-label={t('filesTitle')}>
+        <div className={css.resizeHandle} role="separator" aria-label={t('filesResize')} aria-orientation="vertical" aria-valuemin={280} aria-valuemax={640} aria-valuenow={filesWidth} tabIndex={0}
+          onPointerDown={event => { filesGrabOffset.current = event.clientX - (filesPanel.current?.getBoundingClientRect().left ?? event.clientX) + 1; event.currentTarget.setPointerCapture(event.pointerId) }}
+          onPointerMove={event => {
+            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+            if (event.buttons !== 1) { event.currentTarget.releasePointerCapture(event.pointerId); return }
+            resizeFiles(window.innerWidth - event.clientX + filesGrabOffset.current)
+          }}
+          onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }}
+          onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); resizeFiles(filesWidth + (event.key === 'ArrowLeft' ? 20 : -20)) } }} />
+        <header className={css.filesHeader}><strong>{t('filesTitle')}</strong><IconButton icon="close" label={t('filesClose')} onClick={() => setFilesOpen(false)} /></header>
+        {site ? <PublicationFiles key={`${site.id}:${filesRevision}:${filesTarget.kind}`} site={site} browser={browser} t={t} webmcp={filesTarget.kind === 'webmcp'} {...(filesTarget.kind === 'draft' ? { draft: filesTarget.draft } : {})} /> : <p>{t('filesNoSite')}</p>}
       </aside>}
     </main>
   </div>

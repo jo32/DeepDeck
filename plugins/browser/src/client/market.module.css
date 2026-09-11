@@ -1,0 +1,13 @@
+.market { box-sizing: border-box; width: 100%; min-width: 0; padding: 0; background: #fff; color: #171717; height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; font-size: 13px; }
+.market > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex: none; }
+.market h2 { font-size: 18px; margin: 0 0 6px; }.market p { line-height: 1.7; }.market header p { color: #666; margin: 0; }
+.market a { color: inherit; }.market > header a { white-space: nowrap; font-size: 12px; }
+.market iframe { display: block; width: 100%; height: 100%; min-height: 0; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; }
+.market > header button, .direct button, .success button, .dialog button { cursor: pointer; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; min-height: 36px; background: #fff; color: #171717; font: inherit; }:is(.market > header, .direct, .success, .dialog) button:disabled { opacity: .5; cursor: default; }.market :focus-visible { outline: 2px solid #171717; outline-offset: 3px; }
+.connection, .success { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 12px; }.error { color: #b42318; }
+.dialog { width: min(620px, calc(100vw - 64px)); max-height: 80vh; padding: 26px; border: 1px solid #ddd; border-radius: 12px; background: #fff; color: #171717; overflow: auto; font-size: 13px; overflow-wrap: anywhere; }.dialog::backdrop { background: #0007; }.dialog summary { cursor: pointer; padding: 10px 0; }.dialog pre { white-space: pre-wrap; max-height: 240px; overflow: auto; border: 1px solid #eee; padding: 12px; background: #fafafa; font-size: 11px; }.dialog footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }.dialog .primary { color: #fff; background: #171717; border-color: #171717; }
+
+.content { flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; container-type: inline-size; border: 1px solid #e5e5e5; border-radius: 8px; }
+.content > iframe { border: 0; border-radius: 0; }
+.market > p { flex: none; margin: 0 0 10px; font-size: 12px; }
+.direct { flex: none; margin: 0 0 12px; font-size: 12px; }.direct summary { cursor: pointer; padding: 6px 0; }.direct form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 0; }.direct label { display: grid; gap: 4px; min-width: 0; }.direct label:first-child { grid-column: 1 / -1; }.direct input { width: 100%; min-width: 0; padding: 8px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }.direct button { justify-self: start; }.fallback { color: #666; }

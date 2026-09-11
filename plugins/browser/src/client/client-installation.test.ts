@@ -2,9 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { SlotCore } from '../../../../vendor/deepseek-harness/packages/client/ui-slots/lib/index.js'
 import { apply } from './index.js'
+import { WebMCPMarket } from './WebMCPMarket.js'
 import { BrowserSessionHeader } from './BrowserSessionHeader.js'
+import { createWorkspaceFiles } from './WorkspaceFiles.js'
 
-afterEach(() => vi.unstubAllGlobals())
+vi.mock('./WorkspaceFiles.js', () => ({ createWorkspaceFiles: vi.fn(() => () => null) }))
+
+afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks() })
 
 describe('Browser Client Cordis assembly', () => {
   function install(url: string) {
@@ -17,6 +21,7 @@ describe('Browser Client Cordis assembly', () => {
       conversation: { kind: 'single', scope: 'session-maybe' },
       'desktop.surface': { kind: 'single', scope: 'root' },
       'sidebar.launchers': { kind: 'list', scope: 'root' },
+      'settings.section': { kind: 'list', scope: 'root' },
       'conversation.hero.brand.mark': { kind: 'single', scope: 'root' },
     } }, () => null)
     core.register({ name: 'conversation', children: {
@@ -30,7 +35,7 @@ describe('Browser Client Cordis assembly', () => {
     } }, () => null)
     const ctx = {
       slots: { register: core.register.bind(core), entries: core.entries.bind(core), subscribe: core.subscribe.bind(core), inject: (_name: string, setup: () => unknown) => setup() },
-      locale: { register: () => () => {} },
+      locale: { register: () => () => {}, bind: () => (key: string) => key },
       theme: { overrideTokens },
       get: (name: string) => name === 'deepdeckCharacter' ? character : {},
       effect: (setup: () => unknown) => setup(),
@@ -54,11 +59,19 @@ describe('Browser Client Cordis assembly', () => {
     expect(core.entriesOfSlot('conversation.hero.brand.mark')[0]?.component).toBe(character.Icon)
   })
 
-  it('contributes only a launcher in a normal desktop window', () => {
+  it('mounts the protocol install surface through Cordis', () => {
+    const { core } = install('http://127.0.0.1:5000/?deepdeck-surface=webmcp-market')
+    expect(core.entriesOfSlot('desktop.surface')[0]?.component).toBe(WebMCPMarket)
+    expect(createWorkspaceFiles).not.toHaveBeenCalled()
+  })
+
+  it('contributes a launcher and WebMCP market setting in a normal desktop window', () => {
     const { core, overrideTokens } = install('http://127.0.0.1:5000/')
     expect(overrideTokens).not.toHaveBeenCalled()
     expect(core.entriesOfSlot('desktop.surface')).toHaveLength(0)
     expect(core.entriesOfSlot('sidebar.launchers')).toHaveLength(1)
     expect(core.entries('conversation.session.header')).toHaveLength(1)
+    expect(core.entriesOfSlot('settings.section')[0]?.component).toBe(WebMCPMarket)
+    expect(createWorkspaceFiles).toHaveBeenCalledWith(expect.anything(), { desktop: true })
   })
 })

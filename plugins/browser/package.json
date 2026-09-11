@@ -40,7 +40,9 @@
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepdeck/dsh-client-ui-desktop-chrome",
-        "@deepdeck/dsh-client-ui-home-hero"
+        "@deepdeck/dsh-client-ui-home-hero",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-modules"
       ],
       "platform": "web"
     }
@@ -53,6 +55,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
     "chrome-devtools-mcp": "1.8.0",
+    "dsh-better-sidebar": "0.17.1",
     "esbuild": "^0.25.0"
   },
   "peerDependencies": {
@@ -65,7 +68,12 @@
     "lib/*.js.map",
     "lib/types/**/*.d.ts",
     "src/native-contract.d.ts",
+    "skills/**",
     "cordis.patch.yml",
-    "README.md"
-  ]
+    "README.md",
+    "catalog.json"
+  ],
+  "devDependencies": {
+    "@types/react": "19.2.18"
+  }
 }

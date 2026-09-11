@@ -1,3 +1,5 @@
+import { apply as applySidebar } from 'dsh-better-sidebar'
+import { listDraftFiles, listWorkspaceFiles, readDraftFile } from './publication-files.js'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -9,7 +11,7 @@ import { BrowserSiteStore } from './site-store.js'
 import { WebMCPStore } from './webmcp-store.js'
 
 export const name = 'deepdeck-browser'
-export const inject = ['workspaceRegistry', 'webServer', 'agents', 'tools', 'skills', 'systemPrompt', 'attachments'] as const
+export const inject = ['workspaceRegistry', 'webServer', 'agents', 'tools', 'skills', 'systemPrompt', 'attachments', 'sessions', 'webRuntime'] as const
 interface HostContext extends BrowserHostContext {
   webServer: { register(route: { kind: 'exact'; path: string; handler(request: IncomingMessage, response: ServerResponse): Promise<void> }): () => void }
   reflect: { provide(name: string, value: unknown): () => void }
@@ -43,6 +45,7 @@ async function readAction(request: IncomingMessage): Promise<BrowserClientAction
 }
 function mode(value: unknown): BrowserMode { if (value !== 'use' && value !== 'builder') throw new Error('Invalid Browser mode.'); return value }
 export function apply(ctx: HostContext): void {
+  applySidebar(ctx as unknown as Parameters<typeof applySidebar>[0])
   ctx.effect(() => {
     const configuredRoot = process.env.DEEPDECK_BROWSER_HOME?.trim()
     const root = configuredRoot ? resolve(configuredRoot) : join(homedir(), 'DeepDeck', 'Browser')
@@ -58,6 +61,20 @@ export function apply(ctx: HostContext): void {
         let result: unknown
         switch (input.action) {
           case 'state': result = await runtime.state(); break
+          case 'market.directory': result = await runtime.directory(); break
+          case 'market.catalog': result = await runtime.catalog(input.origin); break
+          case 'market.prepare': result = await runtime.preparePackage(input); break
+          case 'market.preview': result = await runtime.previewPackage(input.siteId, input.repository, input.manifestPath, input.commit, input.repositoryId); break
+          case 'market.install': result = await runtime.installPackage(input.siteId, input.token, input.openSite === true ? new URL('/?deepdeck-surface=browser', request.headers.origin as string).href : undefined); break
+          case 'market.files.list': result = await listDraftFiles(sites.get(input.siteId).workspacePath, input.draft, input.path); break
+          case 'market.files.read': result = await readDraftFile(sites.get(input.siteId).workspacePath, input.draft, input.path); break
+          case 'market.export': result = await runtime.exportPackage(input.siteId, input.revision); break
+          case 'project.state': case 'project.start': case 'project.preview': case 'project.merge': case 'project.cancel': case 'project.finish': case 'project.abort': {
+            const site = sites.get(input.siteId)
+            if (input.action !== 'project.state' && site.sessionId && ctx.agents.get(site.sessionId)?.status === 'running') throw new Error('Finish the Agent turn before changing the project.')
+            result = await runtime.projectAction(input.siteId, input.action.slice(8) as 'state' | 'start' | 'preview' | 'merge' | 'cancel' | 'finish' | 'abort', 'token' in input ? input.token : 'commit' in input ? input.commit : undefined)
+            break
+          }
           case 'open': {
             await runtime.restoreScripts()
             const shellUrl = new URL('/?deepdeck-surface=browser', request.headers.origin as string).href
@@ -70,6 +87,8 @@ export function apply(ctx: HostContext): void {
             break
           }
           case 'site.resolve': result = await runtime.resolve(input.tabId); break
+          case 'site.webmcp.files': result = await runtime.webmcpFiles(input.siteId); break
+          case 'site.files.list': result = await listWorkspaceFiles(sites.get(input.siteId).workspacePath); break
           case 'site.bind': result = await runtime.bind(input.siteId, input.sessionId, input.tabId, mode(input.mode)); break
           case 'site.mode': result = await runtime.setMode(input.siteId, mode(input.mode)); break
           case 'site.toggle': {
@@ -85,7 +104,8 @@ export function apply(ctx: HostContext): void {
           }
           default: throw new Error('Unknown Browser action.')
         }
-        send(response, 200, result ?? { ok: true })
+        // null is a meaningful result (for example, a site with no draft).
+        send(response, 200, result === undefined ? { ok: true } : result)
       } catch (error) { send(response, 400, { error: error instanceof Error ? error.message : String(error) }) }
     } })
     return () => { stopRoute(); stopService(); runtime.dispose() }

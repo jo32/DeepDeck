@@ -72,6 +72,42 @@
       ],
       "@deepdeck/dsh-client-ui-home-hero/character-contract": [
         "../home-hero/src/character-contract.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/FileTree.tsx": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/FileTree.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/EditorHost.tsx": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/EditorHost.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/builtins/viewers.tsx": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/builtins/viewers.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/state.ts": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/state.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/service.ts": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/service.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/chunk-loader.ts": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/chunk-loader.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/locales.ts": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/locales.d.ts"
+      ],
+      "dsh-better-sidebar/src/context-types.ts": [
+        "./node_modules/dsh-better-sidebar/lib/types/context-types.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/conversation-draft.ts": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/conversation-draft.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/upload.ts": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/upload.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/builtins/tabs.tsx": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/builtins/tabs.d.ts"
+      ],
+      "dsh-better-sidebar/src/client/RenderBoundary.tsx": [
+        "./node_modules/dsh-better-sidebar/lib/types/client/RenderBoundary.d.ts"
       ]
     }
   },

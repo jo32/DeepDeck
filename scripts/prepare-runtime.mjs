@@ -61,6 +61,7 @@ const HARNESS_PLUGIN_PACKAGES = Object.freeze({
 const HARNESS_PLUGIN_DESTINATIONS = Object.freeze({
   ...HARNESS_PLUGIN_PACKAGES,
   "provider-aware-web": "@deepdeck/dsh-provider-aware-web",
+    "browser": "@deepdeck/dsh-browser",
 });
 
 function pluginSource(pluginName) {

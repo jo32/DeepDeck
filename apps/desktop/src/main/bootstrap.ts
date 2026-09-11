@@ -31,6 +31,7 @@ import { createMainWindow, type DesktopWindow } from "./windows/main-window.js";
 import { createAppWindowManager } from "./windows/app-window.js";
 import { createBrowserWindowManager } from "./windows/browser-window.js";
 import { isSameOriginHttpUrl } from "./windows/app-window-request.js";
+import { webmcpLink, webmcpWindowUrl } from './webmcp-links.js';
 
 export async function bootstrapDesktop(
   branding: LoadedBranding,
@@ -40,6 +41,17 @@ export async function bootstrapDesktop(
     app.quit();
     return;
   }
+
+  let pendingMarketLink = process.argv.map(webmcpLink).find(Boolean);
+  let flushMarketLink = (): void => {};
+  const acceptMarketLink = (value: string): void => {
+    const link = webmcpLink(value);
+    if (link) { pendingMarketLink = link; flushMarketLink(); }
+  };
+  // macOS may deliver its launch URL before the first async startup step.
+  app.on('open-url', (event, url) => { event.preventDefault(); acceptMarketLink(url); });
+  app.on('second-instance', (_event, argv) => { for (const value of argv) acceptMarketLink(value); });
+  if (app.isPackaged) app.setAsDefaultProtocolClient('deepdeck');
 
   const transactionFilename = updateTransactionPath(app.getPath("userData"));
   const existingTransaction = process.platform === "darwin"
@@ -293,6 +305,7 @@ export async function bootstrapDesktop(
     current.send(channels.runtimeStatus, status);
     if (status.state === "ready" && status.url) {
       await current.loadHarness(status.url);
+      flushMarketLink();
       await browserWindows.restoreShell(status.url);
       harness.sendBrowserSnapshot(browserWindows.snapshot());
       const appRoutes = restartRecovery.appRoutes();
@@ -306,6 +319,14 @@ export async function bootstrapDesktop(
     } else {
       current.showSplash();
     }
+  };
+
+  flushMarketLink = (): void => {
+    const status = harness.getStatus();
+    if (status.state !== 'ready' || !status.url || !pendingMarketLink) return;
+    const url = webmcpWindowUrl(status.url, pendingMarketLink);
+    pendingMarketLink = undefined;
+    if (url) appWindows.open(url);
   };
 
   const createWindow = async (): Promise<void> => {

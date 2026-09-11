@@ -131,3 +131,17 @@ describe('Browser session coordination', () => {
     await expect(browserRequest({ action: 'state' })).rejects.toThrow('The target page changed.')
   })
 })
+
+ it('sends the existing publication skill to the selected site Agent without touching its composer draft', async () => {
+  const send = vi.fn(async (_text: string) => {})
+  const scope = vi.fn(() => ({ get: () => ({ send }) }))
+  const client = createBrowserClient({ get: () => ({}), sessions: { scope } } as unknown as ClientContext)
+  await client.publishWebMCP('site-session', { origin: 'https://example.com' } as Parameters<typeof client.publishWebMCP>[1], '/site/webmcp-publish-existing')
+  expect(scope).toHaveBeenCalledWith('site-session')
+  expect(send).toHaveBeenCalledOnce()
+  const prompt = send.mock.calls[0]![0]
+  expect(prompt).toContain('deepdeck-webmcp-github')
+  expect(prompt).toContain('/site/webmcp-publish-existing')
+  expect(prompt).toContain('https://github.com/jo32/DeepDeck')
+  expect(prompt).toContain('registry/webmcp/entries')
+ })

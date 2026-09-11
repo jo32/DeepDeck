@@ -9,6 +9,8 @@ export interface DesktopAppNavigationOwnerProps {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
+    /** Session tools beside the main conversation, within the desktop layout. */
+    'desktop.workbench': { kind: 'single'; scope: 'root'; owner: {} }
     /** Top-level standalone window surfaces, contributed only in their own window. */
     'desktop.surface': {
       kind: 'single'

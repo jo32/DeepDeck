@@ -1,0 +1,22 @@
+.sidebar { position: relative; flex-shrink: 0; max-width: 55%; min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--dsw-alias-border-l2, #8883); background: var(--dsw-alias-bg-base, #fafafa); color: var(--dsw-alias-label-primary, #242424); --sb-bg: var(--dsw-alias-bg-base, #fafafa); --sb-fg: var(--dsw-alias-label-primary, #242424); }
+.heading { position: relative; z-index: 31; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; min-height: 44px; box-sizing: border-box; border-bottom: 1px solid #8883; }
+.heading strong { font-size: 13px; }
+.sidebar button, .rail button, .toolbar select { -webkit-app-region: no-drag; app-region: no-drag; min-width: 32px; min-height: 32px; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; font: inherit; }
+.sidebar button:hover, .rail button:hover { background: #8882; }
+.sidebar button svg, .rail button svg { width: 16px; height: 16px; }
+.rail { width: 40px; flex-shrink: 0; border-left: 1px solid #8883; padding-top: 8px; text-align: center; }
+.rail button:disabled { opacity: .4; cursor: default; }
+.rail button { position: relative; z-index: 31; }
+.toolbar { display: flex; min-width: 0; border-bottom: 1px solid #8883; font-size: 12px; }
+.tabs { display: flex; flex: 1; min-width: 0; overflow: auto; }
+.tab { display: flex; flex-shrink: 0; max-width: 200px; }
+.tab[data-selected=true] { background: #8882; }
+.tab > button { border-radius: 0; }
+.tab > button[role=tab] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 4px 8px; }
+.tab > button[aria-label] { flex-shrink: 0; }
+.content { flex: 1; display: flex; min-height: 0; min-width: 0; overflow: hidden; }
+.sidebar[hidden], .content[hidden] { display: none; }
+.content > * { width: 100%; min-width: 0; }
+.empty { padding: 16px; font-size: 12px; }
+.resize { position: absolute; left: -3px; top: 0; bottom: 0; width: 6px; z-index: 2; cursor: col-resize; touch-action: none; }
+.resize:focus-visible { outline: 2px solid #3964fe; }

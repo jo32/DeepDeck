@@ -3,6 +3,7 @@ import { constants } from 'node:fs'
 import { lstat, mkdir, open, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { build as compile, version as compilerVersion } from 'esbuild'
+import { parseProvenance, type GitHubSource } from './webmcp-package.js'
 
 export const MAX_WEBMCP_SOURCE_BYTES = 512 * 1024
 export const MAX_WEBMCP_COMPILED_BYTES = 1024 * 1024
@@ -25,6 +26,8 @@ export interface WebMCPState {
   readonly activeRevision?: string
   readonly previousRevision?: string
   readonly revisions: readonly WebMCPRevision[]
+  readonly provenance?: GitHubSource
+  readonly upstream?: GitHubSource
 }
 
 export interface WebMCPInstallation {
@@ -40,6 +43,8 @@ interface Manifest extends WebMCPRevision {
   readonly schemaVersion: 1
   readonly origin: string
   readonly compiler: string
+  readonly provenance?: GitHubSource
+  readonly upstream?: GitHubSource
 }
 
 interface Metadata {
@@ -70,8 +75,8 @@ export function normalizeWebMCPOrigin(value: string): string {
   return url.origin
 }
 
-function revisionId(manifest: Pick<Manifest, 'origin' | 'sourceDigest' | 'compiledDigest' | 'compiler'>): string {
-  return digest(JSON.stringify([manifest.origin, manifest.sourceDigest, manifest.compiledDigest, manifest.compiler]))
+function revisionId(manifest: Pick<Manifest, 'origin' | 'sourceDigest' | 'compiledDigest' | 'compiler' | 'provenance' | 'upstream'>): string {
+  return digest(JSON.stringify([manifest.origin, manifest.sourceDigest, manifest.compiledDigest, manifest.compiler, ...(manifest.provenance ? [manifest.provenance] : []), ...(manifest.upstream ? [{ upstream: manifest.upstream }] : [])]))
 }
 
 function assertRevision(revision: string): void {
@@ -158,20 +163,26 @@ export class WebMCPStore {
     return await this.withSite(origin, async paths => await boundedRead(paths.sourcePath, MAX_WEBMCP_SOURCE_BYTES) ?? '')
   }
 
-  async writeSource(origin: string, source: string): Promise<WebMCPState> {
+  async writeSource(origin: string, source: string, expectedDigest?: string): Promise<WebMCPState> {
     if (typeof source !== 'string' || Buffer.byteLength(source) > MAX_WEBMCP_SOURCE_BYTES || source.includes('\0')) {
       throw new Error(`WebMCP source must be text of at most ${MAX_WEBMCP_SOURCE_BYTES} bytes without NUL characters.`)
     }
     return await this.withSite(origin, async paths => {
+      if (expectedDigest !== undefined && digest(await boundedRead(paths.sourcePath, MAX_WEBMCP_SOURCE_BYTES) ?? '') !== expectedDigest) throw new Error('Source changed since it was read. Read it again before writing.')
       await atomicWrite(paths.sourcePath, source)
       return await this.state(paths)
     })
   }
 
-  async build(origin: string): Promise<WebMCPInstallation> {
+  /** An imported source is compiled in isolation; it never overwrites the editable draft. */
+  async build(origin: string, imported?: { source: string; provenance: GitHubSource; upstream?: never } | { source: string; upstream: GitHubSource; provenance?: never }): Promise<WebMCPInstallation> {
     return await this.withSite(origin, async paths => {
-      const source = await boundedRead(paths.sourcePath, MAX_WEBMCP_SOURCE_BYTES)
+      const source = imported?.source ?? await boundedRead(paths.sourcePath, MAX_WEBMCP_SOURCE_BYTES)
       if (source === undefined || source.trim().length === 0) throw new Error('Write WebMCP source before building.')
+      if (Buffer.byteLength(source) > MAX_WEBMCP_SOURCE_BYTES || source.includes('\0')) throw new Error('Invalid WebMCP source.')
+      const provenance = imported?.provenance ? parseProvenance(imported.provenance) : undefined
+      const upstream = imported?.upstream ? parseProvenance(imported.upstream) : undefined
+      if (provenance && provenance.sourceSha256 !== digest(source)) throw new Error('Imported source digest mismatch.')
       const result = await compile({
         stdin: { contents: source, sourcefile: 'webmcp.ts', loader: 'ts' },
         bundle: true,
@@ -203,6 +214,8 @@ export class WebMCPStore {
         sourceDigest: digest(source),
         compiledDigest: digest(compiled),
         compiler: `esbuild@${compilerVersion}`,
+        ...(provenance ? { provenance } : {}),
+        ...(upstream ? { upstream } : {}),
       }
       const revision = revisionId(identity)
       const revisionPath = join(paths.revisionsPath, revision)
@@ -231,6 +244,16 @@ export class WebMCPStore {
   async readRevision(origin: string, revision: string): Promise<WebMCPInstallation> {
     assertRevision(revision)
     return await this.withSite(origin, async paths => await this.installation(paths, revision))
+  }
+
+  async exportRevision(origin: string, revision: string): Promise<{ source: string; revision: string; sourceDigest: string; compiler: string; provenance?: GitHubSource; upstream?: GitHubSource }> {
+    return this.withSite(origin, async paths => {
+      await this.installation(paths, revision)
+      const manifest = (await this.manifest(paths, revision))!
+      const source = await boundedRead(join(paths.revisionsPath, revision, 'source.ts'), MAX_WEBMCP_SOURCE_BYTES)
+      if (source === undefined || digest(source) !== manifest.sourceDigest) throw new Error('Revision source failed its integrity check.')
+      return { source, revision, sourceDigest: manifest.sourceDigest, compiler: manifest.compiler, ...(manifest.provenance ? { provenance: manifest.provenance } : {}), ...(manifest.upstream ? { upstream: manifest.upstream } : {}) }
+    })
   }
 
   async active(origin: string): Promise<WebMCPInstallation | undefined> {
@@ -336,6 +359,11 @@ export class WebMCPStore {
       || typeof value.compiledDigest !== 'string' || !REVISION_PATTERN.test(value.compiledDigest)
       || revisionId(value as unknown as Manifest) !== revision
     ) throw new Error('WebMCP revision metadata is invalid.')
+    if (value.provenance !== undefined) {
+      const provenance = parseProvenance(value.provenance)
+      if (provenance.sourceSha256 !== value.sourceDigest || JSON.stringify(provenance) !== JSON.stringify(value.provenance)) throw new Error('Invalid revision provenance.')
+    }
+    if (value.upstream !== undefined) parseProvenance(value.upstream)
     return value as unknown as Manifest
   }
 
@@ -363,6 +391,7 @@ export class WebMCPStore {
 
   private async state(paths: SitePaths): Promise<WebMCPState> {
     const metadata = await this.metadata(paths)
+    const active = metadata.activeRevision ? await this.manifest(paths, metadata.activeRevision) : undefined
     const revisions: WebMCPRevision[] = []
     for (const name of await readdir(paths.revisionsPath)) {
       if (!REVISION_PATTERN.test(name)) continue
@@ -386,6 +415,8 @@ export class WebMCPStore {
       ...(metadata.activeRevision === undefined ? {} : { activeRevision: metadata.activeRevision }),
       ...(metadata.previousRevision === undefined ? {} : { previousRevision: metadata.previousRevision }),
       revisions,
+      ...(active?.provenance ? { provenance: active.provenance } : {}),
+      ...(active?.upstream ? { upstream: active.upstream } : {}),
     }
   }
 }

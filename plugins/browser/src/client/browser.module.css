@@ -87,7 +87,7 @@
 .modeSelect select:disabled { cursor: default; }
 .modeSelect:focus-within { outline: 2px solid var(--browser-accent); outline-offset: 2px; }
 .panelNavigation { flex: none; padding: 0 20px; border-bottom: 1px solid var(--browser-line); }
-.panelNav { display: flex; align-items: stretch; gap: 22px; min-width: 0; }
+.panelNav { display: flex; align-items: stretch; justify-content: space-between; gap: 12px; width: 100%; min-width: 0; }
 .panelNav button { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 0 2px; color: var(--browser-muted); border: 0; background: transparent; font-size: 11px; white-space: nowrap; }
 .panelNav button::after { content: ''; position: absolute; height: 2px; bottom: -1px; left: 0; right: 0; border-radius: 2px 2px 0 0; background: transparent; }
 .panelNav button:hover { color: var(--browser-text); }
@@ -108,7 +108,7 @@
 .toolsHeroIcon { width: 42px; height: 42px; border: 1px solid var(--browser-line); border-radius: 12px; background: var(--browser-raised); color: var(--browser-text); display: grid; place-items: center; }
 .toolsHeroIcon > .icon { width: 26px; height: 26px; }
 .toolsHero h3 { margin: 3px 0 0; font-size: 17px; letter-spacing: -.025em; font-weight: 500; }
-.toolsHero > strong { margin-left: auto; min-width: 42px; padding: 4px 8px; border: 1px solid var(--browser-line-soft); border-radius: 10px; background: var(--browser-surface); text-align: center; color: var(--browser-muted); font-size: 24px; font-weight: 400; letter-spacing: -.04em; }
+.toolsHero > strong { margin-left: auto; min-width: 28px; padding: 3px 8px; border-radius: 7px; background: var(--browser-surface); text-align: center; color: var(--browser-muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .sectionHeading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .sectionHeading h3, .browserUtilities h3 { font-size: 12px; font-weight: 600; margin: 0; }
 .sectionHeading > span { color: var(--browser-muted); font-size: 11px; }
@@ -119,14 +119,32 @@
 .emptyTools p:last-child { margin-bottom: 0; }
 .toolGroup { margin: 24px 0; }
 .toolGroup h4 { display: flex; justify-content: space-between; margin: 0 0 12px; font-size: 10px; color: var(--browser-muted); font-weight: 500; letter-spacing: .03em; }
-.tool { border: 1px solid var(--browser-line); border-radius: 12px; margin-bottom: 9px; overflow: hidden; background: var(--browser-surface); transition: border-color 140ms; }
-.tool:hover { border-color: light-dark(#bfc2cf, #4e5261); }
-.tool summary { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 13px; cursor: pointer; list-style: none; }
+.importedProject { padding: 14px; border: 1px solid var(--browser-line); border-bottom: 0; border-radius: 12px 12px 0 0; background: var(--browser-surface); min-width: 0; }
+.projectHeading { display: flex; align-items: center; min-width: 0; }
+.projectName { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--browser-text); text-decoration: none; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.projectName > .icon { width: 13px; height: 13px; color: var(--browser-muted); }
+.projectName:hover { text-decoration: underline; text-underline-offset: 3px; }
+.projectMeta { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin-top: 9px; color: var(--browser-muted); font-size: 10px; }
+.projectMeta img { width: 18px; height: 18px; }
+.projectMeta a { display: inline-flex; align-items: center; min-height: 24px; color: inherit; text-decoration: none; border-radius: 4px; }
+.projectMeta a:hover { color: var(--browser-text); }
+.projectVersion { padding: 2px 6px; border: 1px solid var(--browser-line); border-radius: 5px; line-height: 1.5; }
+.projectCommit { margin-left: auto; }
+.projectCommit code { font-size: 10px; }
+.importedProject a:focus-visible { outline: 2px solid var(--browser-accent); outline-offset: 3px; }
+.toolList { border: 1px solid var(--browser-line); border-radius: 12px; overflow: hidden; background: var(--browser-raised); }
+.toolList[data-imported='true'] { border-radius: 0 0 12px 12px; }
+.tool { min-width: 0; }
+.tool + .tool { border-top: 1px solid var(--browser-line-soft); }
+.tool summary:hover { background: var(--browser-surface); }
+.tool summary { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.tool summary:focus-visible { outline-offset: -3px; }
 .tool summary::-webkit-details-marker { display: none; }
 .tool summary > .icon { width: 14px; height: 14px; color: var(--browser-muted); }
 .tool summary > .icon:last-child { margin-left: auto; color: var(--browser-muted); width: 12px; height: 12px; }
 .tool[open] summary > .icon:last-child { transform: rotate(180deg); }
-.tool code { font-size: 11px; overflow-wrap: anywhere; }
+.tool summary code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.tool[open] summary code { white-space: normal; overflow-wrap: anywhere; }
 .tool p, .tool > span { display: block; padding: 0 12px; font-size: 11px; margin: 2px 0 12px; }
 .tool pre { padding: 13px; margin: 0; border-top: 1px solid var(--browser-line-soft); background: light-dark(#f7f7f7, #151515); color: var(--browser-muted); overflow: auto; font-size: 10px; }
 .versions { border-top: 1px solid var(--browser-line); margin: 24px 0; padding-top: 20px; }
@@ -227,3 +245,8 @@
 .authentication span { font-size: 11px; color: var(--browser-muted); }
 .authentication input { min-width: 80px; width: 180px; padding: 7px 10px; border: 1px solid var(--browser-line); border-radius: 7px; color: var(--browser-text); background: var(--browser-raised); }
 .authentication button { border: 1px solid var(--browser-line); border-radius: 7px; padding: 7px 12px; color: var(--browser-text); background: var(--browser-raised); }
+
+.filesColumn { position: relative; flex: 0 0 var(--browser-files-width); width: var(--browser-files-width); min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid var(--browser-line); background: var(--browser-bg); }
+.filesColumn[hidden] { display: none; }
+.filesColumn > p { padding: 20px; font-size: 13px; color: var(--browser-muted); }
+.filesHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 45px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--browser-line); font-size: 13px; }

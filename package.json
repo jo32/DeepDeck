@@ -14,6 +14,7 @@
     "web:dev": "pnpm --filter @deepdeck/web dev",
     "web:build": "pnpm --filter @deepdeck/web build",
     "web:check": "pnpm --filter @deepdeck/web check",
+    "webmcp:sync": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs scripts/sync-webmcp-registry.ts",
     "bootstrap": "pnpm harness:install && pnpm codex-connect:install && pnpm harness:build && pnpm build",
     "harness:install": "node scripts/install-harness.mjs",
     "harness:build": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs scripts/build-harness.ts",

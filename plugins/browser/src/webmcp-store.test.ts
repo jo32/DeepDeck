@@ -28,6 +28,26 @@ describe('WebMCPStore', () => {
 
   afterEach(async () => { await rm(root, { recursive: true, force: true }) })
 
+  it('exports the immutable revision and imports without overwriting an unpublished draft', async () => {
+    await store.writeSource(ORIGIN, SOURCE)
+    const original = await store.build(ORIGIN)
+    await store.activate(ORIGIN, original.revision)
+    await store.writeSource(ORIGIN, 'unpublished draft')
+    const exported = await store.exportRevision(ORIGIN, original.revision)
+    expect(exported.source).toBe(SOURCE)
+    const provenance = { repositoryId: 1, repository: 'https://github.com/test/webmcp', manifestPath: 'webmcp.json', commit: 'a'.repeat(40), version: '1.0.0', sourceSha256: exported.sourceDigest }
+    const imported = await store.build(ORIGIN, { source: SOURCE, provenance })
+    expect(imported.revision).not.toBe(original.revision)
+    expect((await store.active(ORIGIN))?.revision).toBe(original.revision)
+    await store.activate(ORIGIN, imported.revision)
+    const restarted = new WebMCPStore(root)
+    expect(await restarted.readSource(ORIGIN)).toBe('unpublished draft')
+    expect((await restarted.inspect(ORIGIN)).provenance).toEqual(provenance)
+    await restarted.activate(ORIGIN, original.revision)
+    expect((await restarted.inspect(ORIGIN)).provenance).toBeUndefined()
+    expect(await restarted.readSource(ORIGIN)).toBe('unpublished draft')
+  })
+
   it('compiles browser TypeScript into an executable IIFE without activating it', async () => {
     await store.writeSource(ORIGIN, SOURCE)
     const build = await store.build(ORIGIN)
@@ -39,6 +59,22 @@ describe('WebMCPStore', () => {
     expect(registered[0]?.execute({ count: 8 })).toEqual({ count: 8 })
     expect(await store.inspect(ORIGIN)).toMatchObject({ enabled: false, hasSource: true, revisions: [{ revision: build.revision }] })
     expect(await store.active(ORIGIN)).toBeUndefined()
+  })
+
+  it('keeps derived upstream identity distinct from changed source and preserves it through rollback', async () => {
+    await store.writeSource(ORIGIN, SOURCE)
+    const baseline = await store.build(ORIGIN)
+    const exported = await store.exportRevision(ORIGIN, baseline.revision)
+    const upstream = { repositoryId: 1, repository: 'https://github.com/test/webmcp', manifestPath: 'webmcp.json', commit: 'a'.repeat(40), version: '1.0.0', sourceSha256: exported.sourceDigest }
+    const derived = await store.build(ORIGIN, { source: SOURCE.replace('?? 3', '?? 5'), upstream })
+    await store.activate(ORIGIN, derived.revision)
+    expect((await store.inspect(ORIGIN)).provenance).toBeUndefined()
+    expect((await store.inspect(ORIGIN)).upstream).toEqual(upstream)
+    expect((await store.exportRevision(ORIGIN, derived.revision)).sourceDigest).not.toBe(upstream.sourceSha256)
+    await store.activate(ORIGIN, baseline.revision)
+    expect((await store.inspect(ORIGIN)).upstream).toBeUndefined()
+    await store.activate(ORIGIN, derived.revision)
+    expect((await store.inspect(ORIGIN)).upstream).toEqual(upstream)
   })
 
   it('retains immutable builds, activates only explicitly, and restores the enabled version after restart', async () => {

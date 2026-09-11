@@ -1,3 +1,7 @@
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { webmcpPublicationPrompt } from '../publication-prompt.js'
+import type { ComponentType } from 'react'
+import type { FsListing } from '../publication-file-contracts.js'
 import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { BROWSER_API_PATH, type BrowserClientAction, type BrowserMode, type BrowserSite, type BrowserState } from '../contracts.js'
@@ -44,6 +48,8 @@ export interface BrowserAgentSelection {
 }
 
 export interface BrowserClientService {
+  Files?: ComponentType<{ site: BrowserSite; root: FsListing; refreshTick: number }>
+  publishWebMCP: (sessionId: string, site: BrowserSite, directory: string, intent?: 'publish' | 'contribute' | 'fork') => Promise<void>
   request: typeof browserRequest
   prepareAgent: (tabId: string, mode: BrowserMode, create: boolean | 'auto', signal?: AbortSignal) => Promise<BrowserAgentSelection | undefined>
 }
@@ -59,6 +65,13 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
   const createdSessions = new Map<string, SessionId>()
   return {
     request: browserRequest,
+    async publishWebMCP(sessionId, site, directory, intent) {
+      const scope = ctx.sessions.scope(sessionId as SessionId)
+      if (!scope) throw new Error('Site Agent is not connected.')
+      const conversation = scope.get('conversation')
+      if (!conversation) throw new Error('Site Agent conversation is not available.')
+      await conversation.send(webmcpPublicationPrompt(site.origin, directory, intent))
+    },
     async prepareAgent(tabId, requestedMode, create, signal) {
       let site = await browserRequest<BrowserSite>({ action: 'site.resolve', tabId }, signal)
       const siteId = site.id

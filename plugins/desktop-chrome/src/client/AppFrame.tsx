@@ -28,7 +28,7 @@ export interface AppFrameInjected {
 
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay' | 'desktop.surface'>
+  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay' | 'desktop.surface' | 'desktop.workbench'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & AppFrameInjected
 
@@ -207,7 +207,10 @@ function DesktopAppFrame({
           </div>
         )}
       </div>
-      <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
+      <div className={css.conversationWorkspace}>
+        <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
+        {renderSlot('desktop.workbench', {})}
+      </div>
       <DetailsColumn>{renderSlot('details', {})}</DetailsColumn>
       <div className={css.overlayLayer} data-shell-overlay>
         {renderSlot('shell.overlay', {})}

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rename, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +7,7 @@ import type { BrowserNativeCommand, BrowserSnapshot, WebMCPScript } from './nati
 import { BrowserNativeClient } from './native-client.js'
 import { BrowserRuntime, type BrowserAgent, type BrowserHostContext } from './runtime.js'
 import { BrowserSiteStore, type SiteRecord } from './site-store.js'
+import { WebMCPProject, sourceDigest } from './webmcp-project.js'
 import { WebMCPStore, type WebMCPState } from './webmcp-store.js'
 
 type Scope = Parameters<Parameters<BrowserAgent['ctx']['inject']>[1]>[0]
@@ -127,11 +128,139 @@ describe('BrowserRuntime', () => {
 
   afterEach(async () => { runtime.dispose(); vi.restoreAllMocks(); await rm(root, { recursive: true, force: true }) })
 
+  it('opens one reusable publication project without replacing edits or Git data', async () => {
+    activeRevision = REVISION
+    const exported = vi.spyOn(runtime, 'exportPackage').mockImplementation(async () => {
+      const directory = await mkdtemp(join(site.workspacePath, 'webmcp-publish-'))
+      await mkdir(join(directory, 'src'))
+      await writeFile(join(directory, 'webmcp.json'), '{}')
+      await writeFile(join(directory, 'src/webmcp.ts'), 'original')
+      return { directory } as Awaited<ReturnType<BrowserRuntime['exportPackage']>>
+    })
+    const [first, concurrent] = await Promise.all([runtime.webmcpFiles(site.id), runtime.webmcpFiles(site.id)])
+    expect(first!.home).toBe(concurrent!.home)
+    expect(exported).toHaveBeenCalledOnce()
+    await writeFile(join(first!.home, 'src/webmcp.ts'), 'local edit')
+    await mkdir(join(first!.home, '.git'))
+    await writeFile(join(first!.home, '.git/config'), 'existing git config')
+    activeRevision = PREVIOUS_REVISION
+    expect((await runtime.webmcpFiles(site.id))!.home).toBe(first!.home)
+    expect(await readFile(join(first!.home, 'src/webmcp.ts'), 'utf8')).toBe('local edit')
+    expect(await readFile(join(first!.home, '.git/config'), 'utf8')).toBe('existing git config')
+    expect(exported).toHaveBeenCalledOnce()
+  })
+
   const exec = async (name: string, args: Record<string, unknown> = {}): Promise<unknown> => {
     const tool = tools.get(name)
     if (!tool) throw new Error(`Test tool missing: ${name}`)
     return JSON.parse(await tool.execute(args, { agent, signal: new AbortController().signal }))
   }
+
+  it('filters the fallback catalog by the current site and preserves its source status', async () => {
+    vi.spyOn(runtime, 'directory').mockResolvedValue({ source: 'bundled', catalog: { formatVersion: 1, generatedAt: null, entries: [
+      { id: 'one', repositoryId: 1, repository: 'https://github.com/test/one', manifestPath: 'webmcp.json', name: 'One', description: 'One', origin: ORIGIN, status: 'active', tags: [] },
+      { id: 'two', repositoryId: 2, repository: 'https://github.com/test/two', manifestPath: 'webmcp.json', name: 'Two', description: 'Two', origin: 'https://other.example', status: 'active', tags: [] },
+    ] } })
+    const result = await runtime.catalog(`${ORIGIN}/page`)
+    expect(result.source).toBe('bundled')
+    expect(result.entries.map(entry => entry.id)).toEqual(['one'])
+  })
+
+  const githubCandidate = () => ({
+    manifest: { formatVersion: 1 as const, name: 'Articles', description: 'Read articles', version: '1.0.0', origin: ORIGIN, entry: 'src/webmcp.ts', sourceSha256: 'c'.repeat(64), runtime: { id: 'deepdeck-webmcp' as const, sdkVersion: 1 as const }, license: 'MIT', tools: [], tags: [] },
+    source: 'source from GitHub', provenance: { repositoryId: 1, repository: 'https://github.com/test/webmcp', manifestPath: 'webmcp.json', commit: 'a'.repeat(40), version: '1.0.0', sourceSha256: 'c'.repeat(64) },
+  })
+
+  function workingProject() {
+    const upstream = githubCandidate().provenance
+    const source = 'local community source with an additional tool'
+    const working = { source, upstream, sourceDigest: sourceDigest(source), sourcePath: join(site.workspacePath, 'webmcp-project/src/webmcp.ts') }
+    vi.spyOn(WebMCPProject.prototype, 'read').mockResolvedValue(working)
+    const state = { directory: join(site.workspacePath, 'webmcp-project'), ...working, changed: true, merging: false, conflicts: [] }
+    vi.spyOn(WebMCPProject.prototype, 'state').mockResolvedValue(state)
+    vi.spyOn(WebMCPProject.prototype, 'manifest').mockResolvedValue(githubCandidate().manifest)
+    const update = vi.spyOn(WebMCPProject.prototype, 'updateManifest').mockResolvedValue(undefined)
+    return { working, state, update }
+  }
+
+  it('reads and applies the fixed project with upstream identity while preserving the legacy Builder draft', async () => {
+    const { working, update } = workingProject()
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'builder')
+    expect(await exec('webmcp_read_source')).toMatchObject(working)
+    await exec('webmcp_apply')
+    expect(runtime.webmcp.build).toHaveBeenCalledWith(ORIGIN, { source: working.source, upstream: working.upstream })
+    expect(runtime.webmcp.writeSource).not.toHaveBeenCalled()
+    expect(update).toHaveBeenCalledWith(working.sourceDigest, expect.arrayContaining([expect.objectContaining({ name: GENERATED_TOOL.name })]))
+    expect(activate).toHaveBeenCalledWith(ORIGIN, REVISION)
+  })
+
+  it('blocks project activation during a merge and keeps prior tools on validation failure', async () => {
+    const { state, update } = workingProject()
+    enabled = true; activeRevision = PREVIOUS_REVISION
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'builder')
+    state.merging = true
+    await expect(exec('webmcp_apply')).rejects.toThrow('finish the upstream merge')
+    expect(runtime.webmcp.build).not.toHaveBeenCalled()
+    state.merging = false
+    update.mockRejectedValue(new Error('Project changed while validating'))
+    await expect(exec('webmcp_apply')).rejects.toThrow('changed while validating')
+    expect(activeRevision).toBe(PREVIOUS_REVISION)
+    expect(activate).not.toHaveBeenCalled()
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ action: 'webmcp.install', script: expect.objectContaining({ revision: PREVIOUS_REVISION }) }))
+  })
+
+  it('passes the read digest to project writes and rejects switching repositories over an existing project', async () => {
+    const { working } = workingProject()
+    const write = vi.spyOn(WebMCPProject.prototype, 'write').mockRejectedValue(new Error('Source changed since it was read'))
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'builder')
+    await expect(exec('webmcp_write_source', { source: 'new source', expectedDigest: working.sourceDigest })).rejects.toThrow('Source changed')
+    expect(write).toHaveBeenCalledWith('new source', working.sourceDigest)
+    expect(runtime.webmcp.writeSource).not.toHaveBeenCalled()
+    const candidate = githubCandidate(); candidate.provenance.repositoryId = 2; candidate.provenance.repository = 'https://github.com/test/other'
+    vi.spyOn(runtime.github, 'load').mockResolvedValue(candidate)
+    const preview = await runtime.previewPackage(site.id, candidate.provenance.repository)
+    await expect(runtime.installPackage(site.id, preview.token)).rejects.toThrow('already has a community project')
+    expect(activate).not.toHaveBeenCalled()
+  })
+
+  it('requires the exact preview and consumes it once without refetching or writing the draft', async () => {
+    const load = vi.spyOn(runtime.github, 'load').mockResolvedValue(githubCandidate())
+    const preview = await runtime.previewPackage(site.id, 'https://github.com/test/webmcp')
+    expect(activate).not.toHaveBeenCalled()
+    await runtime.installPackage(site.id, preview.token)
+    expect(activate).toHaveBeenCalledWith(ORIGIN, REVISION)
+    expect(runtime.webmcp.writeSource).not.toHaveBeenCalled()
+    expect(load).toHaveBeenCalledTimes(1)
+    await expect(runtime.installPackage(site.id, preview.token)).rejects.toThrow('expired')
+  })
+
+  it('rejects a stale preview when the draft or active revision changes', async () => {
+    vi.spyOn(runtime.github, 'load').mockResolvedValue(githubCandidate())
+    const preview = await runtime.previewPackage(site.id, 'https://github.com/test/webmcp')
+    vi.mocked(runtime.webmcp.readSource).mockResolvedValue('changed during preview')
+    await expect(runtime.installPackage(site.id, preview.token)).rejects.toThrow('changed')
+    expect(activate).not.toHaveBeenCalled()
+    const newer = await runtime.previewPackage(site.id, 'https://github.com/test/webmcp')
+    activeRevision = PREVIOUS_REVISION
+    await expect(runtime.installPackage(site.id, newer.token)).rejects.toThrow('changed')
+  })
+
+  it('restores the previous native script when a GitHub installation does not register', async () => {
+    activeRevision = PREVIOUS_REVISION; enabled = true
+    vi.spyOn(runtime.github, 'load').mockResolvedValue(githubCandidate())
+    const preview = await runtime.previewPackage(site.id, 'https://github.com/test/webmcp')
+    install = async script => script.revision === PREVIOUS_REVISION ? receipt(script) : { installed: false }
+    await expect(runtime.installPackage(site.id, preview.token)).rejects.toThrow('installation')
+    expect(activeRevision).toBe(PREVIOUS_REVISION)
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ action: 'webmcp.install', script: expect.objectContaining({ revision: PREVIOUS_REVISION }) }))
+    expect(runtime.webmcp.writeSource).not.toHaveBeenCalled()
+  })
+
+  it('rejects wrong-site packages before creating an installation preview', async () => {
+    const candidate = githubCandidate(); candidate.manifest.origin = 'https://different.example'
+    vi.spyOn(runtime.github, 'load').mockResolvedValue(candidate)
+    await expect(runtime.previewPackage(site.id, 'https://github.com/test/webmcp')).rejects.toThrow('different site')
+  })
 
   it('binds only the site Workspace Session and a tab on the same origin', async () => {
     await expect(runtime.bind(site.id, 'missing-session', 'tab-1', 'use')).rejects.toThrow('Workspace')
@@ -171,7 +300,7 @@ describe('BrowserRuntime', () => {
     expect(tools.has('webmcp_apply')).toBe(true)
     expect(tools.get('mcp__chrome_devtools__call_tool')).toBe(devtools)
     expect(tools.has('mcp__chrome_devtools__list_tools')).toBe(true)
-    expect(skills.size).toBe(1)
+    expect(skills.size).toBe(2)
     expect(sites.get(site.id).sessionId).toBe('session-1')
     expect(sites.get(site.id).mode).toBe('builder')
     await exec('browser_set_mode', { mode: 'use' })
@@ -179,7 +308,7 @@ describe('BrowserRuntime', () => {
     expect(tools.has('browser_webmcp_call')).toBe(true)
     expect(tools.get('mcp__chrome_devtools__call_tool')).toBe(devtools)
     expect(tools.has('mcp__chrome_devtools__list_tools')).toBe(true)
-    expect(skills.size).toBe(0)
+    expect([...skills]).toEqual([expect.objectContaining({ name: 'deepdeck-webmcp-github' })])
   })
 
   it('reports MCP tool errors as failed Harness executions without replaying the operation', async () => {
@@ -270,7 +399,7 @@ describe('BrowserRuntime', () => {
     context.agents.list = () => [agent]
     runtime = new BrowserRuntime(context, runtime.native, sites, runtime.webmcp)
     await vi.waitFor(() => expect(tools.has('webmcp_apply')).toBe(true))
-    expect(skills.size).toBe(1)
+    expect(skills.size).toBe(2)
     expect(agent.session.events).toHaveLength(0)
   })
 
@@ -350,6 +479,57 @@ describe('BrowserRuntime', () => {
   it('rejects a tool invocation from another Agent', async () => {
     await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
     await expect(tools.get('browser_context')!.execute({}, { agent: { ...agent }, signal: new AbortController().signal })).rejects.toThrow('bound to this Agent')
+  })
+
+  it('uses the packaged directory when the remote index is missing, and accepts a valid live index', async () => {
+    const remote = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not found', { status: 404 }))
+    const fallback = await runtime.directory()
+    expect(fallback.source).toBe('bundled')
+    expect(fallback.catalog.formatVersion).toBe(1)
+    remote.mockResolvedValue(new Response(JSON.stringify({ formatVersion: 1, generatedAt: null, entries: [] })))
+    expect((await runtime.directory()).source).toBe('online')
+  })
+
+  function mockPackage(origin = ORIGIN) {
+    const candidate = { source: 'verified source', manifest: { formatVersion: 1 as const, name: 'Articles', description: 'Read', origin, version: '1.0.0', entry: 'src/webmcp.ts', sourceSha256: 'c'.repeat(64), runtime: { id: 'deepdeck-webmcp' as const, sdkVersion: 1 as const }, license: 'MIT', tools: [], tags: [] }, provenance: { repositoryId: 1, repository: 'https://github.com/test/webmcp', manifestPath: 'webmcp.json', commit: 'a'.repeat(40), version: '1.0.0', sourceSha256: 'c'.repeat(64), author: { login: 'test', url: 'https://github.com/test', avatarUrl: 'https://github.com/test.png?size=80' } } }
+    vi.spyOn(runtime.github, 'load').mockResolvedValue(candidate)
+    return candidate
+  }
+
+  it('prepares a directory installation from verified source without activating, then consumes confirmation once', async () => {
+    const candidate = mockPackage()
+    const prepared = await runtime.preparePackage({ repository: candidate.provenance.repository })
+    expect(prepared.site.origin).toBe(ORIGIN)
+    expect(prepared.preview.provenance.author?.login).toBe('test')
+    expect(request).not.toHaveBeenCalled()
+    expect(activate).not.toHaveBeenCalled()
+    await runtime.installPackage(prepared.site.id, prepared.preview.token, 'http://127.0.0.1:1234/?deepdeck-surface=browser')
+    expect(activate).toHaveBeenCalledOnce()
+    expect(request.mock.calls.some(([command]) => command.action === 'open')).toBe(false)
+    await expect(runtime.installPackage(prepared.site.id, prepared.preview.token)).rejects.toThrow('expired')
+  })
+
+  it('rejects a stale confirmation when the Builder draft changes', async () => {
+    mockPackage()
+    const prepared = await runtime.preparePackage({ repository: 'https://github.com/test/webmcp' })
+    vi.mocked(runtime.webmcp.readSource).mockResolvedValue('changed draft')
+    await expect(runtime.installPackage(prepared.site.id, prepared.preview.token)).rejects.toThrow('Local WebMCP changed')
+    expect(activate).not.toHaveBeenCalled()
+  })
+
+  it('opens the verified site before market activation when no matching document is ready', async () => {
+    mockPackage()
+    const prepared = await runtime.preparePackage({ repository: 'https://github.com/test/webmcp' })
+    const tab = snapshot.tabs[0]!
+    snapshot.tabs = []
+    const normal = request.getMockImplementation()!
+    request.mockImplementation(async command => {
+      if (command.action === 'open') { expect(command.url).toBe(ORIGIN); snapshot.tabs = [tab]; return snapshot }
+      return normal(command)
+    })
+    await runtime.installPackage(prepared.site.id, prepared.preview.token, 'http://127.0.0.1:1234/?deepdeck-surface=browser')
+    expect(request.mock.calls.find(([command]) => command.action === 'open')?.[0]).toMatchObject({ url: ORIGIN })
+    expect(activate).toHaveBeenCalledOnce()
   })
 
   it('activates only after a complete native registration receipt, then still requires functional validation', async () => {

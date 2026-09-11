@@ -132,7 +132,36 @@ without Node APIs. `globalThis.__deepdeckWebMCP` exposes asynchronous
 namespaced and tracked by their real execution context; they never replace
 site-owned registrations. They may compose existing native WebMCP tools.
 
-## Lifecycle
+## GitHub community WebMCP
+
+The WebMCP panel includes a Community section: discover projects for the current
+origin, preview a public GitHub repository, review its source and confirm installation.
+The default resolves the latest stable release; Advanced accepts an explicit full
+commit SHA for unreleased testing. The Host resolves tags, checks repository ID,
+ordinary Git tree paths, blob integrity and manifest SHA-256, then compiles locally.
+No repository install scripts or remote build commands run. Preview expires after
+five minutes and is consumed once; changes to local draft/activation require a new
+preview. Installation preserves editable source and rolls back native registration
+failures. GitHub provenance persists with each imported local revision.
+
+Export GitHub draft saves the selected active revision into a separate site-workspace
+directory. The `deepdeck-webmcp-github` skill is bundled in both Use and Builder;
+the Agent can call `webmcp_export_revision` directly, use existing GitHub authentication,
+publish or contribute a repair as requested. Export itself performs no GitHub write.
+The initial draft is UNLICENSED and needs license, tool metadata and verification
+review before publication. The repository skill link and runtime use the same text.
+
+The public directory lives at `/webmcp` and `/zh/webmcp`; its snapshot is generated
+from `registry/webmcp/entries` with `pnpm webmcp:sync`. The initial list is empty.
+Existing GitHub issues/releases are the source for collaboration and maintenance
+status; no account service or object-storage backend is required. Directory data
+can be stale and is not an endorsement of community source.
+
+Run `node apps/desktop/scripts/verify-webmcp-market.mjs` for the isolated real
+Electron UI and native-registration check. The fixture simulates GitHub responses;
+repository resolution and persistence are covered separately by Host tests.
+
+## Local lifecycle
 
 - Enabled WebMCP loads automatically on matching documents and browser restart.
 - Site bindings persist in Browser's own store. Reopening resumes the original
@@ -237,3 +266,101 @@ See [the core browsing review](../../docs/browser-core-review.md) for the
 implemented capabilities, verification commands and remaining platform limits.
 The core Electron fixture runs with a temporary profile and real BrowserFrame;
 system fullscreen needs an unlocked desktop session.
+
+## Embedded WebMCP market
+
+Open **Settings → WebMCP market** alongside the App store. The Browser plugin owns the Cordis settings section and the standalone `webmcp-market` surface. It renders the same directory component shipped by the website, within the settings panel’s remaining height. It loads the live catalog through the Host and falls back to the packaged catalog when the remote index is unavailable. The default view does not depend on an online HTML page being deployed. An explicitly configured remote iframe still supports a bounded handshake and falls back locally when it fails. Source preview, errors and confirmation are rendered outside the remote frame. Confirmation opens the verified target website when needed; activation still requires actual native registration and preserves the Builder draft and previous revision.
+
+Outside DeepDeck, **Install in DeepDeck** links to `deepdeck://webmcp/install` with repository, manifest path and optional immutable commit/repository ID. Electron handles cold and warm launches, queues requests until Harness is ready, and opens the plugin's preview surface. It does not install from a protocol event. The packaged app registers the scheme; development Electron launches on macOS cannot validate OS-level scheme association. Publish the website and install a desktop release containing this change to enable the complete external flow.
+
+GitHub repository owners supply the maintainer avatar/login in the directory, preview and Browser tool panel. This is repository attribution, not ownership of the target website. Older installed revisions without author metadata remain supported; a fresh GitHub preview/import obtains it.
+
+Publication drafts include the current site's ordinary `.agents/skills` and `.dsh/skills` files and their digests. The GitHub skill reviews these files with the chosen immutable WebMCP source before an authorized PR/push. Companion skills are published to GitHub; the TypeScript installer does not silently activate them.
+
+Verify the cross-origin embedded and standalone UI with `node apps/desktop/scripts/verify-webmcp-market-embed.mjs`; verify the existing Browser panel with `node apps/desktop/scripts/verify-webmcp-market.mjs`. Both use temporary Electron profiles and local fixtures.
+
+The settings market owns one scrollable directory region. Container queries adapt the directory to the settings column width rather than the desktop viewport; empty state controls fit without scrolling at the tested 1000 × 700 window. The GitHub install form remains available when the directory is empty or offline. `catalog.json` is shipped with the plugin and refreshed alongside the website catalog by `pnpm webmcp:sync`.
+
+
+## Publication files and native Browser
+
+The Community section discovers projects for the current site automatically and
+has an explicit Refresh action. It distinguishes an empty online catalog, an
+empty bundled snapshot, and a failed request; switching sites cancels stale results.
+
+Publication Files uses the published **dsh-better-sidebar@0.17.1** file tree,
+editor/preview viewers, Cordis service/store and Host APIs. The upstream
+[v0.17.1 release](https://github.com/omdsh-dev/DSH-better-sidebar/releases/tag/v0.17.1)
+explicitly supports Harness 0.1.1-rc.x. Keep the version pinned until its source
+exports and lazy chunks have been verified against our Harness version.
+
+DeepDeck mounts these modules in its existing Browser plugin surface. The
+upstream Client entry point, DOM mounting, global link interception and iframe
+BrowserView are not activated. The browser tab descriptor calls DeepDeck's native
+Browser API, retaining the existing native tabs, sessions and WebMCP capabilities.
+The original Host serves file operations, terminal connections and lazy chunks.
+The main desktop conversation mounts a Better Sidebar workbench through the
+`desktop.workbench` Cordis slot. It exposes file, Git, terminal, subagent and side
+conversation tabs, and keeps tab selection, width and collapsed state in Better
+Sidebar's per-session store. Its Browser tab opens the native DeepDeck Browser.
+The desktop layout reserves space beside the conversation; the upstream DOM
+mount and layout-push hooks are not enabled.
+
+Export opens an independent **Files** column beside the Agent sidebar, so chat
+and files remain visible together. The directory tree and preview fill that
+column, which has its own resize handle and close button. The toolbar folder
+button opens the current site's entire workspace, including Agent reports
+and skills. **Export GitHub draft** opens the exact newly exported project folder
+with its editable source selected. **Publish to GitHub and registry** starts the
+site Agent with the existing `deepdeck-webmcp-github` skill, using the latest
+exported project (creating one only if none exists). The Agent publishes the
+project and submits its reference to the DeepDeck registry; repository or license
+choices are resolved by the skill when missing. Reopening a project preserves
+local edits and Git history. The UI displays the same directory tree and editor
+for both actions, including source, manifest, README and companion skills.
+Native website bounds reserve the combined width of both
+sidebars. Hidden skills folders are included. Source, manifest and skills support preview/edit/save, directory refresh,
+file refresh, downloads and explicit file uploads. File references use the existing
+site conversation composer. The editor's own refresh confirmation protects dirty
+content. Full local paths are collapsed by default. No generated plugin `lib/`
+files or upstream Harness edits are committed.
+
+## Continuing a community project
+
+After installing a community package, **Continue in Builder** checks out its exact
+upstream commit into `<site workspace>/webmcp-project` on a local Git branch. It
+preserves the repository history, manifest, license, documentation and project
+skills, and leaves the previous standalone Builder draft intact. The Agent's
+source tools and the Files sidebar use this same persistent directory. Source
+writes require the digest returned by the preceding read. Locally built revisions
+record their upstream baseline separately from the digest of their actual source.
+
+**Check upstream updates** fetches the latest release (or the default branch when
+there is no stable release) and prepares a three-way merge in a temporary Git
+worktree. An explicit commit is also supported by `webmcp_project`. Previewing
+does not modify working files or activate tools. Confirmation first checkpoints
+local changes, then merges. Stale previews are rejected if working files change.
+Real content/metadata conflicts remain editable in Builder; the generated source
+digest alone does not require manual conflict resolution. **Finish resolved
+merge** records the new upstream baseline; **Abort merge** restores the checkpoint.
+Pending conflicts survive a restart and prevent applying or publishing.
+
+`webmcp_apply` compiles the working source, validates native registration, updates
+the manifest digest/tool directory and activates the resulting immutable revision.
+A failed apply restores the previous native revision. Functional verification
+still requires calling the tools against the real site. Merging alone never
+changes active tools.
+
+**Contribute upstream** asks the site Agent to create a focused upstream PR.
+**Publish my fork** asks it to publish a derived repository and submit that
+repository to the registry. Both use the existing GitHub skill and preserve
+attribution/history. Neither action requests an automatic PR merge or stable
+release. A project export requires its source to match the selected active
+revision; publication must follow final functional verification.
+
+This first version supports one community Git project per site, not composition
+of several independent packages. Switching to another repository requires first
+preserving/moving the project directory and its sibling `.webmcp-project.json`
+metadata. It requires local Git and access to GitHub for repository/source fetches;
+the official catalog proxy does not proxy these Git operations. Rewritten upstream
+history or an entry-path migration requires explicit repository review.

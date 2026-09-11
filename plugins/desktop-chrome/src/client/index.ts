@@ -89,6 +89,7 @@ export function apply(ctx: ClientContext): void {
         details: { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
         'desktop.surface': { kind: 'single', scope: 'root' },
+        'desktop.workbench': { kind: 'single', scope: 'root' },
       },
       store: createLayoutStore,
       inject: (actions: PanelActions) => {

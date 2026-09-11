@@ -84,6 +84,7 @@ function pluginRoot(runtimeRoot, pluginName) {
   const harnessPackage = {
     "dsh-codex-connect": "dsh-codex-connect",
     "provider-aware-web": "@deepdeck/dsh-provider-aware-web",
+    "browser": "@deepdeck/dsh-browser",
   }[pluginName];
   if (harnessPackage !== undefined) {
     return join(runtimeRoot, "harness", "node_modules", harnessPackage);
@@ -194,6 +195,15 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
     if (!Array.isArray(browserState.sites) || !Array.isArray(browserState.native?.tabs) || browserState.available !== false) {
       throw new Error("Bundled Browser plugin did not expose its standalone runtime state.");
     }
+    const treeResponse = await fetch(new URL("/sidebar/api/fs.tree", url), {
+      method: "POST", headers: { "content-type": "application/json", origin: url },
+      body: JSON.stringify({ sessionId: "sidebar-runtime-verification", cwd: dshHome, path: dshHome }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    const tree = await treeResponse.json();
+    if (!treeResponse.ok || tree.ok !== true) throw new Error(`Bundled sidebar file service failed: ${JSON.stringify(tree)}`);
+    const editorResponse = await fetch(new URL("/sidebar/bundle/editor.js", url), { signal: AbortSignal.timeout(5_000) });
+    if (!editorResponse.ok || !(await editorResponse.text()).includes("TextEditor")) throw new Error("Bundled sidebar editor chunk is unavailable");
   } catch (error) {
     if (child && exitPromise) await stopChild(child, exitPromise);
     throw error;
@@ -243,6 +253,10 @@ for (const plugin of manifest.plugins) {
       );
     }
     if (plugin === "browser") {
+      const sidebarRoot = join(root, "node_modules", "dsh-better-sidebar");
+      const sidebarManifest = JSON.parse(await readFile(join(sidebarRoot, "package.json"), "utf8"));
+      if (sidebarManifest.version !== "0.17.1") throw new Error("Browser requires the Harness 0.1.1 compatible sidebar release");
+      requiredRuntimePaths.push(...["index.js", "client-editor.js", "client-mermaid.js"].map(file => join(sidebarRoot, "lib", file)));
       bundledWebMCPCompiler = join(root, "node_modules", "esbuild", "lib", "main.js");
       bundledDevToolsMcp = join(root, "node_modules", "chrome-devtools-mcp", "build", "src", "bin", "chrome-devtools-mcp.js");
       const binary = join(root, "node_modules", "@esbuild", `${manifest.platform}-${manifest.architecture}`,
@@ -308,7 +322,7 @@ if (computerUseVersion.trim() !== bundledComputerUse.version) {
 if (!bundledWebMCPCompiler) throw new Error("Runtime manifest omitted the Browser WebMCP compiler");
 if (!bundledDevToolsMcp) throw new Error("Runtime manifest omitted Chrome DevTools MCP");
 const devtoolsVersion = await run(nodeBinary, [bundledDevToolsMcp, "--version"]);
-if (devtoolsVersion.trim() !== "1.8.0") throw new Error(`Bundled Chrome DevTools MCP returned ${JSON.stringify(devtoolsVersion.trim())}`);
+if (devtoolsVersion.trim().split(/\r?\n/).at(-1) !== "1.8.0") throw new Error(`Bundled Chrome DevTools MCP returned ${JSON.stringify(devtoolsVersion.trim())}`);
 const devtoolsHelp = await run(nodeBinary, [bundledDevToolsMcp, "--help"]);
 if (!devtoolsHelp.includes("categoryExperimentalWebmcp") || !devtoolsHelp.includes("wsEndpoint")) throw new Error("Bundled Chrome DevTools MCP is missing Browser integration capabilities");
 await run(nodeBinary, [

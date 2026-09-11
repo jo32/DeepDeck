@@ -1,6 +1,10 @@
 appId: com.jo32.deepdeck
 productName: DeepDeck
 executableName: DeepDeck
+protocols:
+  - name: DeepDeck WebMCP installation
+    schemes:
+      - deepdeck
 asar: true
 forceCodeSigning: true
 electronUpdaterCompatibility: ">=2.16"

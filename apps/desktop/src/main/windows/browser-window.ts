@@ -1,5 +1,6 @@
 import { BaseWindow, WebContentsView, Menu, app, clipboard, dialog, session, shell as systemShell, type Session } from "electron";
 import { randomUUID } from "node:crypto";
+import { setImmediate as nextTask } from "node:timers/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BrowserNativeCommand, BrowserNativeResponse, BrowserNativeResponseMap, BrowserInspection, BrowserSnapshot, BrowserTab, BrowserTarget, WebMCPScript, WebMCPInstallReceipt, WebMCPPageReceipt } from "../../../../../plugins/browser/src/native-contract.js";
@@ -143,7 +144,14 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
   }
   async function send(tab: TabState, method: string, params: ProtocolRecord = {}): Promise<ProtocolRecord> {
     if (tab.contents.isDestroyed()) throw new Error("Browser tab is closed.");
-    return await tab.contents.debugger.sendCommand(method, params) as ProtocolRecord;
+    try { return await tab.contents.debugger.sendCommand(method, params) as ProtocolRecord; }
+    catch (error) {
+      // Electron rejects pending CDP commands from inside WebContents destruction.
+      // Its detach event flushes microtasks before isDestroyed() becomes true.
+      // Never resume callers that may navigate or inspect the dying native frame.
+      await nextTask();
+      throw error;
+    }
   }
   function finishCall(callId: string, value: unknown, error?: string): void {
     const call = calls.get(callId);
@@ -333,6 +341,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     for (const script of scripts.values()) await addScript(tab, script);
     try { await send(tab, "WebMCP.enable"); }
     catch (error) { tab.state.webmcpError = `WebMCP discovery is unavailable: ${message(error)}`; }
+    if (wc.isDestroyed()) return;
     // A popup may have started loading before its protocol session was attached.
     if (!blank) {
       const script = scripts.get(browserOrigin(wc.getURL()));
@@ -355,10 +364,12 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
       if (!sessionId) handleProtocol(tab, method, params as ProtocolRecord);
     });
     wc.debugger.on("detach", (_event, reason) => {
-      if (wc.isDestroyed()) return;
-      tab.state.webmcpError = `Browser protocol disconnected: ${reason}. Reload this tab to reconnect.`;
-      invalidate(tab, "Browser protocol disconnected; the operation result is unknown.");
-      emit();
+      setImmediate(() => {
+        if (wc.isDestroyed() || tabs.get(tab.state.id) !== tab || closing || wc.debugger.isAttached()) return;
+        tab.state.webmcpError = `Browser protocol disconnected: ${reason}. Reload this tab to reconnect.`;
+        invalidate(tab, "Browser protocol disconnected; the operation result is unknown.");
+        emit();
+      });
     });
 
     tabs.set(tab.state.id, tab);
@@ -477,7 +488,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
         // Adopt that exact instance; replacing it throws in openGuestWindow.
         const viewOptions: Electron.WebContentsViewConstructorOptions = options;
         const popup = createTab(!viewOptions.webContents, viewOptions, disposition !== "background-tab");
-        void popup.ready.then(async () => {
+        void readyTab(popup).then(async () => {
           // Background links may not have a pre-created guest. In that case the
           // custom createWindow callback also owns starting the navigation.
           if (!viewOptions.webContents) await popup.contents.loadURL(url, {
@@ -497,10 +508,18 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     syncBounds(); emit();
     return tab;
   }
-  async function ensureProtocol(tab: TabState): Promise<void> {
+  async function readyTab(tab: TabState): Promise<void> {
     await tab.ready;
+    // A readiness continuation can also run during native debugger teardown.
+    await nextTask();
+    if (closing || windowCloseRequested || tab.closingHistory || tab.contents.isDestroyed() || tabs.get(tab.state.id) !== tab) {
+      throw new Error("Browser tab is closed.");
+    }
+  }
+  async function ensureProtocol(tab: TabState): Promise<void> {
+    await readyTab(tab);
     if (!tab.contents.isDestroyed() && !tab.contents.debugger.isAttached()) {
-      tab.ready = initialize(tab, false); await tab.ready;
+      tab.ready = initialize(tab, false); await readyTab(tab);
     }
   }
   function leaveHtmlFullscreen(tab: TabState): void {
@@ -620,7 +639,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     const destination = guestUrl(url);
     const tab = createTab(true, {}, activate);
     if (afterTabId) moveTab(tab, [...tabs.keys()].indexOf(afterTabId) + 1);
-    await tab.ready;
+    await readyTab(tab);
     if (destination !== "about:blank") void tab.contents.loadURL(destination).catch(error => navigationError(tab, error));
     if (activate) focusActive();
     persist();
@@ -875,7 +894,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
       case "tab.activate": if (htmlFullscreenTab && htmlFullscreenTab !== command.tabId) leaveHtmlFullscreen(tabById(htmlFullscreenTab)); activeTabId = tabById(command.tabId).state.id; syncBounds(); focusActive(); emit(); persist(); return snapshot();
       case "tab.close": await closeTab(command.tabId); return snapshot();
       case "tab.navigate": {
-        const tab = tabById(command.tabId); await tab.ready;
+        const tab = tabById(command.tabId); await readyTab(tab);
         void tab.contents.loadURL(guestUrl(command.url)).catch(error => navigationError(tab, error)); return snapshot();
       }
       case "tab.back": { const wc = tabById(command.tabId).contents; if (wc.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); return snapshot(); }

@@ -96,7 +96,7 @@ export function resolveDesktopRuntimePaths(
         },
         {
           packageName: "@deepdeck/dsh-browser",
-          path: join(options.resourcesPath, "plugins", "browser"),
+          path: join(options.resourcesPath, "harness", "node_modules", "@deepdeck", "dsh-browser"),
         },
         {
           packageName: "dsh-codex-connect",

@@ -133,7 +133,7 @@ function navIcon(id: string): React.JSX.Element {
   return <IconSettingsOutline16 className={shellCss.navIcon} size={16} />
 }
 
-function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: {
+export function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: {
   readonly rows: readonly SettingsSectionRow[]
   readonly renderSlot: SettingsShellProps['renderSlot']
   readonly activeId: string | undefined

@@ -1,0 +1,20 @@
+.community { display: grid; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border-color, #8885); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.community h3, .community h4, .community p { margin: 0; }
+.community a:not(:where([data-deepdeck-workspace-files] *)) { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.community form:not(:where([data-deepdeck-workspace-files] *)), .community label:not(:where([data-deepdeck-workspace-files] *)), .entry, .preview { display: grid; gap: 8px; min-width: 0; }
+.community label:not(:where([data-deepdeck-workspace-files] *)) { margin: 8px 0; }
+.community input:not(:where([data-deepdeck-workspace-files] *)) { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #8886; border-radius: 6px; padding: 9px; color: inherit; background: transparent; }
+.community button:not(:where([data-deepdeck-workspace-files] *)) { min-height: 36px; padding: 6px 12px; border: 1px solid #8886; border-radius: 6px; color: inherit; background: transparent; cursor: pointer; }
+.community button:not(:where([data-deepdeck-workspace-files] *)):disabled { opacity: .5; cursor: default; }
+.community button:not(:where([data-deepdeck-workspace-files] *)):hover:not(:disabled) { background: #8882; }
+.community summary:not(:where([data-deepdeck-workspace-files] *)) { cursor: pointer; padding: 6px 0; }
+.community pre:not(:where([data-deepdeck-workspace-files] *)) { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; font-size: 11px; border: 1px solid #8885; padding: 10px; }
+.community :focus-visible { outline: 2px solid #6488df; outline-offset: 2px; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.entry, .preview { padding: 12px; border: 1px solid #8885; border-radius: 8px; }
+
+.author { display: inline-flex; align-items: center; gap: 8px; width: fit-content; font-size: 12px; text-decoration: none !important; }.author img { border-radius: 50%; object-fit: cover; background: #eee; }
+
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.heading button { min-height: 32px; font-size: 12px; }
+.muted { opacity: .6; font-size: 12px; margin-bottom: 6px !important; }

@@ -59,7 +59,7 @@ describe("resolveDesktopRuntimePaths", () => {
       "/Applications/DeepDeck.app/Contents/Resources/plugins/app-conversations",
       "/Applications/DeepDeck.app/Contents/Resources/plugins/computer-use",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/@deepdeck/dsh-provider-aware-web",
-      "/Applications/DeepDeck.app/Contents/Resources/plugins/browser",
+      "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/@deepdeck/dsh-browser",
       "/Applications/DeepDeck.app/Contents/Resources/harness/node_modules/dsh-codex-connect",
     ]);
     expect(paths.plugins.slice(-1).map((plugin) => ({

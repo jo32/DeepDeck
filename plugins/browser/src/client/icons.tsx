@@ -1,5 +1,5 @@
 import css from './browser.module.css'
-export type BrowserIconName = 'globe' | 'plus' | 'close' | 'back' | 'forward' | 'reload' | 'stop' | 'agent' | 'webmcp' | 'download' | 'export' | 'search' | 'chevron' | 'activity' | 'shield' | 'panel' | 'arrowUpRight' | 'more' | 'volume' | 'muted'
+export type BrowserIconName = 'globe' | 'plus' | 'close' | 'back' | 'forward' | 'reload' | 'stop' | 'agent' | 'webmcp' | 'download' | 'export' | 'search' | 'chevron' | 'activity' | 'shield' | 'panel' | 'arrowUpRight' | 'more' | 'volume' | 'muted' | 'folder'
 const paths: Record<Exclude<BrowserIconName, 'webmcp'>, string> = {
   volume: 'M11 4 6 8H3v8h3l5 4V4Zm4 4c3 2 3 6 0 8m3-11c5 4 5 10 0 14',
   muted: 'M11 4 6 8H3v8h3l5 4V4Zm5 5 6 6m0-6-6 6',
@@ -15,6 +15,7 @@ const paths: Record<Exclude<BrowserIconName, 'webmcp'>, string> = {
   chevron: 'm6 9 6 6 6-6',
   activity: 'M4 6h2m4 0h10M4 12h2m4 0h10M4 18h2m4 0h10',
   shield: 'M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Zm-4 9 3 3 5-6',
+  folder: 'M3 7V5h6l2 2h10v12H3Z',
   panel: 'M4 4h16v16H4ZM14 4v16', arrowUpRight: 'M6 18 18 6M7 6h11v11',
 }
 export function BrowserIcon({ name }: { name: BrowserIconName }) {
