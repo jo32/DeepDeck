@@ -17,16 +17,16 @@
     "webmcp:sync": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs scripts/sync-webmcp-registry.ts",
     "bootstrap": "pnpm harness:install && pnpm codex-connect:install && pnpm harness:build && pnpm build",
     "harness:install": "node scripts/install-harness.mjs",
-    "harness:build": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs scripts/build-harness.ts",
+    "harness:build": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs scripts/build-harness.ts && node scripts/harness-build-cache.mjs record",
     "codex-connect:deps": "node scripts/ensure-codex-connect-dependencies.mjs",
     "codex-connect:install": "pnpm install --frozen-lockfile && pnpm codex-connect:check",
     "codex-connect:check": "pnpm codex-connect:deps && node scripts/verify-codex-connect-patch.mjs && pnpm --dir vendor/dsh-codex-connect run typecheck",
     "codex-connect:test": "pnpm codex-connect:check && pnpm --dir vendor/dsh-codex-connect run test",
     "codex-connect:build": "pnpm codex-connect:check",
-    "build:desktop": "pnpm codex-connect:build && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run build && pnpm --filter @deepdeck/dsh-bun-plugin-builder run build && pnpm --filter @deepdeck/dsh-first-run run build && pnpm --filter @deepdeck/dsh-app-conversations run build && pnpm --filter @deepdeck/dsh-computer-use run build && pnpm --filter @deepdeck/dsh-provider-aware-web run build && pnpm --filter @deepdeck/dsh-browser run build && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run build && pnpm --filter @deepdeck/dsh-client-ui-home-hero run build && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run build && pnpm --filter @deepseek-harness/desktop run build && node scripts/start-build-cache.mjs record",
+    "build:desktop": "pnpm harness:ensure && pnpm codex-connect:build && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run build && pnpm --filter @deepdeck/dsh-bun-plugin-builder run build && pnpm --filter @deepdeck/dsh-first-run run build && pnpm --filter @deepdeck/dsh-app-conversations run build && pnpm --filter @deepdeck/dsh-computer-use run build && pnpm --filter @deepdeck/dsh-provider-aware-web run build && pnpm --filter @deepdeck/dsh-browser run build && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run build && pnpm --filter @deepdeck/dsh-client-ui-home-hero run build && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run build && pnpm --filter @deepseek-harness/desktop run build && node scripts/start-build-cache.mjs record",
     "build": "pnpm build:desktop && pnpm web:build && pnpm --filter @deepdeck/webmcp-index build",
-    "check": "pnpm codex-connect:check && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-bun-plugin-builder run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-app-conversations run check && pnpm --filter @deepdeck/dsh-computer-use run check && pnpm --filter @deepdeck/dsh-provider-aware-web run check && pnpm --filter @deepdeck/dsh-browser run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check && pnpm web:check && pnpm --filter @deepdeck/webmcp-index check",
-    "test:start-cache": "node --test scripts/start-build-cache.test.mjs",
+    "check": "pnpm harness:ensure && pnpm codex-connect:check && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-bun-plugin-builder run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-app-conversations run check && pnpm --filter @deepdeck/dsh-computer-use run check && pnpm --filter @deepdeck/dsh-provider-aware-web run check && pnpm --filter @deepdeck/dsh-browser run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check && pnpm web:check && pnpm --filter @deepdeck/webmcp-index check",
+    "test:start-cache": "node --test scripts/start-build-cache.test.mjs scripts/harness-build-cache.test.mjs",
     "test:questions": "pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome build && vendor/deepseek-harness/node_modules/.bin/vitest run --config apps/desktop/scripts/question-composer.vitest.config.ts",
     "test": "pnpm test:start-cache && pnpm test:registry && pnpm test:signing && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-bun-plugin-builder run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepdeck/dsh-app-conversations run test && pnpm --filter @deepdeck/dsh-computer-use run test && pnpm --filter @deepdeck/dsh-provider-aware-web run test && pnpm --filter @deepdeck/dsh-browser run test && pnpm --filter @deepseek-harness/desktop run test && pnpm --filter @deepdeck/webmcp-index test",
     "computer-use:update": "node scripts/update-computer-use-version.mjs",
@@ -41,7 +41,8 @@
     "start:packaged": "pnpm package:local && node scripts/run-packaged-desktop.mjs",
     "test:registry": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs --test scripts/sync-webmcp-registry.test.mjs",
     "test:signing": "node --test scripts/signing-scan.test.mjs",
-    "test:harness-ui": "node apps/desktop/scripts/verify-harness-ui.mjs"
+    "test:harness-ui": "node apps/desktop/scripts/verify-harness-ui.mjs",
+    "harness:ensure": "node scripts/harness-build-cache.mjs"
   },
   "dependencies": {
     "dsh-codex-connect": "0.1.0-alpha.4.34"

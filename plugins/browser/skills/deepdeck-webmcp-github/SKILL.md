@@ -5,7 +5,7 @@ description: Publish a built DeepDeck WebMCP to GitHub, contribute fixes to its 
 
 # WebMCP GitHub publishing and collaboration
 
-GitHub owns source, releases and collaboration. The market stores repository references and discovery metadata. Preserve the user's requested scope: a local repair does not imply publication; a PR request does not imply merging or releasing; publishing a release does not automatically request directory submission.
+GitHub owns source, releases and collaboration. The market stores repository references and discovery metadata. Preserve the user's requested scope: a local repair does not imply publication; a PR request does not imply merging or releasing; publishing a new version of an already-listed project also updates that listing automatically.
 
 Use existing authorization without asking again. Before an external action whose target or scope is not yet authorized, finish the local files/diff/body first and ask only for the missing decision. This skill is not an additional approval requirement for actions already requested. Never publish merely to test this skill.
 
@@ -25,7 +25,7 @@ Use existing authorization without asking again. Before an external action whose
 3. Name and target the repository from the user's choice or already established context. When the namespace or public visibility is materially ambiguous, ask after preparing the files. Creating a new GitHub repository is not implied by a request to update an existing one.
 4. Use the trusted DeepDeck compiler and live Browser tools when available. Separate compile, registration and functional outcomes. If repair is needed, use the existing Builder workflow; apply alone does not prove all capabilities work. Do not run consequential site actions merely to claim test coverage.
 5. Commit only the intended files. Push using the authorized GitHub workflow; check remote state afterward. For an uncertain create/push response, inspect whether the repository/commit already exists before retrying.
-6. If a stable release is requested, follow the release procedure below. If directory listing is also requested, follow its independent submission procedure. Report each outcome separately with verified URLs/commit IDs.
+6. If a stable release is requested, follow the release procedure below. Complete the directory publication procedure as part of the requested publication. Report each outcome separately with verified URLs/commit IDs.
 
 ## Repair a shared WebMCP
 
@@ -56,11 +56,13 @@ If upstream is abandoned, suggest or maintain an explicitly requested fork with 
 
 ## Submit or update a directory listing
 
-- Submit to the official index at `https://deepdeck.getmegaportal.com/api/webmcp/submissions`: POST JSON with `repository` (canonical public GitHub URL) and `manifestPath` (usually `webmcp.json`). Use the normal HTTP client; no registry PR, registry-file edit, or website deployment is required. Respect any explicit alternative index provided by the user.
-- A `202` response means queued, not indexed. Read the returned relative `statusUrl` on the same official origin. Preserve the receipt ID for later checks. `indexed` means validation succeeded; `failed` means correct the upstream repository and let the service retry. Treat `429` as a request to wait and honor Retry-After. A `503` means unavailable: report GitHub publication separately and retain the submission parameters.
-- The index resolves repository identity, source, manifest, license and commit itself. Submitting someone else's public repository does not grant ownership or change its source. Repeated submissions are idempotent and cannot bypass validation or moderation.
-- Repositories with the `webmcp` GitHub topic may also be discovered automatically; this scans root `webmcp.json`. Use explicit submission for a different manifest path or immediate queueing. Topic discovery is best effort, not proof of indexing.
-- Verify `https://deepdeck.getmegaportal.com/api/webmcp/catalog` contains the repository ID and manifest path before reporting a live listing; an `X-WebMCP-Source: bundled` response is an offline fallback, not proof of current indexing. Report pending status and receipt ID accurately if the job has not completed. Do not invent an indexed state or promise future checks unless requested.
+- Complete directory publication automatically after the requested GitHub publication. For an already-listed project, publish each requested new version to the directory as well. A contribution PR alone does not publish a listing.
+- Call `webmcp_publish_index` with `directory` (the local Git project root), `repository` (canonical GitHub URL), `repositoryId` (from the publication workflow), `commit` (the full pushed commit SHA), and `manifestPath` (usually `webmcp.json`). The tool reads the committed manifest and source, checks their digest, submits them to `https://deepdeck.getmegaportal.com/api/webmcp/submissions`, and automatically retains a per-project update credential outside the publishable workspace. It does not call GitHub. Keep that credential private; do not print it or commit it.
+- The Cloudflare index validates the supplied package and writes D1 synchronously. A successful response is `200` with `status: indexed`, the exact commit/source digest and a relative `statusUrl`. There is no GitHub scan, Release prerequisite, topic discovery or indexing queue. Never submit only a repository URL or tell the user to wait for polling.
+- When the Browser tool is unavailable, use the local publication helper shipped with DeepDeck or POST the same complete payload: `repository`, `repositoryId`, `manifestPath`, `commit`, `manifest`, `source`, and `publisherToken`. Read manifest/source from the exact local Git commit, generate a cryptographically random 32-byte hexadecimal project credential once, save it privately before sending, and reuse it for retries and updates. Do not fetch GitHub to assemble the index request; use the local publication artifact and publication result.
+- The helper automatically retries temporary network failures and `429`/server errors using the same payload and credential. Honor `Retry-After`. A `400` identifies a package error to correct; a `403` rejects a different publisher credential or a moderated project. Never discard a saved credential and retry as a new publisher. Publication failure must be reported separately from a successful GitHub push.
+- Verify the returned status URL and `https://deepdeck.getmegaportal.com/api/webmcp/catalog` contain the exact repository ID, manifest path and published commit before reporting completion. `X-WebMCP-Source: bundled` is an outage fallback, not proof of publication. An unknown response requires reading status before retrying.
+- Directory metadata comes from the published package submitted by its publisher. This does not certify GitHub ownership or functional site behavior. Installation still previews and verifies repository identity and the pinned commit/source through the existing installer. Do not open a registry PR, edit a registry snapshot, deploy the website, or request a GitHub service token to list a project.
 
 ## Completion
 

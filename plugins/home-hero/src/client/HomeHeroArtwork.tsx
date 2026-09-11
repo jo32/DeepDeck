@@ -505,10 +505,11 @@ export function HomeHeroArtwork({
       ref={artworkRef}
       className={css.artwork}
       data-deepdeck-home-hero=""
+      data-composer-phase={visualPhase}
       data-motion={motionName}
       data-action={actionMode}
     >
-      <div className={css.heroTitleMask} aria-hidden="true" />
+      <div className={css.heroTitleMask} data-deepdeck-home-hero-title-mask="" aria-hidden="true" />
       <span
         ref={heroTargetRef}
         className={css.heroTarget}

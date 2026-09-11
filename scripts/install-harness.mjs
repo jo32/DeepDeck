@@ -20,7 +20,8 @@ const result = spawnSync(
   [packageManager, "install", "--frozen-lockfile"],
   {
     cwd: harnessRoot,
-    env: { ...process.env, CI: "true" },
+    // Old Corepack's VM compile cache cannot load pnpm 11's ESM shim.
+    env: { ...process.env, CI: "true", DISABLE_V8_COMPILE_CACHE: "1" },
     stdio: "inherit",
   },
 );

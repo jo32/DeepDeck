@@ -6,6 +6,9 @@ export default defineConfig({
     // Plugin UI fixtures must share the renderer's React instance.
     dedupe: ["react", "react-dom"],
     alias: {
+      "@deepseek-ai/dsh-client-store": fileURLToPath(
+        new URL("../../vendor/deepseek-harness/packages/client/store/lib/index.js", import.meta.url),
+      ),
       "@deepseek-ai/dsh-client-ui-primitives": fileURLToPath(
         new URL("./test/fixtures/ui-primitives.ts", import.meta.url),
       ),

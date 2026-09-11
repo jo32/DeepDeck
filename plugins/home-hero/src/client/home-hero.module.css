@@ -66,13 +66,8 @@
   right: 0;
   left: 0;
   height: 80px;
-  background: var(--deepdeck-hero-title-mask-background, color-mix(in srgb, rgb(97 135 216) 4.5%, var(--dsw-alias-bg-base)));
-  mask-image: var(--deepdeck-hero-title-mask, radial-gradient(
-    ellipse 48% 48% at 50% 50%,
-    #000 0%,
-    #000 60%,
-    transparent 100%
-  ));
+  background: var(--deepdeck-hero-title-mask-background, var(--dsw-alias-bg-base));
+  mask-image: var(--deepdeck-hero-title-mask, none);
 }
 
 .artwork:not([data-motion='resting']) .heroTitleMask {
@@ -340,4 +335,16 @@
   .mascot[data-motion='launching'] .liquidBody::before {
     animation: none;
   }
+}
+
+/* The renderer's documented slot anchor owns the blank composer's geometry.
+   Harness 0.1.1 positioned its internal hero stack; newer releases do not.
+   Use the public slot boundary so the mask and orb keep following the card
+   without depending on upstream classes or internal element nesting. */
+:global([data-slot='conversation.composer']):has([data-deepdeck-home-hero][data-composer-phase='blank']) {
+  display: flex !important; /* Override the outlet's inline display: contents. */
+  position: relative;
+  flex-direction: column;
+  align-self: center;
+  width: min(calc(var(--dsh-composer-card-max-width, 780px) + 2 * var(--dsh-composer-side-clearance, 16px)), 100%);
 }

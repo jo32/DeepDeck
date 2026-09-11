@@ -24,14 +24,7 @@
       }
     }
   ],
-  "triggers": {
-    "crons": [
-      "*/5 * * * *"
-    ]
-  },
-  "vars": {
-    "DISCOVER_TOPICS": "true"
-  },
+  "triggers": { "crons": [] },
   "observability": {
     "enabled": true
   },

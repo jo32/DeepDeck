@@ -1,37 +1,34 @@
-# WebMCP index service
+# WebMCP directory service
 
-A standalone Cloudflare Worker with D1 stores repository candidates and verified directory entries. The existing Vercel website proxies the service; desktop clients keep their official-site API URL. No desktop or website deployment is required when repository records change.
+A Cloudflare Worker validates publisher-submitted packages and stores their directory metadata in D1. The existing website proxies the Worker. Publishing and browsing make **no GitHub requests**. There is no indexing cron, topic discovery, GitHub token, request budget or background validation queue.
 
-## Local validation
+## Publication flow
+
+After the requested GitHub publication, the Site Agent calls `webmcp_publish_index` with its local Git project directory, repository URL/ID, full pushed commit and manifest path. The tool reads that commit’s manifest and source, checks the source digest and posts the complete package to `/api/webmcp/submissions`. It generates and saves a project update credential automatically outside the publishable workspace, before sending the first request. Retries reuse the same credential and payload.
+
+The HTTP payload is `repository`, `repositoryId`, `manifestPath`, `commit`, `manifest`, `source`, and `publisherToken` (32 random bytes in lowercase hex). The Worker validates the schema, exact HTTPS origin, redistribution license, 64 KB manifest limit, 512 KB source limit and source SHA-256. The request limit is 4 MB, including JSON escaping. It does not fetch, compile or execute source. D1 stores directory metadata, the manifest, the publication digest and a hash of the update credential; the source and raw credential are not retained.
+
+A successful `200` response says `indexed` and includes the exact commit/hash plus a status URL. The entry is immediately available from the catalog. Repeating the same request is idempotent; a new version with the same saved project credential updates the listing. Another credential cannot overwrite it. `enabled=0` remains an administrative moderation decision. First submission establishes a directory publishing credential, not proof of GitHub account ownership. The installer still checks the actual repository ID and pinned commit/source before activation.
+
+A URL-only request returns `400` with instructions to publish the complete package. `429` includes `Retry-After`; the client retries automatically. `503` reports an unavailable service, not queued success. The status of an old unindexed URL-only record is `needs_package` until a full package is published.
+
+## Local verification
 
 ```sh
 pnpm --filter @deepdeck/webmcp-index db:local
-pnpm --filter @deepdeck/webmcp-index dev
 pnpm --filter @deepdeck/webmcp-index check
 pnpm --filter @deepdeck/webmcp-index test
 pnpm --filter @deepdeck/webmcp-index build
 ```
 
-Set an optional read-only `GITHUB_TOKEN` in ignored `.dev.vars` to avoid anonymous GitHub limits. Never put tokens in client variables or Wrangler vars. The `nodejs_compat` flag supports the same bounded GitHub reader and hash validation used by the desktop. Tests use actual local D1 and mocked GitHub transport, including real blob/SHA validation. The Worker never compiles or executes repository source.
+Tests use actual local D1. They verify synchronous publication with outbound networking disabled, integrity rejection, idempotency, updates, concurrency, credential isolation, legacy records and moderation.
 
-With `wrangler dev --test-scheduled`, request `/__scheduled` to run a local cron tick. Production uses the configured five-minute Cron Trigger.
+## Deployment and migration
 
-## Deployment
+Use the existing Wrangler login and the existing `deepdeck-webmcp-index` D1 database. Apply migrations with `wrangler d1 migrations apply DB --remote`, then deploy with `wrangler deploy`. Migration `0002_direct_publication.sql` adds publication fields without deleting legacy records. The empty cron configuration removes the former polling schedule. No GitHub service token is needed.
 
-Use an existing Wrangler login. Create the scoped D1 database once with `wrangler d1 create deepdeck-webmcp-index` and save the returned exact database ID in `wrangler.jsonc`. Apply `wrangler d1 migrations apply DB --remote`, configure an optional read-only `GITHUB_TOKEN` via `wrangler secret put GITHUB_TOKEN`, then `wrangler deploy`. Before using an existing database, inspect its name/ID and applied migrations. The initial migration queues the existing NGA repository for verification; it does not blindly trust a historical snapshot.
+Legacy entries already containing verified metadata remain discoverable even if their last GitHub poll failed. During the one-time migration, automatically provision a random project credential in the publisher’s private credential directory and store only its SHA-256 in `publisher_token_hash` for those known existing projects. Do not allow an anonymous request to claim an existing verified listing. Existing unindexed URL-only submissions accept their first complete package normally.
 
-Configure **server-only** `WEBMCP_INDEX_URL=https://<deployed-worker-host>` in the Vercel website project and deploy the website once. It must point to the Worker origin, never to the website's own proxy. The proxy uses short timeouts, bounded bodies, standard JSON and the upstream response status. No custom domain or DNS cutover is required for this arrangement. Public clients keep using the official website domain.
+The website’s server-only `WEBMCP_INDEX_URL` still points at the Worker origin. Deploy the website’s larger publication proxy before enabling the new publisher. Catalog responses use `no-store` so successful publication is visible immediately. Verify `/health` reports `direct-publication`, the Worker’s schedule list is empty, and publishing a real authorized package returns `indexed` with the same commit in the official catalog.
 
-Verify `/health`, `/api/webmcp/catalog`, a POST to `/api/webmcp/submissions`, its returned status URL, and the official-site equivalents. An initial empty catalog is expected until the first successful cron. Check that the NGA entry is indexed before switching the website to the service. Regular GitHub indexing may require a read-only token at larger scale; a developer's broad personal token should not be copied into the Worker.
-
-## Operations and limits
-
-- Without a service token, a D1 budget caps GitHub requests at 40/hour; token-backed indexing is capped at 4,500/hour. Exhausted budget defers jobs without invalidating a verified listing. Anonymous indexing is deliberately slow.
-- The scheduled handler claims up to ten due projects with ten-minute leases and performs bounded, sequential GitHub validation. Overlapping invocations cannot process the same active lease. Successful refreshes run every six hours; failures back off to one day. Status and last verified metadata persist in D1.
-- The public endpoint accepts only HTTPS GitHub repository URLs and relative manifest paths. It cannot choose fetch destinations, inject SQL, set repository identity/metadata, reset a lease/backoff, or change moderation. Input is limited to 2 KB, and a global edge rate-limit binding allows ten submission requests/minute per Cloudflare location. This is a coarse abuse limit, not authentication or a strict global quota. The SQL admission check caps the database at 5,000 candidates and unverified candidates at 1,000. Failed unverified candidates expire after seven days. Revisit admission capacity before scaling beyond these bounds.
-- `DISCOVER_TOPICS=true` enables an hourly GitHub repository search for `topic:webmcp`, including forks. It cycles over at most ten pages of 30 recently updated repositories, enqueues root manifests, and validates them like submissions. This is best-effort discovery, not an exhaustive GitHub crawl. Set it to `false` for submission-only operation.
-- To suppress a known listing, run a parameterized/admin-reviewed D1 update setting `enabled=0` for its exact `key`. Public resubmission cannot reverse this. To re-enable, set `enabled=1,next_check=0`. No unauthenticated moderation API is exposed.
-- To refresh a known repository immediately after an upstream fix, an administrator can set its `next_check=0`. Public submissions intentionally cannot force repeated GitHub fetches.
-- Inspect Wrangler tail/logs and D1 state when a job fails. Errors returned publicly are sanitized. For a database failure, API requests return 503; the website retains its labeled offline snapshot.
-
-Cloudflare's global network does not guarantee Mainland China availability. This design removes GitHub from client requests and keeps the existing official domain; verify availability from the target network separately.
+The endpoint accepts at most ten publications per minute per Cloudflare location and caps the directory at 5,000 projects. These are traffic/storage limits, independent of GitHub. Administrative recovery or suppression uses the existing D1 access; update credentials must stay out of logs, URLs and Git repositories.

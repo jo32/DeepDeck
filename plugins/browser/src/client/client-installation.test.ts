@@ -5,8 +5,10 @@ import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import { Context, Service } from '../../../../vendor/deepseek-harness/vendor/cordis/lib/index.js'
 import { SlotCore } from '../../../../vendor/deepseek-harness/packages/client/ui-slots/lib/index.js'
-import { apply } from './index.js'
+import { apply, inject } from './index.js'
+import { createBrowserClient, type BrowserClientService } from './browser-api.js'
 import { WebMCPMarket } from './WebMCPMarket.js'
 import { BrowserSessionHeader } from './BrowserSessionHeader.js'
 import { createWorkspaceFiles } from './WorkspaceFiles.js'
@@ -16,6 +18,47 @@ vi.mock('./WorkspaceFiles.js', () => ({ createWorkspaceFiles: vi.fn(() => () => 
 afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks() })
 
 describe('Browser Client Cordis assembly', () => {
+  it('restores a saved Site Agent through the declared Remote namespace in a real Cordis scope', async () => {
+    const ctx = new Context()
+    class RemoteService extends Service {
+      constructor(context: Context) { super(context, 'remote') }
+    }
+    new RemoteService(ctx)
+    const list = vi.fn(async () => ({ ok: true, value: [] }))
+    // Remote namespaces are supplied by a sibling plugin, not the root fiber.
+    const remotes = ctx.plugin({ apply(scope) { scope.provide('remote.fileReferences', { list }) } })
+    await remotes.await()
+    const open = vi.fn()
+    const binding = { session: {} }
+    const generation = {}
+    for (const name of inject) {
+      if (name === 'remote' || name === 'remote.fileReferences') continue
+      ctx.provide(name, name === 'sessions' ? {
+        list: { getSnapshot: () => ({ byId: { 'saved-session': { cwd: '/site', running: false } } }) },
+        binding: () => binding, open,
+      } : name === 'connection' ? { generation: { getSnapshot: () => generation } } : {})
+    }
+    const requests: Record<string, unknown>[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      const action = JSON.parse(init.body)
+      requests.push(action)
+      return { ok: true, json: async () => ({
+        id: 'site', sessionId: 'saved-session', workspacePath: '/site', mode: 'use', boundTabId: 'tab',
+      }) }
+    }))
+    let browser!: BrowserClientService
+    const fiber = ctx.plugin({ inject: [...inject], apply(scope) { browser = createBrowserClient(scope) } })
+    try {
+      await fiber.await()
+      const selection = { siteId: 'site', sessionId: 'saved-session', tabId: 'tab' }
+      await expect(browser.prepareAgent('tab', 'use', false)).resolves.toEqual(selection)
+      await expect(browser.prepareAgent('tab', 'use', false)).resolves.toEqual(selection)
+      expect(list).toHaveBeenCalledExactlyOnceWith('saved-session', '', undefined)
+      expect(requests.filter(value => value.action === 'site.bind')).toHaveLength(1)
+      expect(open).toHaveBeenCalledWith('saved-session')
+    } finally { await fiber.dispose(); await remotes.dispose() }
+  })
+
   function install(url: string) {
     const overrideTokens = vi.fn(() => () => {})
     const character = { Icon: () => null, Character: () => null }

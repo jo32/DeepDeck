@@ -152,5 +152,6 @@ describe('Browser session coordination', () => {
   expect(prompt).toContain('/site/webmcp-publish-existing')
   expect(prompt).toContain('https://deepdeck.getmegaportal.com')
   expect(prompt).toContain('/api/webmcp/submissions')
-  expect(prompt).toContain('Do not open a registry PR')
+  expect(prompt).toContain('webmcp_publish_index')
+  expect(prompt).toContain('no GitHub requests')
  })

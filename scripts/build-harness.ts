@@ -24,7 +24,7 @@ if (typeof packageManager !== 'string' || !/^pnpm@\d+\.\d+\.\d+$/.test(packageMa
 const corepack = process.platform === 'win32' ? 'corepack.cmd' : 'corepack'
 
 function runPnpm(args: readonly string[], environment: NodeJS.ProcessEnv): void {
-  const packageManagerEnvironment = { ...environment, CI: 'true' }
+  const packageManagerEnvironment = { ...environment, CI: 'true', DISABLE_V8_COMPILE_CACHE: '1' }
   delete packageManagerEnvironment.npm_execpath
   delete packageManagerEnvironment.npm_config_user_agent
   const result = spawnSync(corepack, [packageManager, ...args], {

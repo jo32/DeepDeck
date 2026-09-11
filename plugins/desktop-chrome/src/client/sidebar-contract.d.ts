@@ -7,10 +7,18 @@ export interface DesktopAppNavigationOwnerProps {
   readonly closeApps: () => void
 }
 
+/** The desktop layout owns horizontal geometry independently of tool tabs. */
+export interface DesktopWorkbenchOwnerProps {
+  readonly width: number
+  readonly minWidth: number
+  readonly maxWidth: number
+  readonly onResize: (width: number) => void
+}
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /** Session tools beside the main conversation, within the desktop layout. */
-    'desktop.workbench': { kind: 'single'; scope: 'root'; owner: {} }
+    'desktop.workbench': { kind: 'single'; scope: 'root'; owner: DesktopWorkbenchOwnerProps }
     /** Top-level standalone window surfaces, contributed only in their own window. */
     'desktop.surface': {
       kind: 'single'

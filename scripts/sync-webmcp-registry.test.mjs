@@ -24,16 +24,18 @@ test('website reads changing index data without a build and labels outage fallba
     assert.equal((await readCatalog(async () => Response.json({bad:true}))).source, 'bundled');
   } finally { delete process.env.WEBMCP_INDEX_URL; }
 });
-test('submission proxy preserves pending and rate-limit status without forwarding credentials', async () => {
+test('publication proxy forwards full packages and preserves indexed and rate-limit responses', async () => {
   process.env.WEBMCP_INDEX_URL = 'https://index.example.com';
   try {
-    const req = new Request('https://site/api/webmcp/submissions', {method:'POST', headers:{'content-type':'application/json', authorization:'private'}, body:'{"repository":"https://github.com/test/project"}'});
+    const body = JSON.stringify({repository:'https://github.com/test/project',source:'x'.repeat(100000),publisherToken:'a'.repeat(64)});
+    const req = new Request('https://site/api/webmcp/submissions', {method:'POST', headers:{'content-type':'application/json', authorization:'private'}, body});
     const response = await proxySubmission(req, async (url, init) => {
       assert.equal(new URL(url).hostname, 'index.example.com');
       assert.equal(init.headers.authorization, undefined);
-      return Response.json({id:'a'.repeat(64),status:'pending'}, {status:202});
+      assert.equal(init.body,body);
+      return Response.json({id:'a'.repeat(64),status:'indexed'});
     });
-    assert.equal(response.status, 202); assert.equal((await response.json()).status, 'pending');
+    assert.equal(response.status, 200); assert.equal((await response.json()).status, 'indexed');
     const limited = await proxySubmission(new Request('https://site/api/webmcp/submissions?id='+'a'.repeat(64)), async () => Response.json({error:'slow down'}, {status:429}));
     assert.equal(limited.status,429); assert.equal(limited.headers.get('retry-after'),'60');
   } finally { delete process.env.WEBMCP_INDEX_URL; }

@@ -38,6 +38,7 @@ describe("HomeHeroArtwork", () => {
       children: createElement(HomeHeroArtwork, { session: snapshot, input: input(), t }),
     }));
     expect(html).toContain('data-motion="docked"');
+    expect(html).toContain('data-composer-phase="active"');
     expect(html).toContain('data-action="send"');
     expect(html).not.toContain('data-motion="resting"');
     expect(snapshot.blank).toBe(true)
@@ -51,6 +52,7 @@ describe("HomeHeroArtwork", () => {
     }));
 
     expect(html).toContain("data-deepdeck-home-hero")
+    expect(html).toContain('data-composer-phase="blank"')
     expect(html).toContain('data-character="alien"')
     expect(html).toContain('data-deepdeck-home-hero-native-cover=""')
     expect(html).toContain('data-interactive-enabled="true"')

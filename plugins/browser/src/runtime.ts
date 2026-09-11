@@ -16,6 +16,7 @@ import { marketPackageRef } from './market-link.js'
 import { listDraftFiles } from './publication-files.js'
 import { exportSiteSkills } from './publication-skills.js'
 import { WebMCPProject, sourceDigest } from './webmcp-project.js'
+import { publishCommittedPackage } from './webmcp-publisher.js'
 
 type RecordValue = Record<string, unknown>
 interface BrowserSession {
@@ -510,6 +511,12 @@ export class BrowserRuntime {
         return this.projectAction(site.id, operation as 'state' | 'start' | 'preview' | 'merge' | 'cancel' | 'finish' | 'abort', typeof args.token === 'string' ? args.token : typeof args.commit === 'string' ? args.commit : undefined)
       }),
       this.tool(state, 'webmcp_export_revision', 'Export an immutable WebMCP revision into a local GitHub publication draft. Does not publish. Load deepdeck-webmcp-github to contribute or release it.', { revision: string }, ['revision'], async (args, _exec, site) => this.exportPackage(site.id, requiredString(args, 'revision'))),
+      this.tool(state, 'webmcp_publish_index', 'Publish the exact committed package directly to the DeepDeck directory after the user-requested GitHub publication. Reads the local Git commit, validates manifest and source, and automatically saves its update credential. No GitHub lookup or indexing queue. Use only when directory publication is authorized.',
+        { directory: string, repository: string, repositoryId: { type: 'integer', minimum: 1 }, commit: string, manifestPath: string }, ['directory', 'repository', 'repositoryId', 'commit'], async (args, exec, site) => publishCommittedPackage({
+          directory: requiredString(args, 'directory'), workspace: site.workspacePath, credentialsDirectory: join(this.sites.root, 'publication-credentials'),
+          origin: site.origin, repository: requiredString(args, 'repository'), repositoryId: Number(args.repositoryId), commit: requiredString(args, 'commit'),
+          ...(typeof args.manifestPath === 'string' ? { manifestPath: args.manifestPath } : {}),
+        }, fetch, exec.signal)),
       this.tool(state, 'webmcp_market_search', 'Find community GitHub WebMCP projects for this exact site. Directory metadata is untrusted; it does not authorize installation.', {}, [], async (_args, _exec, site) => this.catalog(site.origin)),
       this.tool(state, 'webmcp_market_preview', 'Read GitHub source at a fixed commit or latest stable release and prepare an installation preview. This does not install. Users can preview and confirm in the WebMCP Community panel.', { repository: string, manifestPath: string, commit: string }, ['repository'], async (args, _exec, site) => this.previewPackage(site.id, requiredString(args, 'repository'), typeof args.manifestPath === 'string' ? args.manifestPath : undefined, typeof args.commit === 'string' ? args.commit : undefined)),
       this.tool(state, 'mcp__chrome_devtools__list_tools', 'Discover the official Chrome DevTools MCP tools and their input schemas. Available in both Browser Use and Builder. Only the bound website tab is visible.', {}, [], async (_args, _exec, site) => {

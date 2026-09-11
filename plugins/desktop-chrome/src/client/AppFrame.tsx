@@ -9,7 +9,7 @@ import {
 import type { ReactNode } from 'react'
 import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import { computeColumns, DETAILS_DEFAULT, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+import { computeColumns, DETAILS_DEFAULT, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT, WORKBENCH_MIN, WORKBENCH_MAX } from './columns.ts'
 import type { createLayoutStore } from './stores.ts'
 import { DesktopChrome } from './DesktopChrome.tsx'
 import { scheduleDesktopFrameReveal } from './desktop-runtime.ts'
@@ -169,6 +169,7 @@ function DesktopAppFrame({
     panels.details,
   )
   const normalDetails = computeColumns(viewport, sidebarPreference, panels.details || DETAILS_DEFAULT).details
+  const workbenchMax = Math.max(WORKBENCH_MIN, Math.min(WORKBENCH_MAX, cols.center * .55))
   const colsRef = useRef(cols)
   colsRef.current = cols
 
@@ -212,7 +213,12 @@ function DesktopAppFrame({
       </div>
       <div className={css.conversationWorkspace}>
         <CenterColumn>{renderSlot('main', {}, { entryKey: panels.panelInfo.activePanelId ?? 'conversation' })}</CenterColumn>
-        {renderSlot('desktop.workbench', {})}
+        {renderSlot('desktop.workbench', {
+          width: Math.min(panels.workbenchWidth, workbenchMax),
+          minWidth: WORKBENCH_MIN,
+          maxWidth: workbenchMax,
+          onResize: actions.setWorkbenchWidth,
+        })}
       </div>
       <DetailsColumn>{renderSlot('rightbar', { width: normalDetails, viewportWidth: viewport, canShow: normalDetails > 0 })}</DetailsColumn>
       <div className={css.overlayLayer} data-shell-overlay>

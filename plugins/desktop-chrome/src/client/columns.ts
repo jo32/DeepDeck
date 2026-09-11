@@ -9,6 +9,9 @@ export const SIDEBAR_AUTO_COLLAPSE = 1024
 export const DETAILS_MIN = 300
 export const DETAILS_MAX = 520
 export const DETAILS_DEFAULT = 360
+export const WORKBENCH_MIN = 280
+export const WORKBENCH_MAX = 800
+export const WORKBENCH_DEFAULT = 360
 
 /** Clamp a panel width into its supported range. */
 export function clampWidth(px: number, min: number, max: number): number {

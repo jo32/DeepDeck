@@ -3,6 +3,7 @@ import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-sto
 import {
   clampWidth, DETAILS_DEFAULT, DETAILS_MAX, DETAILS_MIN,
   SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
+  WORKBENCH_DEFAULT, WORKBENCH_MAX, WORKBENCH_MIN,
 } from './columns.ts'
 
 export interface LayoutState {
@@ -10,6 +11,7 @@ export interface LayoutState {
   rightbarFullscreen: boolean
   sidebar: number
   details: number
+  workbenchWidth: number
   narrow: boolean
   narrowExpanded: boolean
 }
@@ -20,6 +22,7 @@ type LayoutActions = {
   closeRightbar: (draft: LayoutState) => void
   setSidebar: (draft: LayoutState, px: number) => void
   setDetails: (draft: LayoutState, px: number) => void
+  setWorkbenchWidth: (draft: LayoutState, px: number) => void
   toggleSidebar: (draft: LayoutState) => void
   setNarrow: (draft: LayoutState, narrow: boolean) => void
   openDetails: (draft: LayoutState) => void
@@ -34,6 +37,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       rightbarFullscreen: false,
       sidebar: SIDEBAR_DEFAULT,
       details: 0,
+      workbenchWidth: WORKBENCH_DEFAULT,
       narrow: false,
       narrowExpanded: false,
     }),
@@ -46,6 +50,9 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       setDetails: (draft, px: number) => {
         draft.details = clampWidth(px, DETAILS_MIN, DETAILS_MAX)
+      },
+      setWorkbenchWidth: (draft, px: number) => {
+        draft.workbenchWidth = clampWidth(px, WORKBENCH_MIN, WORKBENCH_MAX)
       },
       toggleSidebar: (draft) => {
         if (draft.narrow) draft.narrowExpanded = !draft.narrowExpanded

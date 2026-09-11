@@ -27,7 +27,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 
-export const inject = ['remote', 'uiWorkspace', 'slots', 'sessions', 'workspaces', 'connection', 'locale', 'theme', 'deepdeckCharacter', 'modules'] as const
+export const inject = ['remote', 'remote.fileReferences', 'uiWorkspace', 'slots', 'sessions', 'workspaces', 'connection', 'locale', 'theme', 'deepdeckCharacter', 'modules'] as const
 
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(BROWSER_LOCALE, { en, zh }), 'deepdeck browser: dictionaries')

@@ -59,7 +59,7 @@ export function WebMCPCommunity({ site, browser, running, t, refresh, onOpenFile
           <a href={entry.repository} target="_blank" rel="noreferrer">{entry.name}</a><p>{entry.description}</p>
           <GitHubAuthor author={entry.author} /><small>{entry.version ?? t('communityNoRelease')} · {entry.status}</small>
           {entry.syncError && <p role="status">{t('communityStale')}</p>}
-          <button disabled={busy || entry.status !== 'active'} onClick={() => { const revision = entry.version ? undefined : entry.commit; setRepository(entry.repository); setPath(entry.manifestPath); setCommit(revision ?? ''); void inspect(entry.repository, entry.manifestPath, revision, entry.repositoryId) }}>{t('communityPreview')}</button>
+          <button disabled={busy || entry.status !== 'active'} onClick={() => { const revision = entry.commit; setRepository(entry.repository); setPath(entry.manifestPath); setCommit(revision ?? ''); void inspect(entry.repository, entry.manifestPath, revision, entry.repositoryId) }}>{t('communityPreview')}</button>
         </article>)}
       </>}
     </div>

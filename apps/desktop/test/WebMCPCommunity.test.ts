@@ -32,8 +32,10 @@ it('opens source preview without installing, then sends only the confirmed token
   expect(container.textContent).not.toContain('review me')
 })
 it('filters directory projects and expands installation instructions', async () => {
-  const entry = { id: 'articles', repositoryId: 1, repository: 'https://github.com/test/webmcp', manifestPath: 'webmcp.json', name: 'Article tools', description: 'Read articles', origin: 'https://example.com', tags: ['reading'], status: 'active' }
+  const entry = { id: 'articles', repositoryId: 1, repository: 'https://github.com/test/webmcp', manifestPath: 'webmcp.json', name: 'Article tools', description: 'Read articles', origin: 'https://example.com', tags: ['reading'], status: 'active', version: '1.0.0', commit: 'a'.repeat(40) }
   mount(); await act(async () => { root!.render(createElement(WebMCPDirectory, { catalog: { formatVersion: 1, generatedAt: null, entries: [entry] }, locale: 'en' })) })
+  const install = container.querySelector('a[href^="deepdeck://"]') as HTMLAnchorElement
+  expect(new URL(install.href).searchParams.get('commit')).toBe(entry.commit)
   await click('Use in DeepDeck')
   expect(container.textContent).toContain('Manifest path')
   await click('Use in DeepDeck')

@@ -4,10 +4,12 @@
 
 `/webmcp` and `/zh/webmcp` provide searchable GitHub project references, upstream
 issues/releases and installation instructions for the Browser Community panel.
-Submit GitHub repository URLs through `/webmcp#submit` or POST JSON to
-`/api/webmcp/submissions`. A Cloudflare Worker and D1 validate, index and refresh
-projects. The website proxies the live catalog; `/webmcp/catalog.json` rewrites
-to the same API for older clients. No listing PR or rebuild is required.
+The Site Agent publishes the exact committed package directly to
+`/api/webmcp/submissions`. A Cloudflare Worker validates the supplied manifest
+and source, then writes D1 synchronously. No GitHub indexing requests, token,
+topic discovery or queue are involved. The website proxies the live catalog;
+`/webmcp/catalog.json` rewrites to the same API for older clients. New versions
+are published the same way, with the client’s automatically saved update credential.
 See `registry/webmcp/README.md` for the submission contract.
 
 DeepDeck 的官方介绍站，使用 Next.js App Router 与 Geist 构建。
@@ -55,7 +57,7 @@ The `/webmcp` and `/zh/webmcp` directory pages share their cards and filters wit
 
 Standalone cards use the `deepdeck://webmcp/install` protocol and retain manual repository instructions plus a download/update fallback. A desktop release containing protocol registration is required for OS handoff. Deploy the website before expecting the embedded production directory to support the handshake; no deployment is performed by the implementation or its tests.
 
-The directory UI now lives in `plugins/browser/src/client/WebMCPDirectory.tsx`, with a website submission wrapper here. DeepDeck renders that shared component locally; it does not depend on the public HTML route being deployed. The live JSON catalog is fetched by the Host, with a packaged snapshot fallback. Explicit remote embeds retain the handshake protocol.
+The directory UI now lives in `plugins/browser/src/client/WebMCPDirectory.tsx`, with a website publication instructions here. DeepDeck renders that shared component locally; it does not depend on the public HTML route being deployed. The live JSON catalog is fetched by the Host, with a packaged snapshot fallback. Explicit remote embeds retain the handshake protocol.
 
 ## Live repository index
 

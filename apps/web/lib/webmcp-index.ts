@@ -33,8 +33,8 @@ export async function proxySubmission(request: Request, transport: typeof fetch 
     if (request.method === 'POST' && !request.headers.get('content-type')?.startsWith('application/json')) return Response.json({ error: 'Use application/json' }, { status: 415, headers })
     let body: string | undefined
     if (request.method === 'POST') {
-      try { body = await boundedResponse(new Response(request.body, { headers: request.headers }), 2048) }
-      catch { return Response.json({ error: 'Submission exceeds 2 KB.' }, { status: 413, headers }) }
+      try { body = await boundedResponse(new Response(request.body, { headers: request.headers }), 4 * 1024 * 1024) }
+      catch { return Response.json({ error: 'Publication exceeds 4 MB.' }, { status: 413, headers }) }
     }
     const response = await transport(url, { method: request.method, ...(body === undefined ? {} : { body }), headers: { 'Content-Type': 'application/json' }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000) })
     const value: unknown = JSON.parse(await boundedResponse(response, 8192))

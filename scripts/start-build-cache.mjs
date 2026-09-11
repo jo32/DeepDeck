@@ -25,6 +25,8 @@ export const desktopBuildInputs = [
   "branding",
   "patches",
   "scripts/deepdeck-client-bundle.ts",
+  "scripts/start-build-cache.mjs",
+  ".deepdeck/cache/harness-build.json",
   "scripts/ensure-codex-connect-dependencies.mjs",
   "scripts/verify-codex-connect-patch.mjs",
   "apps/desktop/package.json",
@@ -251,6 +253,8 @@ function runDesktopBuild(workspaceRoot) {
 }
 
 export async function ensureDesktopBuild(workspaceRoot = repositoryRoot) {
+  const { ensureHarnessBuild } = await import("./harness-build-cache.mjs");
+  await ensureHarnessBuild(workspaceRoot);
   const status = await inspectDesktopBuildCache({ workspaceRoot });
   if (status.fresh) {
     console.log("DeepDeck：源码未变化，复用已有桌面构建产物。");

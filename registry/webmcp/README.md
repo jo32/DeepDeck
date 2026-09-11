@@ -1,29 +1,21 @@
-# WebMCP repository index
+# WebMCP directory
 
-The official directory is now a live repository index backed by a Cloudflare Worker and D1. GitHub hosts source, releases, issues and contribution PRs. **Listing a project does not require a PR to DeepDeck.** This directory contains documentation only; database migrations and service code live in [`apps/webmcp-index`](../../apps/webmcp-index).
+The official directory uses a Cloudflare Worker and D1. GitHub hosts project source and collaboration; it is not part of indexing or catalog reads. A project does not require a DeepDeck registry PR or a GitHub Release to appear in the directory.
 
-## Submit a repository
+## Publish and update
 
-Use [Submit project](https://deepdeck.getmegaportal.com/webmcp#submit), or:
+In DeepDeck, choose **Publish** in the site Agent, or ask it to publish and list the project. After publishing the source, the Agent calls `webmcp_publish_index`. The tool sends the exact committed manifest and source directly to the directory. The Worker checks the package and source digest, writes D1, and returns `indexed` immediately. The Agent repeats this automatically for requested new versions.
 
-```sh
-curl --fail-with-body https://deepdeck.getmegaportal.com/api/webmcp/submissions \
-  -H 'Content-Type: application/json' \
-  -d '{"repository":"https://github.com/owner/project","manifestPath":"webmcp.json"}'
-```
+The tool generates and privately saves a per-project update credential outside the Git project. The same credential makes retries idempotent and permits future updates. Do not print or commit it. There is no GitHub indexing token, topic scan, polling schedule, manual queue refresh or additional submission form.
 
-The repository must be public and follow the [package contract](../../plugins/browser/skills/deepdeck-webmcp-github/references/repository-contract.md). The index independently resolves repository ID, canonical URL, release/commit, manifest, license and source hash. It never executes submitted source. Unreleased projects are discoverable with a full commit SHA; a listing is not functional verification.
+For custom publishing clients, POST the complete package to `https://deepdeck.getmegaportal.com/api/webmcp/submissions`: `repository`, `repositoryId`, `manifestPath`, `commit`, `manifest`, `source`, and `publisherToken`. Read the files from the exact local published commit. See the [package contract](../../plugins/browser/skills/deepdeck-webmcp-github/references/repository-contract.md) and [service documentation](../../apps/webmcp-index/README.md) for limits and credential handling. A repository URL alone is insufficient; the service never fetches its contents.
 
-A `202` response includes an `id` and relative `statusUrl`. GET that URL on the same official origin to check `pending`, `indexed`, or `failed`. Only `indexed` plus an entry in the [live catalog](https://deepdeck.getmegaportal.com/api/webmcp/catalog) confirms publication. Failed validation retries with backoff; correct the upstream repository instead of repeatedly submitting it. `429` asks you to wait; `503` indicates unavailable service or a full queue. Submission grants no ownership and cannot overwrite metadata or moderation decisions.
+`200` with `status: indexed` confirms publication. Verify the returned status URL and the exact commit in the [live catalog](https://deepdeck.getmegaportal.com/api/webmcp/catalog). `400` explains a package error, `403` rejects an unauthorized update or moderated project, `429` includes a retry delay, and `503` reports an unavailable service. The publication client automatically retries transient failures using its saved credential.
 
-Adding the GitHub `webmcp` topic also enables best-effort discovery of root `webmcp.json` manifests. Submit a URL explicitly for a custom manifest path. Discovery does not guarantee indexing.
+## Installation and availability
 
-## Updates and compatibility
+Directory metadata is publisher-submitted and does not certify GitHub ownership or live website functionality. Installation previews and verifies the actual repository identity and the full pinned commit/source before activation. Updating the directory does not silently replace an installed version.
 
-A cron tick checks up to ten due projects every five minutes. Successfully indexed projects refresh every six hours; failures retry from five minutes up to one day. Last verified metadata is retained, with unavailable status on a failed refresh. Repository renames resolve through the recorded immutable ID, so an unrelated repository reusing the old URL cannot replace an entry. Administrators may suppress a project using its D1 `enabled` field.
+The website proxies `/api/webmcp/catalog` and `/api/webmcp/submissions`; `/webmcp/catalog.json` remains an alias for older clients. Successful publications appear immediately without a website rebuild or desktop release.
 
-The website proxies the Worker at `/api/webmcp/catalog` and `/api/webmcp/submissions`; it does not fetch GitHub from a client device. `/webmcp/catalog.json` rewrites to the same live API for older apps. New entries and refreshed metadata become visible after the short catalog cache expires, without rebuilding the website or releasing the desktop app.
-
-During an outage, the website serves the bundled catalog with `X-WebMCP-Source: bundled` and `Cache-Control: no-store`. This is not proof of live indexing. The app retains its own offline fallback. `pnpm webmcp:sync` explicitly refreshes both checked-in fallback snapshots from the live service; it is no longer part of the website build. `--check` compares those snapshots, and `--validate` only validates the fetched live catalog.
-
-See the [service setup and operations](../../apps/webmcp-index/README.md) for deployment, D1 migrations, quotas and environment settings.
+During an outage, the website labels its bundled fallback with `X-WebMCP-Source: bundled`. This is not proof of live publication. `pnpm webmcp:sync` explicitly refreshes offline snapshots when preparing a desktop release; it is never part of the website build.
