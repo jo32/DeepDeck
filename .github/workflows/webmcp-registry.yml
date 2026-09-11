@@ -9,6 +9,8 @@ on:
       - 'plugins/browser/src/webmcp-package.ts'
       - 'plugins/browser/catalog.json'
       - 'apps/web/public/webmcp/catalog.json'
+      - 'apps/web/app/api/webmcp/**'
+      - 'apps/web/package.json'
       - '.github/workflows/webmcp-registry.yml'
   push:
     branches: [main]
@@ -32,7 +34,7 @@ jobs:
           package-manager-cache: false
       - name: Test registry validation
         run: npx --yes --package=tsx@4.22.4 tsx --test scripts/sync-webmcp-registry.test.mjs
-      - name: Validate references and committed catalog snapshots
-        run: npx --yes --package=tsx@4.22.4 tsx scripts/sync-webmcp-registry.ts --check
+      - name: Validate registry references against GitHub
+        run: npx --yes --package=tsx@4.22.4 tsx scripts/sync-webmcp-registry.ts --validate
         env:
           GH_TOKEN: ${{ github.token }}
