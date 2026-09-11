@@ -15,3 +15,6 @@ release/
 # Editor state
 .idea/
 .vscode/
+
+# Vercel local project settings and build output
+.vercel/

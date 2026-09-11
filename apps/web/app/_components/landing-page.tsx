@@ -271,6 +271,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
           </a>
           <nav className="nav-links" aria-label={content.aria.navigation}>
             <a href="#webmcp">{content.nav.webmcp}</a>
+            <a href={locale === 'zh' ? '/zh/webmcp' : '/webmcp'}>{locale === 'zh' ? '工具目录' : 'Directory'}</a>
             <a href="#showcase">{content.nav.apps}</a>
             <a href="#install">{content.nav.install}</a>
             <a href="#vibe">{content.nav.vibe}</a>

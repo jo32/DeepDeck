@@ -67,5 +67,8 @@
     "src/native-contract.d.ts",
     "cordis.patch.yml",
     "README.md"
-  ]
+  ],
+  "devDependencies": {
+    "@types/react": "^19.2.18"
+  }
 }

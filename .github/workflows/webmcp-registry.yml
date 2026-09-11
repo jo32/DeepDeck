@@ -1,0 +1,38 @@
+name: WebMCP registry
+
+on:
+  pull_request:
+    paths: &registry-paths
+      - 'registry/webmcp/**'
+      - 'scripts/sync-webmcp-registry*'
+      - 'plugins/browser/src/github-webmcp.ts'
+      - 'plugins/browser/src/webmcp-package.ts'
+      - 'plugins/browser/catalog.json'
+      - 'apps/web/public/webmcp/catalog.json'
+      - '.github/workflows/webmcp-registry.yml'
+  push:
+    branches: [main]
+    paths: *registry-paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.1
+          package-manager-cache: false
+      - name: Test registry validation
+        run: npx --yes --package=tsx@4.22.4 tsx --test scripts/sync-webmcp-registry.test.mjs
+      - name: Validate references and committed catalog snapshots
+        run: npx --yes --package=tsx@4.22.4 tsx scripts/sync-webmcp-registry.ts --check
+        env:
+          GH_TOKEN: ${{ github.token }}

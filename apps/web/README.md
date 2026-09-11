@@ -1,5 +1,14 @@
 # DeepDeck Website
 
+## WebMCP directory
+
+`/webmcp` and `/zh/webmcp` provide searchable GitHub project references, upstream
+issues/releases and installation instructions for the Browser Community panel.
+The checked-in `public/webmcp/catalog.json` starts empty. Add references under
+`registry/webmcp/entries` and run `pnpm webmcp:sync` at the repository root to refresh
+the snapshot; deploy the website to publish it. No GitHub credentials reach the
+page, and builds do not call GitHub. See `registry/webmcp/README.md` for contributions.
+
 DeepDeck 的官方介绍站，使用 Next.js App Router 与 Geist 构建。
 
 ## Local development
@@ -38,3 +47,15 @@ pnpm web:build
 - 更新产品介绍时，同步核对 `lib/metadata.ts` 和 `lib/structured-data.ts`，保持页面、搜索摘要和结构化数据的发布状态一致。
 
 保留 2026-09-05 的源码预览记录，并于 2026-09-06 新增 v1.0.38 正式发布条目。功能版块不显示固定版本号，下载入口统一指向 `releases/latest`；历史更新记录保留当时的版本与发布状态。
+
+## Embedded directory and installation
+
+The `/webmcp` and `/zh/webmcp` directory pages share their cards and filters with the DeepDeck WebMCP market. A validated loopback parent handshake enables embedded mode and its Install buttons; `?embed=deepdeck` alone grants no capability. The parent checks the exact iframe, market origin and per-instance nonce, then prepares and confirms source locally. The page never receives a local installation token or direct access to the Browser API.
+
+Standalone cards use the `deepdeck://webmcp/install` protocol and retain manual repository instructions plus a download/update fallback. A desktop release containing protocol registration is required for OS handoff. Deploy the website before expecting the embedded production directory to support the handshake; no deployment is performed by the implementation or its tests.
+
+The directory UI now lives in `plugins/browser/src/client/WebMCPDirectory.tsx`, with a client re-export here. DeepDeck renders that shared component locally; it does not depend on the public HTML route being deployed. The live JSON catalog is fetched by the Host, with a packaged snapshot fallback. Explicit remote embeds retain the handshake protocol.
+
+## Publish the registry website
+
+Build from the complete monorepo so the shared Browser directory component is available. For the existing `deepdeck` Vercel project, link the repository root to that project with its Vercel Root Directory set to `apps/web`, then run `vercel pull --yes --environment=production`, `vercel build --prod`, and `vercel deploy --prebuilt --prod` from the repository root. The Vercel configuration uses the pinned pnpm workspace install; Turbopack and output tracing include the monorepo root. Verify `/webmcp`, `/zh/webmcp`, and `/webmcp/catalog.json` after deployment. Never create a replacement Vercel project or change DNS for a registry update.
