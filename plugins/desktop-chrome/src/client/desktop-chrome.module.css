@@ -898,13 +898,16 @@
   overflow: hidden;
 }
 
-.conversationWorkspace { min-width: 0; min-height: 0; display: flex; overflow: hidden; }
+.conversationWorkspace { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 .detailsCol {
+  position: relative;
   min-width: 0;
-  overflow: hidden;
-  border-left: 1px solid var(--dsw-alias-border-l2);
+  overflow: visible;
 }
+
+.frame[data-rightbar-fullscreen],
+.frame[data-rightbar-fullscreen] .handle { transition: none; }
 
 .frame[data-details-collapsed] .detailsCol { border-left: none; }
 

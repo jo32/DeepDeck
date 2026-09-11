@@ -58,20 +58,21 @@ function CloseIcon() {
   )
 }
 
-export function RestartConfirmation({ useSessions, t }: RestartConfirmationProps) {
+export function RestartConfirmation({ useSessions, useSessionPendingInteraction, t }: RestartConfirmationProps) {
   const [api] = useState(desktopRestartBridge)
   const [request, setRequest] = useState<RestartRequestSnapshot | undefined>()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const sessions = useSessions(state => state)
+  const pending = useSessionPendingInteraction(state => state)
   const restartSessions = useMemo<RestartSessionSnapshot[]>(() => (
     Object.values(sessions.byId)
       .filter(summary => summary.running === true && summary.origin !== 'subagent')
       .map(summary => ({
         sessionId: summary.id,
-        continuation: summary.pendingInteraction === undefined,
+        continuation: !pending.has(summary.id),
       }))
-  ), [sessions])
+  ), [sessions, pending])
 
   useEffect(() => {
     if (api === undefined) return
@@ -121,7 +122,6 @@ export function RestartConfirmation({ useSessions, t }: RestartConfirmationProps
       closeLabel={t('restart.cancel')}
       className={css.restartDialog as string}
       onClose={() => { void decide(false) }}
-      headless
     >
       <div className={css.restartSurface} data-busy={busy || undefined}>
         <header className={css.restartHeader}>

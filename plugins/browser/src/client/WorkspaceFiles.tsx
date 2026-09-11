@@ -1,5 +1,10 @@
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { FileTree } from 'dsh-better-sidebar/src/client/FileTree.tsx'
 import { EditorHost } from 'dsh-better-sidebar/src/client/EditorHost.tsx'
 import { builtinViewers } from 'dsh-better-sidebar/src/client/builtins/viewers.tsx'
@@ -21,7 +26,7 @@ import { installDesktopWorkbench } from './DesktopWorkbench.js'
 /** Compose the pinned plugin's public modules; DeepDeck owns the Cordis mount. */
 export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: boolean } = {}) {
   const store = createSidebarStore()
-  store.setPrefs({ ...store.getPrefs(), ...(options.desktop ? { openByDefault: true } : {}), editorExplorer: true, browserInterceptLinks: false, interceptOpenPath: false })
+  store.setPrefs({ ...store.getPrefs(), ...(options.desktop ? { openByDefault: true } : {}), editorExplorer: true, browserInterceptLinks: false })
   const service = createBetterSidebarService(store)
   const context = ctx as unknown as Context
   const t = ctx.locale.bind(BROWSER_LOCALE)
@@ -94,13 +99,13 @@ export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: bo
       service.updateTab(tabId, { ...(initial ? { path: initial.path, title: initial.name } : {}), meta: { treeOpen: false } })
     }, [sessionId, site.workspacePath, root.home, tabId])
     const state = snapshot.sessionId === sessionId ? snapshot.state : undefined
-    const tab: SidebarTab | undefined = state && [...allLeaves(state.splits), ...allLeaves(state.bottomSplits)].flatMap(leaf => leaf.tabs).find(tab => tab.id === tabId)
+    const tab: SidebarTab | undefined = state && [...allLeaves(state.bottomSplits)].flatMap(leaf => leaf.tabs).find(tab => tab.id === tabId)
     if (!state || !tab) return <p>{t('filesConnecting')}</p>
     return <div className={css.workspace} data-deepdeck-workspace-files>
       {fileError && <p role="alert">{fileError}</p>}
       <div className={css.filePanes}>
         <div className={css.tree} aria-label={t('filesFolders')}>
-          <FileTree key={root.home} sessionId={sessionId} cwd={root.home} expanded={state.expanded} revealed={[]}
+          <FileTree store={store} key={root.home} sessionId={sessionId} cwd={root.home} expanded={state.expanded} revealed={[]}
             onToggle={path => store.reduce(state => toggleExpanded(state, path))}
             onOpenFile={path => service.updateTab(tabId, { path, title: path.split(/[\\/]/).pop() ?? path })}
             onReferenceFile={reference} refreshTick={refreshTick + uploadTick} onUploadRequest={(dir, items) => { void upload(dir, items) }} busy={uploading} />

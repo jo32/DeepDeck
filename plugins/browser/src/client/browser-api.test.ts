@@ -1,5 +1,10 @@
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { addressTarget, browserRequest, createBrowserClient } from './browser-api.js'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -41,12 +46,14 @@ describe('Browser session coordination', () => {
     const generation = {}
     const models = vi.fn(async () => {
       events.push('session.models')
-      return { result: { ok: true, value: {} } }
+      return { ok: true, value: [] }
     })
     const create = vi.fn()
     const ctx = {
-      get: () => ({ api: { sessions: { create, models } }, hostDescription: { getSnapshot: () => generation } }),
+      remote: { fileReferences: { list: models } },
+      get: () => ({ generation: { getSnapshot: () => generation } }),
       sessions: {
+        create,
         list: { getSnapshot: () => ({ byId: { 'session-a': { cwd: '/site-a', running } } }) },
         open,
         binding: () => binding,
@@ -75,7 +82,7 @@ describe('Browser session coordination', () => {
   })
   it('keeps the Composer closed when cold Session activation fails', async () => {
     const { client, requests, models, open, create } = setup()
-    models.mockResolvedValueOnce({ result: { ok: false, error: { message: 'Cold Session could not resume.' } } } as never)
+    models.mockResolvedValueOnce({ ok: false, error: { message: 'Cold Session could not resume.' } } as never)
     await expect(client.prepareAgent('tab-a', 'use', false)).rejects.toThrow('Cold Session could not resume.')
     expect(requests.some(value => value.action === 'site.bind')).toBe(false)
     expect(open).not.toHaveBeenCalled()
@@ -93,7 +100,7 @@ describe('Browser session coordination', () => {
     const abort = new AbortController()
     const create = vi.fn(async () => {
       abort.abort()
-      return { result: { ok: true, value: { sessionId: 'session-a' } } }
+      return 'session-a'
     })
     vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
       const action = JSON.parse(init.body)
@@ -104,9 +111,10 @@ describe('Browser session coordination', () => {
     const binding = { session: { rename: vi.fn(async () => ({ ok: true })) } }
     const generation = {}
     const client = createBrowserClient({
-      get: () => ({ api: { sessions: { create, models: async () => ({ result: { ok: true } }) } }, hostDescription: { getSnapshot: () => generation } }),
+      remote: { fileReferences: { list: async () => ({ ok: true }) } },
+      get: () => ({ generation: { getSnapshot: () => generation } }),
       workspaces: { list: { getSnapshot: () => ({ items: [{ path: '/site-a', workspaceId: 'wa' }] }) } },
-      sessions: { list: { getSnapshot: () => ({ byId: { 'session-a': { cwd: '/site-a', running: false } } }) }, open, binding: () => binding },
+      sessions: { create, list: { getSnapshot: () => ({ byId: { 'session-a': { cwd: '/site-a', running: false } } }) }, open, binding: () => binding },
     } as unknown as ClientContext)
     const results = await Promise.allSettled([
       client.prepareAgent('tab-a', 'use', 'auto', abort.signal),

@@ -71,9 +71,9 @@ describe("desktop frame startup handoff", () => {
     unsubscribe();
   });
 
-  it("waits for the committed branded composition before revealing Harness", () => {
+  it("waits for branded content or a ready workspace picker before revealing Harness", () => {
     expect(frameSource).toContain("useSyncExternalStore(");
-    expect(frameSource).toContain("if (!brandCompositionReady) return");
+    expect(frameSource).toContain("if (!brandCompositionReady && !emptyWorkspaceReady) return");
     expect(frameSource).toContain("scheduleDesktopFrameReveal(");
   });
 });

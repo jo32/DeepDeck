@@ -1,6 +1,12 @@
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { resolveSlotLabel, type StoredEntry } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ChatStore, ViewTab } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { ConversationStore, ViewTab } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { PanelActions } from './service.ts'
@@ -31,30 +37,34 @@ import { installDesktopQuestions } from './DesktopQuestionComposer.tsx'
 import { RestartConfirmation } from './RestartConfirmation.tsx'
 import { installRestartContinuity, type RestartContinuityRuntime } from './restart-continuity.ts'
 
-export const inject = ['slots', 'theme', 'workspaces', 'sessions', 'locale', 'connection', 'settingsScope']
+export const inject = ['remote', 'slots', 'theme', 'workspaces', 'sessions', 'locale', 'connection', 'settingsScope']
 
-function chatStoreFromHeader(entries: readonly StoredEntry[]): ChatStore {
+function chatStoreFromHeader(entries: readonly StoredEntry[]): ConversationStore {
   const entry = entries.find(candidate => candidate.store !== undefined)
   if (entry?.store === undefined) {
     throw new Error('desktop chrome: conversation header did not expose its shared chat store')
   }
-  return entry.store as ChatStore
+  return entry.store as ConversationStore
 }
 
 /** Install the branded desktop shell through declared Cordis lifecycle and Slot APIs. */
 export function apply(ctx: ClientContext): void {
+  // ui-workspace depends on layout, so resolve navigation after this provider mounts.
+  const startSession = (workspaceId?: Parameters<ClientContext['uiWorkspace']['startSession']>[0]) => {
+    const workspace = ctx.get('uiWorkspace')
+    if (!workspace) throw new Error('Workspace navigation is not ready')
+    workspace.startSession(workspaceId)
+  }
   trackDesktopScreen('home')
   installBranding(ctx)
   ctx.effect(
-    () => installArchiveSessionContinuity(ctx),
+    () => installArchiveSessionContinuity({ sessions: ctx.sessions, workspaces: ctx.workspaces, uiWorkspace: { startSession } }),
     'deepdeck desktop: archived session continuity',
   )
-  const connection = ctx.get('connection') as RestartContinuityRuntime['connection'] | undefined
-  if (connection === undefined) throw new Error('deepdeck desktop: client connection is unavailable')
-  ctx.effect(() => installRestartContinuity({ sessions: ctx.sessions, connection }),
+  ctx.effect(() => installRestartContinuity({ sessions: ctx.sessions, remote: ctx.remote }),
     'deepdeck desktop: restart session continuity')
 
-  const layout = new DesktopLayoutController()
+  const layout = new DesktopLayoutController(id => ctx.slots.entries('main').some(entry => entry.options.key === id))
   const brandComposition = new BrandCompositionController()
   const apps = {
     count: () => ctx.slots.entries('sidebar.apps').length,
@@ -80,22 +90,32 @@ export function apply(ctx: ClientContext): void {
   )
 
   ctx.effect(() => {
+    const handle = createLayoutStore()
+    const instance = handle.create()
+    const store = { ...handle, create: () => instance }
+    const disposePanelInfo = ctx.slots.provideRoot({ hooks: { panelInfo: { getSnapshot: () => instance.getSnapshot().panelInfo, subscribe: listener => instance.subscribe(listener) } } })
+    layout.attachPanels(instance.actions)
+    const retainMainPanel = () => {
+      const selected = instance.getSnapshot().panelInfo.activePanelId
+      if (selected !== null && !ctx.slots.entries('main').some(entry => entry.options.key === selected)) instance.actions.selectPanel(null)
+    }
+    const disposeMainPanels = ctx.slots.subscribe('main', retainMainPanel)
     const disposeService = ctx.reflect.provide('layout', layout)
     const disposeRegistration = ctx.slots.register({
       name: 'root',
       children: {
         sidebar: { kind: 'single', scope: 'root' },
-        conversation: { kind: 'single', scope: 'session-maybe' },
-        details: { kind: 'single', scope: 'session' },
+        main: { kind: 'keyed', scope: 'root' },
+        rightbar: { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
         'desktop.surface': { kind: 'single', scope: 'root' },
         'desktop.workbench': { kind: 'single', scope: 'root' },
       },
-      store: createLayoutStore,
+      store,
       inject: (actions: PanelActions) => {
         layout.attachPanels(actions)
         return {
-          startSession: () => { ctx.workspaces.startSession() },
+          startSession: () => { startSession() },
           brandComposition,
           surfaces,
         }
@@ -103,6 +123,9 @@ export function apply(ctx: ClientContext): void {
     }, AppFrame)
     return () => {
       disposeRegistration()
+      disposePanelInfo()
+      disposeMainPanels()
+      layout.dispose()
       void disposeService()
     }
   }, 'deepdeck desktop: layout service + root')
@@ -118,7 +141,7 @@ export function apply(ctx: ClientContext): void {
       'sidebar.footer.action': { kind: 'list', scope: 'root' },
     },
     inject: () => ({
-      startSession: (workspaceId) => { ctx.workspaces.startSession(workspaceId) },
+      startSession,
       apps,
     }),
   }, DesktopSidebar), 'deepdeck desktop: wide-only sidebar shell')

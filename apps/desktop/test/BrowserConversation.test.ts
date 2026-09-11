@@ -12,7 +12,7 @@ it('shows a welcome in the Browser message area only for a confirmed empty sessi
   const welcomeTarget = document.createElement('div')
   document.body.append(container, welcomeTarget)
   const root = createRoot(container)
-  const session = { openState: 'loading', blank: true, composerPhase: 'blank' }
+  const session = { openState: 'loading', blank: true, promptAttempted: false }
   let mode: 'use' | 'builder' = 'use'
   const render = () => act(async () => root.render(createElement(BrowserConversationContext.Provider, {
     value: { mode, welcomeTarget, t: ((key: keyof typeof en) => en[key]) as any },
@@ -27,11 +27,11 @@ it('shows a welcome in the Browser message area only for a confirmed empty sessi
     mode = 'builder'
     await render()
     expect(welcomeTarget.textContent).toContain('What would you like this site to do?')
-    session.composerPhase = 'engaging'
+    session.promptAttempted = true
     await render()
     expect(welcomeTarget.textContent).toBe('')
     session.blank = false
-    session.composerPhase = 'active'
+    session.promptAttempted = true
     await render()
     expect(welcomeTarget.textContent).toBe('')
   } finally {

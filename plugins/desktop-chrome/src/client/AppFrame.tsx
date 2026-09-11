@@ -9,7 +9,7 @@ import {
 import type { ReactNode } from 'react'
 import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+import { computeColumns, DETAILS_DEFAULT, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
 import type { createLayoutStore } from './stores.ts'
 import { DesktopChrome } from './DesktopChrome.tsx'
 import { scheduleDesktopFrameReveal } from './desktop-runtime.ts'
@@ -28,7 +28,7 @@ export interface AppFrameInjected {
 
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay' | 'desktop.surface' | 'desktop.workbench'>
+  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.overlay' | 'desktop.surface' | 'desktop.workbench'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & AppFrameInjected
 
@@ -99,7 +99,7 @@ function DragHandle({ side, left, onStart, onDrag, onEnd }: DragHandleProps) {
 export function AppFrame(props: AppFrameProps) {
   useSyncExternalStore(props.surfaces.subscribe, props.surfaces.version, props.surfaces.version)
   return props.surfaces.count() > 0
-    ? props.renderSlot('desktop.surface', { renderConversation: () => props.renderSlot('conversation', {}) })
+    ? props.renderSlot('desktop.surface', { renderConversation: () => props.renderSlot('main', {}, { entryKey: 'conversation' }) })
     : <DesktopAppFrame {...props} />
 }
 
@@ -117,6 +117,7 @@ function DesktopAppFrame({
     const current = state.current
     return current !== undefined && state.byId[current]?.blank === false ? current : undefined
   })
+  const emptyWorkspaceReady = useSessions(state => state.phase === 'ready' && state.current === undefined)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
   const [layoutMotionReady, setLayoutMotionReady] = useState(false)
@@ -127,9 +128,9 @@ function DesktopAppFrame({
   )
 
   useEffect(() => {
-    if (!brandCompositionReady) return
+    if (!brandCompositionReady && !emptyWorkspaceReady) return
     return scheduleDesktopFrameReveal(() => { setLayoutMotionReady(true) })
-  }, [brandCompositionReady])
+  }, [brandCompositionReady, emptyWorkspaceReady])
 
   const lastSession = useRef(detailsSession)
   useLayoutEffect(() => {
@@ -165,8 +166,9 @@ function DesktopAppFrame({
   const cols = computeColumns(
     viewport,
     sidebarPreference,
-    detailsSession === undefined ? 0 : panels.details,
+    panels.details,
   )
+  const normalDetails = computeColumns(viewport, sidebarPreference, panels.details || DETAILS_DEFAULT).details
   const colsRef = useRef(cols)
   colsRef.current = cols
 
@@ -196,6 +198,7 @@ function DesktopAppFrame({
       data-deepdeck-desktop-frame
       style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px` }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
+      data-rightbar-fullscreen={panels.rightbarFullscreen || undefined}
       data-details-collapsed={cols.details === 0 || undefined}
       data-dragging={dragging || undefined}
       data-layout-motion-ready={layoutMotionReady || undefined}
@@ -208,10 +211,10 @@ function DesktopAppFrame({
         )}
       </div>
       <div className={css.conversationWorkspace}>
-        <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
+        <CenterColumn>{renderSlot('main', {}, { entryKey: panels.panelInfo.activePanelId ?? 'conversation' })}</CenterColumn>
         {renderSlot('desktop.workbench', {})}
       </div>
-      <DetailsColumn>{renderSlot('details', {})}</DetailsColumn>
+      <DetailsColumn>{renderSlot('rightbar', { width: normalDetails, viewportWidth: viewport, canShow: normalDetails > 0 })}</DetailsColumn>
       <div className={css.overlayLayer} data-shell-overlay>
         {renderSlot('shell.overlay', {})}
       </div>
@@ -231,7 +234,7 @@ function DesktopAppFrame({
           onEnd={onDragEnd}
         />
       )}
-      {cols.details > 0 && (
+      {cols.details > 0 && !panels.rightbarFullscreen && (
         <DragHandle
           side="details"
           left={viewport - cols.details}

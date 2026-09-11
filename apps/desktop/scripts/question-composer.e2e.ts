@@ -1,13 +1,13 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 import { chromium, type Browser, type Page } from '../../../vendor/deepseek-harness/apps/web/node_modules/playwright/index.mjs'
 import {
-  launchWebScaffold, type WebScaffold,
+  launchWebScaffold, fixtureUserPrompts, type WebScaffold,
 } from '../../../vendor/deepseek-harness/apps/web/tests/scaffold.ts'
 import { connectFreshWorkspace, newEnglishPage, probeFreePort } from '../../../vendor/deepseek-harness/apps/web/tests/support.ts'
 
@@ -42,8 +42,11 @@ beforeAll(async () => {
 `)
   scaffold = await launchWebScaffold({
     extraOverlayPath: overlay,
+    // This product test submits custom answers and additional questions; keep
+    // replay consumption checks without comparing its transcript to the stock UI golden.
+    compareReplaySession: false,
     harnessHome,
-    replayFixture: fileURLToPath(new URL('../../../vendor/deepseek-harness/apps/web/tests/snapshots/question-composer/session.jsonl', import.meta.url)),
+    replayFixture: fileURLToPath(new URL('../../../vendor/deepseek-harness/snapshots/web/question-composer/session.v3.jsonl', import.meta.url)),
     paceMs: 15,
   })
   debugPort = await probeFreePort()
@@ -51,7 +54,7 @@ beforeAll(async () => {
   page = await newEnglishPage(browser)
   page.on('pageerror', error => { pageErrors.push(error.message); console.error(error.message) })
   page.on('console', message => { if (message.type() === 'error') console.error(message.text()) })
-  await page.goto(scaffold.baseUrl)
+  await page.goto(scaffold.authenticatedUrl)
   try {
     await connectFreshWorkspace(page, scaffold.workspaceCwd)
   } catch (error) {
@@ -105,8 +108,8 @@ async function expectActionsInsideCard() {
 
 it('keeps ordinary question actions reachable in a narrow desktop conversation', async () => {
   const settled = scaffold.whenTurnSettled()
-  const input = page.locator('textarea').first()
-  await input.fill('Ask the recorded color preference question.')
+  const input = page.locator('[contenteditable="true"]').first()
+  await input.fill(fixtureUserPrompts(await readFile(new URL('../../../vendor/deepseek-harness/snapshots/web/question-composer/session.v3.jsonl', import.meta.url), 'utf8'))[0]!)
   await input.press('Enter')
   const composer = page.locator('[data-question-key]')
   await composer.waitFor({ timeout: 30_000 })
@@ -115,11 +118,14 @@ it('keeps ordinary question actions reachable in a narrow desktop conversation',
 
   for (const width of [1200, 900, 600, 420, 360]) {
     await page.setViewportSize({ width, height: 900 })
+    await page.waitForTimeout(500)
     await expectActionsInsideCard()
   }
   await page.setViewportSize({ width: 600, height: 440 })
+    await page.waitForTimeout(500)
   await expectActionsInsideCard()
   await page.setViewportSize({ width: 420, height: 900 })
+    await page.waitForTimeout(500)
   await composer.getByRole('checkbox', { name: 'Blue' }).click()
   await composer.getByRole('textbox').fill('Keep this draft after collapsing')
   await composer.getByRole('button', { name: 'Collapse the question card' }).click()
@@ -142,8 +148,10 @@ it('keeps ordinary question actions reachable in a narrow desktop conversation',
   }] })
   await composer.waitFor()
   await page.setViewportSize({ width: 600, height: 440 })
+    await page.waitForTimeout(500)
   await expectActionsInsideCard()
   await page.setViewportSize({ width: 420, height: 900 })
+    await page.waitForTimeout(500)
   await expectActionsInsideCard()
   await composer.getByRole('radio', { name: '已登录，继续', exact: true }).click()
   const screenshot = process.env.DEEPDECK_QUESTION_SCREENSHOT ?? join(tmpdir(), 'deepdeck-question-fixed.png')

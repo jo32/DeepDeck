@@ -36,7 +36,9 @@
       "inject": [
         "@deepseek-ai/dsh-client-ui-theme",
         "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepdeck/dsh-client-ui-desktop-chrome",
@@ -55,11 +57,11 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
     "chrome-devtools-mcp": "1.8.0",
-    "dsh-better-sidebar": "0.17.1",
+    "dsh-better-sidebar": "0.19.1",
     "esbuild": "^0.25.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/cordis": "4.0.2",
     "react": "^18.2.0 || ^19.0.0",
     "react-dom": "^18.2.0 || ^19.0.0"
   },

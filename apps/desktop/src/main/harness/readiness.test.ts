@@ -16,6 +16,12 @@ describe("parseReadinessUrl", () => {
     ).toBe("http://127.0.0.1:3080");
   });
 
+  it("preserves the process token required by the new client connection", () => {
+    expect(parseReadinessUrl("dsh web: http://127.0.0.1:43121/?token=test-token_123 (LAN: http://192.168.1.5:43121/?token=test-token_123)"))
+      .toBe("http://127.0.0.1:43121/?token=test-token_123");
+    expect(parseReadinessUrl("dsh web: http://127.0.0.1:43121.evil.example/?token=test")).toBeUndefined();
+  });
+
   it("rejects non-loopback and malformed output", () => {
     expect(parseReadinessUrl("dsh web: http://localhost:3080")).toBeUndefined();
     expect(parseReadinessUrl("server ready")).toBeUndefined();

@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, useSyncExternalStore } from 'react'
-import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { DesktopAppNavigationOwnerProps } from './sidebar-contract.js'

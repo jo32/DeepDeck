@@ -15,7 +15,7 @@ export const BrowserConversationContext = createContext<{
 /** The original session dock supplies the facts; the Browser owns the welcome's seat. */
 export function BrowserEmptyConversation({ session }: PropsRuntime<'conversation.input.dock'>) {
   const context = useContext(BrowserConversationContext)
-  if (!context?.welcomeTarget || session.openState !== 'open' || !session.blank || session.composerPhase !== 'blank') return null
+  if (!context?.welcomeTarget || session.openState !== 'open' || !session.blank || session.promptAttempted) return null
   return createPortal(<div className={css.welcome} data-browser-chat-welcome="">
     <h3>{context.t(context.mode === 'builder' ? 'chatWelcomeBuilder' : 'chatWelcome')}</h3>
     <p>{context.t(context.mode === 'builder' ? 'chatWelcomeBuilderText' : 'chatWelcomeText')}</p>

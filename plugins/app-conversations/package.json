@@ -35,7 +35,9 @@
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
         "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-locale"
       ],
@@ -48,11 +50,12 @@
     "test": "../../vendor/deepseek-harness/node_modules/.bin/vitest run"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/cordis": "4.0.2",
     "react": "^18.2.0 || ^19.0.0"
   },
   "dependencies": {
-    "fflate": "0.8.3"
+    "fflate": "0.8.3",
+    "zod": "^4.4.3"
   },
   "files": [
     "lib/*.js",

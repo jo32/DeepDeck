@@ -1,4 +1,4 @@
-import type { IApiClient, ModelProviderGroup } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientRemote, ModelProviderGroup } from '@deepseek-ai/dsh-api-remotes/client'
 // Stable public HTTP contract owned by Codex Connect. Keeping the browser
 // helper here avoids importing that plugin's Node host entry into this bundle.
 const OPENAI_CODEX_AUTH_STATUS_PATH = '/plugins/dsh-openai-codex/auth/status'
@@ -46,58 +46,49 @@ function firstCodexModel(groups: readonly ModelProviderGroup[]): string | undefi
 }
 
 async function configureCodex(
-  api: Pick<IApiClient, 'settings' | 'llm'>,
+  api: Pick<ClientRemote, 'settings' | 'session'>,
 ): Promise<void> {
-  const models = await api.llm.models({})
-  if (!models.result.ok) throw new Error(models.result.error.message)
-  const model = firstCodexModel(models.result.value.groups)
+  const models = await api.session.modelCatalog()
+  if (!models.ok) throw new Error(models.error.message)
+  const model = firstCodexModel(models.value.groups)
   if (model === undefined) throw new Error('OpenAI Codex returned no models')
 
-  const search = await api.settings.mutate({
-    ns: 'llm-openai-codex',
-    ops: [{ op: 'set', path: ['enableSearch'], value: true }],
-  })
-  if (!search.result.ok) throw new Error(search.result.error.message)
+  const search = await api.settings.mutate('llm-openai-codex', [{ op: 'set', path: ['enableSearch'], value: true }], undefined)
+  if (!search.ok) throw new Error(search.error.message)
 
-  const selection = await api.settings.mutate({
-    ns: 'agent-default-model',
-    ops: [
+  const selection = await api.settings.mutate('agent-default-model', [
       { op: 'set', path: ['provider'], value: 'openai-codex' },
       { op: 'set', path: ['model'], value: model },
       { op: 'unset', path: ['reasoningEffort'] },
-    ],
-  })
-  if (!selection.result.ok) throw new Error(selection.result.error.message)
+    ], undefined)
+  if (!selection.ok) throw new Error(selection.error.message)
 }
 
 /** Store the official key and keep the user's chosen provider as the next-session default. */
 export async function configureDeepSeek(
-  api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>,
+  api: Pick<ClientRemote, 'settings' | 'credentials' | 'session'>,
   key: string,
 ): Promise<void> {
-  const stored = await api.credentials.set({ ref: 'DEEPSEEK_API_KEY', value: key })
-  if (!stored.result.ok) throw new Error(stored.result.error.message)
+  const stored = await api.credentials.set('DEEPSEEK_API_KEY', key)
+  if (!stored.ok) throw new Error(stored.error.message)
 
-  const models = await api.llm.models({})
-  if (!models.result.ok) throw new Error(models.result.error.message)
-  const model = models.result.value.groups
+  const models = await api.session.modelCatalog()
+  if (!models.ok) throw new Error(models.error.message)
+  const model = models.value.groups
     .find((group: ModelProviderGroup) => group.id === 'deepseek-official')?.models[0]?.id
   if (model === undefined) throw new Error('DeepSeek returned no models')
 
-  const selection = await api.settings.mutate({
-    ns: 'agent-default-model',
-    ops: [
+  const selection = await api.settings.mutate('agent-default-model', [
       { op: 'set', path: ['provider'], value: 'deepseek-official' },
       { op: 'set', path: ['model'], value: model },
       { op: 'unset', path: ['reasoningEffort'] },
-    ],
-  })
-  if (!selection.result.ok) throw new Error(selection.result.error.message)
+    ], undefined)
+  if (!selection.ok) throw new Error(selection.error.message)
 }
 
 /** Open Codex Connect's OAuth flow, then make that route ready for first chat/search. */
 export async function signInAndConfigureCodex(
-  api: Pick<IApiClient, 'settings' | 'llm'>,
+  api: Pick<ClientRemote, 'settings' | 'session'>,
 ): Promise<'popup-blocked' | 'configured'> {
   const popup = window.open('about:blank', '_blank')
   if (popup === null) return 'popup-blocked'

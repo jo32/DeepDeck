@@ -1,10 +1,13 @@
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
+import type { MainPanelId, PanelInfo } from '@deepseek-ai/dsh-client-ui-layout/client'
+import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
 import {
   clampWidth, DETAILS_DEFAULT, DETAILS_MAX, DETAILS_MIN,
   SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
 } from './columns.ts'
 
 export interface LayoutState {
+  panelInfo: PanelInfo
+  rightbarFullscreen: boolean
   sidebar: number
   details: number
   narrow: boolean
@@ -12,6 +15,9 @@ export interface LayoutState {
 }
 
 type LayoutActions = {
+  selectPanel: (draft: LayoutState, panelId: MainPanelId | null) => void
+  openRightbar: (draft: LayoutState, track: boolean, fullscreen: boolean) => void
+  closeRightbar: (draft: LayoutState) => void
   setSidebar: (draft: LayoutState, px: number) => void
   setDetails: (draft: LayoutState, px: number) => void
   toggleSidebar: (draft: LayoutState) => void
@@ -24,12 +30,17 @@ type LayoutActions = {
 export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutActions> {
   return defineStore({
     init: (): LayoutState => ({
+      panelInfo: { activePanelId: null },
+      rightbarFullscreen: false,
       sidebar: SIDEBAR_DEFAULT,
       details: 0,
       narrow: false,
       narrowExpanded: false,
     }),
     actions: {
+      selectPanel: (draft, panelId) => { draft.panelInfo = { activePanelId: panelId } },
+      openRightbar: (draft, track, fullscreen) => { draft.details = track ? (draft.details || DETAILS_DEFAULT) : 0; draft.rightbarFullscreen = fullscreen },
+      closeRightbar: draft => { draft.details = 0; draft.rightbarFullscreen = false },
       setSidebar: (draft, px: number) => {
         draft.sidebar = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX)
       },

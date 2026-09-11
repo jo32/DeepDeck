@@ -1,16 +1,18 @@
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 // Adapted from Harness QuestionComposer; transport, locale, and visual primitives stay upstream.
 import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { ComposerChainProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import {
   Button, IconCheckOutline14, IconChevronDownOutline14, IconChevronLeftOutline14,
   IconChevronRightOutline14, IconChevronUpOutline14, IconCloseOutline16,
   IconEditOutline16, MarkdownText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import {
-  PendingQuestion,
-  type QuestionAnswer, type QuestionComposerProps, type QuestionWait,
-} from '@deepseek-ai/dsh-client-ui-user-questions/client'
+import type { PendingQuestion, QuestionAnswer, QuestionComposerProps, QuestionWait } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import questionCss from '../../../../vendor/deepseek-harness/packages/client/ui-user-questions/src/client/QuestionComposer.module.css'
 import desktopCss from './question-composer.module.css'
 
@@ -70,17 +72,16 @@ function AnswerField(props: AnswerFieldProps) {
 }
 
 /** Desktop layout over Harness's question carrier; drafts stay scoped to its key. */
-export function DesktopQuestionComposer(props: QuestionComposerProps) {
-  const question = useMemo(() => new PendingQuestion(props.matched), [props.matched])
+export function DesktopQuestionComposer(props: Omit<QuestionComposerProps, 'useStore' | 'actions'>) {
+  const question = props.matched
   return <QuestionFlow key={question.key} pending={question} t={props.t} />
 }
 
 /** Presentation intents remain with the upstream renderer, including plan review. */
-export function selectDesktopQuestion({ interactions }: ComposerChainProps): QuestionWait | null {
-  const wait = interactions.find((item): item is QuestionWait => item.kind === 'question')
-  if (wait === undefined || wait.payload.questions.length === 0
-    || wait.payload.questions.some(question => question.intent !== undefined)) return null
-  return wait
+export function selectDesktopQuestion({ pendingInteraction }: ComposerChainProps): PendingQuestion | null {
+  if (pendingInteraction?.kind !== 'question' || !('questions' in pendingInteraction)) return null
+  const pending = pendingInteraction as PendingQuestion
+  return pending.questions.length > 0 && pending.questions.every(question => question.intent === undefined) ? pending : null
 }
 
 export function installDesktopQuestions(ctx: ClientContext): void {
@@ -259,7 +260,7 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
           <>
             <div className={css.body} data-question-scroll>
               {question.detail !== undefined && (
-                <div className={css.detail}><MarkdownText text={question.detail} /></div>
+                <div className={css.detail}><MarkdownText text={question.detail} labels={{ code: { copyLabel: t('copy'), copiedLabel: t('copied') }, footnotes: t('markdown.footnotes') }} /></div>
               )}
               <div className={css.options} role={question.multiSelect === true ? 'group' : 'radiogroup'}>
                 {(question.options ?? []).map((option, optionIndex) => {

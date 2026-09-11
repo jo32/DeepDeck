@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ChatStore, ViewTab } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ConversationStore, ViewTab } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import css from './desktop-chrome.module.css'
 
 export interface ViewsLedger {
@@ -13,7 +13,7 @@ export interface ViewToggleInjected { views: ViewsLedger }
 
 export type ViewToggleProps =
   & PropsRuntime<'conversation.session.header.actions'>
-  & PropsStore<ChatStore>
+  & PropsStore<ConversationStore>
   & ViewToggleInjected
 
 function ChatIcon(): React.JSX.Element {

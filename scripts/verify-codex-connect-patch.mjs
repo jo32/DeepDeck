@@ -9,10 +9,10 @@ import { zstdDecompressSync } from "node:zlib";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const expectedPackageVersion = "0.1.0-alpha.4.21";
-const expectedDshVersion = "0.1.1-rc.2";
+const expectedPackageVersion = "0.1.0-alpha.4.34";
+const expectedDshVersion = "0.1.5-rc.2";
 const expectedReactRange = "^18.2.0 || ^19.1.1";
-const expectedPiAiVersion = "0.82.1";
+const expectedPiAiVersion = "0.85.1";
 const staleDshVersions = ["0.1.0-rc.7", "0.1.0-rc.8"];
 const textExtensions = new Set([".d.ts", ".js", ".json", ".md", ".yaml", ".yml"]);
 
@@ -60,16 +60,16 @@ const dshPeers = Object.entries(manifest.peerDependencies ?? {})
   .filter(([name]) => name.startsWith("@deepseek-ai/dsh-"));
 if (dshPeers.length === 0) fail("package declares no DSH plugin API peers");
 for (const [name, version] of dshPeers) {
-  if (version !== expectedDshVersion) fail(`${name} peer is ${version}, expected ${expectedDshVersion}`);
+  if (!version.split(" || ").includes(expectedDshVersion)) fail(`${name} peer is ${version}, expected ${expectedDshVersion}`);
 }
 if (manifest.peerDependencies?.react !== expectedReactRange) {
   fail(`React peer is ${manifest.peerDependencies?.react ?? "missing"}, expected ${expectedReactRange}`);
 }
-if (manifest.peerDependencies?.["@earendil-works/pi-ai"] !== expectedPiAiVersion) {
+if (manifest.peerDependencies?.["@earendil-works/pi-ai"] !== "^0.84.2 || 0.85.1") {
   fail("pi-ai peer contract drifted");
 }
-if (compatibility.dshPluginApi?.version !== expectedDshVersion) {
-  fail("compatibility.json does not declare Harness 0.1.1-rc.2");
+if (!compatibility.dshPluginApi?.versions?.includes(expectedDshVersion)) {
+  fail("compatibility.json does not declare Harness 0.1.5-rc.2");
 }
 
 const textFiles = await collectTextFiles(packageRoot);
@@ -79,7 +79,7 @@ for (const path of textFiles) {
   if (/registerConfigurableProviders\(\[\{\s*provider:\s*OPENAI_CODEX_PROVIDER/u.test(text)) {
     claimsConfigurableProvider = true;
   }
-  // Alpha 4.21 documents the old version pair and diagnoses it as unsupported.
+  // The package declares every supported Harness generation explicitly.
   // Neither is a claim that this build implements the old plugin API.
   const contractText = relative(packageRoot, path) === "INSTALL.md" ? "" : text.replace(
     "DSH 0.1.0-rc.7 requires Codex Connect 0.1.0-alpha.4.14.", "",
@@ -106,11 +106,11 @@ if (!clientBundle.includes('"dsh-codex-connect: manual update store"')
 }
 
 const plugin = await import(pathToFileURL(join(packageRoot, manifest.main ?? "lib/index.js")).href);
-if (plugin.SUPPORTED_DSH_PLUGIN_API_VERSION !== expectedDshVersion) {
-  fail("compiled doctor contract does not report Harness 0.1.1-rc.2");
+if (!plugin.SUPPORTED_DSH_PLUGIN_API_VERSIONS?.includes(expectedDshVersion)) {
+  fail("compiled doctor contract does not report Harness 0.1.5-rc.2");
 }
-if (plugin.COMPATIBILITY_CONTRACT?.dshPluginApi?.version !== expectedDshVersion) {
-  fail("compiled compatibility contract does not report Harness 0.1.1-rc.2");
+if (!plugin.COMPATIBILITY_CONTRACT?.dshPluginApi?.versions?.includes(expectedDshVersion)) {
+  fail("compiled compatibility contract does not report Harness 0.1.5-rc.2");
 }
 
 const expectedSearchUrl = "https://chatgpt.com/backend-api/codex/responses";
@@ -251,7 +251,7 @@ if (report.status !== "compatible") fail(`compiled compatibility evaluation retu
 
 const installedReport = await plugin.detectCompatibility();
 if (installedReport.status !== "compatible") {
-  fail(`installed 0.1.1-rc.2 dependency detection returned ${installedReport.status}`);
+  fail(`installed 0.1.5-rc.2 dependency detection returned ${installedReport.status}`);
 }
 
 // Exercise the installed, patched plugin through Cordis and the real pi-ai
@@ -285,7 +285,7 @@ try {
   const astra = await ctx.llm.resolveModelInfo("openai-codex", "gpt-6-astra");
   assert.equal(astra.name, "GPT-6 Astra");
   assert.deepEqual(astra.inputModalities, ["text", "image"]);
-  assert.equal(astra.context.contextWindow, 1_050_000);
+  assert.equal(astra.context.contextWindow, 272_000);
   assert.deepEqual(astra.reasoning.efforts.map(effort => effort.id), ["low", "medium", "high", "xhigh", "max"]);
 
   const requests = [];

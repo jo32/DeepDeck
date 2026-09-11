@@ -18,11 +18,9 @@ import { exportSiteSkills } from './publication-skills.js'
 import { WebMCPProject, sourceDigest } from './webmcp-project.js'
 
 type RecordValue = Record<string, unknown>
-interface SessionEvent { type: string; data: unknown }
 interface BrowserSession {
   id: string
   header: { cwd?: string }
-  events: readonly SessionEvent[]
   append(type: string, data: unknown): unknown
 }
 interface ToolExecution { agent?: BrowserAgent; signal: AbortSignal }

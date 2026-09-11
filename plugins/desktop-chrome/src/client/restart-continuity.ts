@@ -1,4 +1,4 @@
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { DesktopRestartBridge, RestartRecoverySnapshot } from './restart-runtime.ts'
 import { desktopRestartBridge } from './restart-runtime.ts'
 
@@ -25,14 +25,9 @@ export interface RestartContinuityRuntime {
       }
     }
   }
-  readonly connection: {
-    readonly api: {
-      readonly sessions: {
-        models: (
-          request: { readonly sessionId: SessionId },
-          signal?: AbortSignal,
-        ) => Promise<{ readonly result: { readonly ok: boolean } }>
-      }
+  readonly remote: {
+    readonly fileReferences: {
+      list: (sessionId: SessionId, query: string, signal?: AbortSignal) => Promise<{ readonly ok: boolean }>
     }
   }
 }
@@ -73,8 +68,8 @@ export async function recoverRestartSessions(
     if (summary === undefined || summary.running) return entry.sessionId
     const sessionId = entry.sessionId as SessionId
     if (!entry.continuation) {
-      const result = await runtime.connection.api.sessions.models({ sessionId }, signal)
-      return result.result.ok ? entry.sessionId : undefined
+      const result = await runtime.remote.fileReferences.list(sessionId, '', signal)
+      return result.ok ? entry.sessionId : undefined
     }
     const binding = runtime.sessions.binding(sessionId)
     if (binding === undefined) return undefined

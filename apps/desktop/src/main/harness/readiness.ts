@@ -1,4 +1,4 @@
-const READINESS_LINE = /^dsh web:\s+(http:\/\/127\.0\.0\.1:\d+)(?:\s|$)/;
+const READINESS_LINE = /^dsh web:\s+(http:\/\/127\.0\.0\.1:\d+(?:\/\?token=[A-Za-z0-9_-]+)?)(?:\s|$)/;
 
 export function parseReadinessUrl(line: string): string | undefined {
   const match = READINESS_LINE.exec(line.trim());
@@ -9,5 +9,5 @@ export function parseReadinessUrl(line: string): string | undefined {
   if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || !url.port) {
     return undefined;
   }
-  return url.origin;
+  return url.searchParams.has("token") ? url.href : url.origin;
 }

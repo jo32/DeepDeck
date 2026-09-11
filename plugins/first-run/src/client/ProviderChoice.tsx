@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { configureDeepSeek, signInAndConfigureCodex } from './auth.ts'
@@ -8,7 +8,7 @@ import { hasUsableModelProvider } from './readiness.ts'
 import css from './provider-choice.module.css'
 
 export interface ProviderChoiceInjected {
-  api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>
+  api: Pick<ClientRemote, 'settings' | 'credentials' | 'llm' | 'session'>
   t: (key: FirstRunKey) => string
 }
 

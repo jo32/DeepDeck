@@ -5,8 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.21";
-const DSH_PLUGIN_API_VERSION = "0.1.1-rc.2";
+const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.34";
+const DSH_PLUGIN_API_VERSION = "0.1.5-rc.2";
 const REACT_PEER_RANGE = "^18.2.0 || ^19.1.1";
 const BUN_VERSION = "1.4.0";
 
@@ -98,15 +98,15 @@ async function verifyCodexConnectContract(root, manifest) {
   }
   const dshPeers = Object.entries(manifest.peerDependencies ?? {})
     .filter(([name]) => name.startsWith("@deepseek-ai/dsh-"));
-  if (dshPeers.length === 0 || dshPeers.some(([, version]) => version !== DSH_PLUGIN_API_VERSION)) {
-    throw new Error("Bundled Codex Connect does not declare a 0.1.1-rc.2-only DSH peer contract");
+  if (dshPeers.length === 0 || dshPeers.some(([, version]) => !version.split(" || ").includes(DSH_PLUGIN_API_VERSION))) {
+    throw new Error("Bundled Codex Connect does not declare a 0.1.5-rc.2-only DSH peer contract");
   }
   if (manifest.peerDependencies?.react !== REACT_PEER_RANGE) {
     throw new Error("Bundled Codex Connect does not declare its React 18/19 peer contract");
   }
   const compatibility = JSON.parse(await readFile(join(root, "compatibility.json"), "utf8"));
-  if (compatibility.dshPluginApi?.version !== DSH_PLUGIN_API_VERSION) {
-    throw new Error("Bundled Codex Connect compatibility.json does not report Harness 0.1.1-rc.2");
+  if (!compatibility.dshPluginApi?.versions?.includes(DSH_PLUGIN_API_VERSION)) {
+    throw new Error("Bundled Codex Connect compatibility.json does not report Harness 0.1.5-rc.2");
   }
 }
 
@@ -134,7 +134,7 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
     });
     child = spawn(
       nodeBinary,
-      [cli, "web", "--patch", join(runtimeRoot, "cordis.patch.yml"), "--port", "0"],
+      [cli, "web", "--patch", join(runtimeRoot, "cordis.patch.yml"), "--port", "0", "--no-open"],
       {
         cwd: runtimeRoot,
         env: { ...process.env, DSH_HOME: dshHome, DEEPDECK_BROWSER_HOME: join(dshHome, "browser"), PATH: "" },
@@ -145,7 +145,7 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
     exitPromise = new Promise((resolveExit) => child.once("exit", (code, signal) => resolveExit({ code, signal })));
     const consume = (chunk) => {
       output = `${output}${chunk.toString("utf8")}`.slice(-100_000);
-      const match = /(?:^|\r?\n)dsh web:\s+(http:\/\/127\.0\.0\.1:\d+)(?:\s|$)/m.exec(output);
+      const match = /(?:^|\r?\n)dsh web:\s+(http:\/\/127\.0\.0\.1:\d+(?:\/\?token=[A-Za-z0-9_-]+)?)(?:\s|$)/m.exec(output);
       if (match?.[1]) resolveReady(match[1]);
     };
     child.stdout.on("data", consume);
@@ -167,13 +167,19 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
     clearTimeout(bootTimeout);
     const deadline = Date.now() + 15_000;
     let response;
+    let cookie;
     let lastFetchError;
     while (Date.now() < deadline) {
       if (child.exitCode !== null || child.signalCode !== null) {
         throw new Error(`Bundled Harness exited after announcing readiness:\n${output}`);
       }
       try {
-        response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
+        response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(2_000) });
+        if (response.status === 303) {
+          cookie = response.headers.getSetCookie().map(value => value.split(';', 1)[0]).join('; ');
+          if (!cookie) throw new Error("Harness token handshake did not issue a browser cookie");
+          response = await fetch(new URL('/', url), { headers: { cookie }, signal: AbortSignal.timeout(2_000) });
+        }
         break;
       } catch (error) {
         lastFetchError = error;
@@ -186,7 +192,7 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
     if (!response.ok) throw new Error(`Bundled Harness readiness endpoint returned HTTP ${response.status}`);
     const browserResponse = await fetch(new URL("/api/deepdeck/browser", url), {
       method: "POST",
-      headers: { "content-type": "application/json", origin: url },
+      headers: { "content-type": "application/json", origin: new URL(url).origin, ...(cookie ? { cookie } : {}) },
       body: JSON.stringify({ action: "state" }),
       signal: AbortSignal.timeout(5_000),
     });
@@ -196,7 +202,7 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
       throw new Error("Bundled Browser plugin did not expose its standalone runtime state.");
     }
     const treeResponse = await fetch(new URL("/sidebar/api/fs.tree", url), {
-      method: "POST", headers: { "content-type": "application/json", origin: url },
+      method: "POST", headers: { "content-type": "application/json", origin: new URL(url).origin, ...(cookie ? { cookie } : {}) },
       body: JSON.stringify({ sessionId: "sidebar-runtime-verification", cwd: dshHome, path: dshHome }),
       signal: AbortSignal.timeout(5_000),
     });
@@ -255,7 +261,7 @@ for (const plugin of manifest.plugins) {
     if (plugin === "browser") {
       const sidebarRoot = join(root, "node_modules", "dsh-better-sidebar");
       const sidebarManifest = JSON.parse(await readFile(join(sidebarRoot, "package.json"), "utf8"));
-      if (sidebarManifest.version !== "0.17.1") throw new Error("Browser requires the Harness 0.1.1 compatible sidebar release");
+      if (sidebarManifest.version !== "0.19.1") throw new Error("Browser requires the Harness 0.1.5 compatible sidebar release");
       requiredRuntimePaths.push(...["index.js", "client-editor.js", "client-mermaid.js"].map(file => join(sidebarRoot, "lib", file)));
       bundledWebMCPCompiler = join(root, "node_modules", "esbuild", "lib", "main.js");
       bundledDevToolsMcp = join(root, "node_modules", "chrome-devtools-mcp", "build", "src", "bin", "chrome-devtools-mcp.js");

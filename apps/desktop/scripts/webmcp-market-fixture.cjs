@@ -27,6 +27,7 @@ async function until(read, label) { for (let i = 0; i < 120; i++) { const value 
   const sidebarRoutes = []; const sidebarDisposers = [];
   const sidebar = await import(pathToFileURL(process.env.DEEPDECK_SIDEBAR_HOST).href);
   sidebar.apply({
+    on: () => () => {},
     sessions: { get: () => ({ header: { cwd: workspace } }) },
     get: () => undefined, webRuntime: { trustedHosts: [] },
     logger: { warn: console.warn }, inject: () => {},

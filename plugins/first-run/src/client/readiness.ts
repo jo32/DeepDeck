@@ -1,14 +1,14 @@
 import type {
-  ConfigurableProviderView,
-  CredentialView,
-  IApiClient,
+  LlmConfigurableProvider,
+  CredentialInfo,
+  ClientRemote,
   SettingsNamespaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 
 interface ProviderState {
-  entry: ConfigurableProviderView
-  apiKeyEnv?: string
-  credential?: CredentialView
+  entry: LlmConfigurableProvider
+  apiKeyEnv?: string | undefined
+  credential?: CredentialInfo
 }
 
 const CODEX_AUTH_STATUS_PATH = '/plugins/dsh-openai-codex/auth/status'
@@ -46,32 +46,33 @@ function apiKeyEnvOf(namespace: SettingsNamespaceView | undefined, path: readonl
 
 /** True when at least one live provider has every credential it declares. */
 export async function hasUsableModelProvider(
-  api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>,
+  api: Pick<ClientRemote, 'settings' | 'credentials' | 'llm'>,
 ): Promise<boolean> {
-  const [providersResponse, settingsResponse] = await Promise.all([
-    api.llm.providers({}),
-    api.settings.describe({}),
+  const [providersResponse, settingsResponse, activeResponse] = await Promise.all([
+    api.llm.listConfigurableProviders(),
+    api.settings.describe(),
+    api.llm.listProviders(),
   ])
-  if (!providersResponse.result.ok || !settingsResponse.result.ok) return true
+  if (!providersResponse.ok || !settingsResponse.ok || !activeResponse.ok) return true
   const namespaces = new Map(
-    settingsResponse.result.value.namespaces.map((namespace: SettingsNamespaceView) => [namespace.ns, namespace]),
+    settingsResponse.value.namespaces.map((namespace: SettingsNamespaceView) => [namespace.ns, namespace]),
   )
-  const providers: ProviderState[] = providersResponse.result.value.providers.map((entry: ConfigurableProviderView) => ({
+  const providers: ProviderState[] = providersResponse.value.map((entry: LlmConfigurableProvider) => ({
     entry,
     apiKeyEnv: apiKeyEnvOf(namespaces.get(entry.settingsNs), entry.settingsPath),
   }))
   const refs = [...new Set(providers.flatMap(provider => provider.apiKeyEnv === undefined ? [] : [provider.apiKeyEnv]))]
-  let credentials: Record<string, CredentialView> = {}
+  let credentials: Record<string, CredentialInfo> = {}
   if (refs.length > 0) {
-    const response = await api.credentials.describe({ refs })
-    if (!response.result.ok) return true
-    credentials = response.result.value.credentials
+    const response = await api.credentials.describe(refs)
+    if (!response.ok) return true
+    credentials = response.value
   }
   const usableWithoutCodex = providers.some(provider => provider.entry.provider !== 'openai-codex'
-    && provider.entry.active && (
+    && activeResponse.value.some(item => item.id === provider.entry.provider) && (
     provider.apiKeyEnv === undefined || credentials[provider.apiKeyEnv]?.configured === true
   ))
   if (usableWithoutCodex) return true
   const codex = providers.find(provider => provider.entry.provider === 'openai-codex')
-  return codex?.entry.active === true && await codexSignedIn()
+  return codex !== undefined && activeResponse.value.some(item => item.id === codex.entry.provider) && await codexSignedIn()
 }

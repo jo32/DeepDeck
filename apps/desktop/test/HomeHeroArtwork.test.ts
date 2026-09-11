@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { DockedComposer } from '../../../plugins/home-hero/src/client/ComposerPresentation.tsx';
-import type { ConversationSnapshot } from "@deepseek-ai/dsh-client-runtime/client";
+import type { SessionSnapshot as ConversationSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import {
   HomeHeroArtwork,
@@ -16,9 +16,11 @@ const copy: Record<HomeHeroKey, string> = {
 
 const t = ((key: HomeHeroKey) => copy[key]) as TranslateNS<"homeHero">;
 
-function session(composerPhase: ConversationSnapshot["composerPhase"]): ConversationSnapshot {
+function session(composerPhase: "blank" | "engaging" | "active"): ConversationSnapshot {
   return {
-    composerPhase,
+    blank: composerPhase !== "active",
+    promptAttempted: composerPhase === "engaging",
+    awaitingFirstTurn: composerPhase === "engaging",
     running: false,
     subagent: null,
     removed: false,
@@ -26,7 +28,7 @@ function session(composerPhase: ConversationSnapshot["composerPhase"]): Conversa
 }
 
 function input(draftRev = 0): HomeHeroArtworkProps["input"] {
-  return { draft: "", imageIds: [], draftRev, phase: "plain" };
+  return { draft: "", attachmentIds: [], draftRev, phase: "plain" };
 }
 
 describe("HomeHeroArtwork", () => {
@@ -38,7 +40,8 @@ describe("HomeHeroArtwork", () => {
     expect(html).toContain('data-motion="docked"');
     expect(html).toContain('data-action="send"');
     expect(html).not.toContain('data-motion="resting"');
-    expect(snapshot.composerPhase).toBe('blank');
+    expect(snapshot.blank).toBe(true)
+    expect(snapshot.promptAttempted).toBe(false);
   });
   it("renders only the alien orb character on a blank session", () => {
     const html = renderToStaticMarkup(createElement(HomeHeroArtwork, {

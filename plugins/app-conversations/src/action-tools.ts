@@ -1,3 +1,4 @@
+import { actionBindingProjection, type ActionBindingState } from './action-binding-projection.js'
 import { randomUUID } from 'node:crypto'
 import type {
   AppConversationActionEffect,
@@ -8,13 +9,7 @@ import type {
 interface ActionSession {
   readonly id: string
   readonly header: { readonly cwd?: string }
-  readonly events: readonly ActionSessionEvent[]
   append(type: typeof APP_ACTION_BINDING_EVENT, data: AppActionBindingEvent): unknown
-}
-
-interface ActionSessionEvent {
-  readonly type: string
-  readonly data: unknown
 }
 
 interface ActionScopedContext {
@@ -44,6 +39,10 @@ interface ActionToolDefinition {
 }
 
 interface ActionToolHostContext {
+  readonly sessionProjections: {
+    register(definition: typeof actionBindingProjection): () => void
+    stateOf(session: ActionSession, key: string): ActionBindingState | undefined
+  }
   readonly agents: { get(sessionId: string): ActionAgent | undefined }
   readonly sessions: { flush(session: ActionSession): Promise<boolean> }
   readonly logger?: { warn(message: string): void }
@@ -144,44 +143,15 @@ function bindingEvent(value: unknown): AppActionBindingEvent | undefined {
   return Object.freeze({ appId: binding.appId, toolNames: [...binding.toolNames] })
 }
 
-/** Fold the last valid App tool binding from the durable Session event log. */
-export function foldAppActionBinding(events: readonly ActionSessionEvent[]): AppActionBindingEvent | undefined {
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    const event = events[index]
-    if (event?.type !== APP_ACTION_BINDING_EVENT) continue
-    return bindingEvent(event.data)
-  }
-  return undefined
-}
-
-function requestHeaderToolNames(value: unknown): readonly string[] {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return []
-  const header = (value as { readonly header?: unknown }).header
-  if (typeof header !== 'object' || header === null || Array.isArray(header)) return []
-  const tools = (header as { readonly tools?: unknown }).tools
-  if (!Array.isArray(tools)) return []
-  return tools.flatMap(tool => (
-    typeof tool === 'object'
-    && tool !== null
-    && !Array.isArray(tool)
-    && typeof (tool as { readonly name?: unknown }).name === 'string'
-      ? [(tool as { readonly name: string }).name]
-      : []
-  ))
-}
-
 function legacyAppActionBinding(
   agent: ActionAgent,
   registry: AppActionToolRegistry,
+  state: ActionBindingState,
 ): AppActionBindingEvent | undefined {
   const resolve = registry.legacyActionToolBinding
   const cwd = agent.session.header.cwd?.trim()
   if (resolve === undefined || cwd === undefined || cwd.length === 0) return undefined
-  for (let index = agent.session.events.length - 1; index >= 0; index -= 1) {
-    const event = agent.session.events[index]
-    if (event?.type !== 'request/header') continue
-    const names = requestHeaderToolNames(event.data)
-    if (names.length === 0) continue
+  for (const names of state.legacyToolSets) {
     const binding = bindingEvent(resolve.call(registry, cwd, names))
     if (binding !== undefined) return binding
   }
@@ -193,6 +163,12 @@ export function installAppActionTools(
   ctx: ActionToolHostContext,
   registry: AppActionToolRegistry,
 ): AppActionToolRuntime {
+  const stopProjection = ctx.sessionProjections.register(actionBindingProjection)
+  const bindingState = (agent: ActionAgent): ActionBindingState => {
+    const state = ctx.sessionProjections.stateOf(agent.session, actionBindingProjection.key)
+    if (!state) throw new Error('App action binding projection is unavailable')
+    return state
+  }
   const byExecution = new Map<string, ActiveAction>()
   const bySession = new Map<string, ActiveAction>()
 
@@ -292,8 +268,8 @@ export function installAppActionTools(
   }
 
   const sync = (agent: ActionAgent): void => {
-    const durable = foldAppActionBinding(agent.session.events)
-    const binding = durable ?? legacyAppActionBinding(agent, registry)
+    const durable = bindingState(agent).binding ?? undefined
+    const binding = durable ?? legacyAppActionBinding(agent, registry, bindingState(agent))
     if (binding === undefined) return
     const existing = bySession.get(agent.session.id)
     if (existing !== undefined && existing.agent !== agent) finishState(existing)
@@ -333,7 +309,7 @@ export function installAppActionTools(
       throw new Error('This App Session is already bound to different App action tools.')
     }
 
-    const durable = foldAppActionBinding(agent.session.events)
+    const durable = bindingState(agent).binding ?? undefined
     if (
       durable !== undefined
       && durable.appId === requested.appId
@@ -389,6 +365,7 @@ export function installAppActionTools(
     if (agent !== undefined) sync(agent)
   })
   const dispose = (): void => {
+    stopProjection()
     stopSessionEvent()
     stopDisposed()
     stopCreated()

@@ -40,10 +40,11 @@
     "start:rebuild": "pnpm build:desktop && node scripts/run-desktop.mjs",
     "start:packaged": "pnpm package:local && node scripts/run-packaged-desktop.mjs",
     "test:registry": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs --test scripts/sync-webmcp-registry.test.mjs",
-    "test:signing": "node --test scripts/signing-scan.test.mjs"
+    "test:signing": "node --test scripts/signing-scan.test.mjs",
+    "test:harness-ui": "node apps/desktop/scripts/verify-harness-ui.mjs"
   },
   "dependencies": {
-    "dsh-codex-connect": "0.1.0-alpha.4.21"
+    "dsh-codex-connect": "0.1.0-alpha.4.34"
   },
   "devDependencies": {
     "pnpm": "12.0.0"

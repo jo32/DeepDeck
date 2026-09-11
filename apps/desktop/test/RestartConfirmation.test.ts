@@ -59,13 +59,14 @@ describe("RestartConfirmation", () => {
       },
     };
     const useSessions = (selector: (value: typeof state) => unknown) => selector(state);
+    const useSessionPendingInteraction = (selector: (value: Map<string, unknown>) => unknown) => selector(new Map([['waiting', { kind: 'approval' }]]));
     const t = (key: string) => copy[key] ?? key;
 
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(createElement(RestartConfirmation, { useSessions, t } as never));
+      root?.render(createElement(RestartConfirmation, { useSessions, useSessionPendingInteraction, t } as never));
     });
 
     expect(container.textContent).toContain("排队消息不会丢失");

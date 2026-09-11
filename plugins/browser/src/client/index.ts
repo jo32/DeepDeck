@@ -1,4 +1,9 @@
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepdeck/dsh-client-ui-desktop-chrome/sidebar-contract'
 import { BROWSER_SURFACE } from '../contracts.js'
@@ -9,7 +14,7 @@ import { BrowserFrame } from './BrowserFrame.js'
 import { createBrowserClient } from './browser-api.js'
 import { BROWSER_LOCALE, en, zh, type BrowserLocaleKey } from './locales.js'
 import { BrowserLauncher } from './BrowserLauncher.js'
-import type { ChatStore } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ConversationStore } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { BrowserSessionHeader } from './BrowserSessionHeader.js'
 import { BrowserEmptyConversation } from './BrowserConversation.js'
 import { BrowserPageSelection } from './BrowserPageSelection.js'
@@ -22,7 +27,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 
-export const inject = ['slots', 'sessions', 'workspaces', 'connection', 'locale', 'theme', 'deepdeckCharacter', 'modules'] as const
+export const inject = ['remote', 'uiWorkspace', 'slots', 'sessions', 'workspaces', 'connection', 'locale', 'theme', 'deepdeckCharacter', 'modules'] as const
 
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(BROWSER_LOCALE, { en, zh }), 'deepdeck browser: dictionaries')
@@ -59,7 +64,7 @@ export function apply(ctx: ClientContext): void {
     name: 'conversation.input.dock', id: 'deepdeck-browser-selection', order: -1002,
   }, BrowserPageSelection))
   ctx.slots.inject('conversation.session.header.actions', () => {
-    const store = ctx.slots.entries('conversation.session.header').find(entry => entry.store !== undefined)?.store as ChatStore | undefined
+    const store = ctx.slots.entries('conversation.session.header').find(entry => entry.store !== undefined)?.store as ConversationStore | undefined
     if (!store) throw new Error('Browser requires the shared conversation view store.')
     return ctx.slots.register({
       name: 'conversation.session.header', priority: -100, store,

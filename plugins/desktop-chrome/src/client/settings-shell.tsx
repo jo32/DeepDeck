@@ -1,11 +1,13 @@
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ConnectionHandle, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
-import {
-  createSnapshotStore,
-  type ClientContext,
-  type SnapshotStore,
-} from '@deepseek-ai/dsh-client-runtime/client'
+import type { ConnectionHandle, ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import {
   Button,
   IconAgentPresetOutline16,
@@ -285,7 +287,7 @@ class SettingsDocumentStore {
   private following: (() => void) | undefined
 
   constructor(
-    private readonly api: Pick<IApiClient, 'settings'>,
+    private readonly api: Pick<ClientRemote, 'settings'>,
     private readonly describeFace: SettingsDescribeFace,
   ) {}
 
@@ -307,8 +309,8 @@ class SettingsDocumentStore {
       state.error = null
     })
     try {
-      const response = await this.api.settings.openDocument({})
-      if (!response.result.ok) throw new Error(response.result.error.message)
+      const response = await this.api.settings.openSettingsDocument()
+      if (!response.ok) throw new Error(response.error.message)
     } catch (error) {
       this.store.update(state => { state.error = error instanceof Error ? error.message : String(error) })
     } finally {
@@ -368,7 +370,7 @@ export function installDesktopSettingsShell(ctx: ClientContext): void {
   const t = ctx.locale.bind(DESKTOP_SETTINGS_LOCALE)
   const connection = ctx.get('connection') as ConnectionHandle
   const documentController = connection.isLoopback
-    ? new SettingsDocumentStore(connection.api, ctx.settingsScope.describe())
+    ? new SettingsDocumentStore(ctx.remote, ctx.settingsScope.describe())
     : undefined
   ctx.effect(() => () => { documentController?.dispose() }, 'deepdeck desktop: settings document action')
 

@@ -128,6 +128,8 @@ pnpm start:rebuild     # force a desktop rebuild and launch
 pnpm start:packaged    # rebuild and launch the packaged desktop client
 pnpm check             # type-check desktop main, preload, and renderer code
 pnpm test              # run focused desktop tests
+pnpm test:harness-ui   # verify real Electron + Harness with an isolated profile
+pnpm test:questions    # verify question cards against recorded model output
 pnpm package:local     # build and verify an unsigned local macOS package
 pnpm package:mac       # build signed production macOS packages
 pnpm harness:build     # rebuild the pinned Harness checkout

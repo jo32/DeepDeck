@@ -1,8 +1,6 @@
-import type {
-  ObservableSnapshot,
-  SessionId,
-  WorkspaceId,
-} from '@deepseek-ai/dsh-client-runtime/client'
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 
 interface SessionSelectionSnapshot {
   readonly current: SessionId | undefined
@@ -22,8 +20,8 @@ export interface ArchiveSessionContinuityRuntime {
   }
   readonly workspaces: {
     readonly list: ObservableSnapshot<WorkspaceArchiveSnapshot>
-    startSession: (workspaceId?: WorkspaceId) => void
   }
+  readonly uiWorkspace: { startSession: (workspaceId?: WorkspaceId) => void }
 }
 
 /**
@@ -50,6 +48,6 @@ export function installArchiveSessionContinuity(
 
     const workspaceId = workspaces.items.find(workspace =>
       workspace.sessionIds.includes(archivedSessionId))?.workspaceId
-    runtime.workspaces.startSession(workspaceId)
+    runtime.uiWorkspace.startSession(workspaceId)
   })
 }

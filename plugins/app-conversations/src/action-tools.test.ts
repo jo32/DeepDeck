@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
+import { actionBindingProjection } from './action-binding-projection.js'
 import { installAppActionTools } from './action-tools.js'
 import type { AppConversationActionToolDefinition } from './contracts.js'
+
+function projectionFixture() {
+  return {
+    register: vi.fn(() => () => {}),
+    stateOf: (session: { events: Array<{ type: string; data: unknown }> }) =>
+      session.events.reduce(actionBindingProjection.apply, actionBindingProjection.init()),
+  }
+}
 
 const replyTool: AppConversationActionToolDefinition = {
   name: 'reader_set_reply_draft',
@@ -41,6 +50,7 @@ describe('App action tools', () => {
       actionTools: vi.fn(() => [replyTool]),
     }
     const runtime = installAppActionTools({
+      sessionProjections: projectionFixture(),
       agents: { get: vi.fn(() => agent) },
       sessions: { flush: vi.fn(async () => true) },
       on: vi.fn((event: string, listener: typeof disposed) => {
@@ -116,6 +126,7 @@ describe('App action tools', () => {
     }
     let disposed: ((payload: { readonly agent: typeof agent }) => void) | undefined
     const runtime = installAppActionTools({
+      sessionProjections: projectionFixture(),
       agents: { get: () => agent },
       sessions: { flush: async () => true },
       on: (event: string, listener: typeof disposed) => {
@@ -156,6 +167,7 @@ describe('App action tools', () => {
     const firstRegister = vi.fn(() => vi.fn())
     const firstAgent = createAgent(firstRegister)
     const context = (agent: typeof firstAgent) => ({
+      sessionProjections: projectionFixture(),
       agents: { get: () => agent },
       sessions: { flush },
       on: (event: string, listener: (payload: { readonly agent: typeof firstAgent }) => void) => {
@@ -209,6 +221,7 @@ describe('App action tools', () => {
     }
     let created: ((payload: { readonly agent: typeof agent }) => void) | undefined
     const runtime = installAppActionTools({
+      sessionProjections: projectionFixture(),
       agents: { get: () => agent },
       sessions: { flush },
       on: (event: string, listener: typeof created) => {

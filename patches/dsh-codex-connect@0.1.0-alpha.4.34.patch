@@ -1,0 +1,289 @@
+diff --git a/lib/client.js b/lib/client.js
+index eb4d7e7a783ec9d8480e82f299ee89a3c0a639f3..ec69af7ed26ae4b001cf0b90d0bed586154b5703 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -6587,11 +6587,10 @@ window.__ModuleLoader__.load({
+ 				account.dispose();
+ 			}, "dsh-codex-connect: account observation");
+ 			ctx.effect(() => {
+-				updater.refresh();
+ 				return () => {
+ 					updater.dispose();
+ 				};
+-			}, "dsh-codex-connect: update checker");
++			}, "dsh-codex-connect: manual update store");
+ 			ctx.effect(() => ctx.locale.register(namespace, {
+ 				zh,
+ 				en
+@@ -6621,13 +6620,6 @@ window.__ModuleLoader__.load({
+ 					configScope
+ 				})
+ 			}, OpenAICodexModelsCard));
+-			ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+-				name: "shell.overlay",
+-				id: "dsh-codex-connect-update",
+-				order: 40,
+-				locale: namespace,
+-				inject: () => ({ updater })
+-			}, OpenAICodexUpdateOverlay));
+ 			ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({
+ 				name: "tool.call.toolview",
+ 				key: "codex_connect_image_generate",
+diff --git a/lib/index.d.ts b/lib/index.d.ts
+index d8abaa04119cc1e212a0cc17e96ca2b29a1d8f7b..a67e9f0b6ea08a0f4b707d40adee8e39562fcb43 100644
+--- a/lib/index.d.ts
++++ b/lib/index.d.ts
+@@ -475,10 +475,12 @@ declare const OPENAI_CODEX_SEARCH_PROVIDER = "openai-codex";
+ /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
+ declare const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
+ /** Standalone search endpoint used by the official Codex client. */
+-declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/alpha/search";
++declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/responses";
+ interface SearchRequestBody {
+-  readonly id: string;
+   readonly model: string;
++  readonly store: false;
++  readonly stream: true;
++  readonly instructions: string;
+   readonly input: readonly [{
+     readonly type: 'message';
+     readonly role: 'user';
+@@ -487,17 +489,14 @@ interface SearchRequestBody {
+       readonly text: string;
+     }];
+   }];
+-  readonly commands: {
+-    readonly search_query: readonly [{
+-      readonly q: string;
+-    }];
+-  };
+-  readonly settings: {
++  readonly tools: readonly [{
++    readonly type: 'web_search';
+     readonly search_context_size: OpenAICodexSearchContextSize;
+-    readonly allowed_callers: readonly ['direct'];
+-    readonly external_web_access: boolean | 'indexed';
+-  };
+-  readonly max_output_tokens: number;
++    readonly external_web_access: boolean;
++  }];
++  readonly tool_choice: 'required';
++  readonly parallel_tool_calls: true;
++  readonly include: readonly ['web_search_call.action.sources'];
+ }
+ /** Exact secret-free request recorded before a standalone search dispatch. */
+ interface OpenAICodexSearchRequestRecord {
+diff --git a/lib/src-rxlwLWWN.js b/lib/src-rxlwLWWN.js
+index a1adfa58b13e0c1432b7041cc2c9468bda7f3669..a3473065deb6d7e5e8d31dc101f7e64aa892c885 100644
+--- a/lib/src-rxlwLWWN.js
++++ b/lib/src-rxlwLWWN.js
+@@ -5007,12 +5007,13 @@ const OPENAI_CODEX_SEARCH_TIMEOUT_MS = 3e4;
+ /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
+ const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
+ /** Standalone search endpoint used by the official Codex client. */
+-const OPENAI_CODEX_SEARCH_URL = `${OPENAI_CODEX_BASE_URL}/alpha/search`;
++const OPENAI_CODEX_SEARCH_URL = `${OPENAI_CODEX_BASE_URL}/responses`;
++const OPENAI_CODEX_SEARCH_INSTRUCTIONS = "Search the web for the user query and return a concise answer grounded in the sources you found.";
+ /** Convert the configured mode to the official endpoint field. */
+ function externalWebAccess(mode) {
+ 	switch (mode) {
+ 		case "cached": return false;
+-		case "indexed": return "indexed";
++		case "indexed": return false;
+ 		case "live": return true;
+ 	}
+ }
+@@ -5049,38 +5050,93 @@ function citeableUrl(value) {
+ 		return;
+ 	}
+ }
++/** Add one citeable, deduplicated source from an opaque Responses DTO. */
++function addSource(sources, seen, item) {
++	const url = citeableUrl(item["url"]);
++	if (url === void 0 || seen.has(url)) return;
++	seen.add(url);
++	const title = optionalString(item, "title");
++	const snippet = optionalString(item, "snippet");
++	sources.push({
++		url,
++		...title === void 0 ? {} : { title },
++		...snippet === void 0 ? {} : { snippet }
++	});
++}
+ /**
+-* Map the standalone endpoint's forward-compatible result DTOs into the dsh
+-* web result. Unknown DTO types and fields are ignored; malformed envelope
+-* fields fail at the network boundary.
+-* @param value - parsed response JSON.
++* Map a terminal Responses API object into the stable dsh web result.
++* Cited URLs are ordered first, followed by the complete source list requested
++* through `include: ["web_search_call.action.sources"]`.
++* @param value - terminal `response.completed`/`response.incomplete` response.
+ * @returns normalized answer and citeable sources.
+ */
+ function mapOpenAICodexSearchResponse(value) {
+-	if (!isRecord(value) || typeof value["output"] !== "string") throw new WebError("OpenAI Codex returned a search response without string output", "WEB_PROVIDER_ERROR");
+-	const output = value["output"];
+-	const rawResults = value["results"];
+-	if (rawResults !== void 0 && !Array.isArray(rawResults)) throw new WebError("OpenAI Codex returned a search response with non-array results", "WEB_PROVIDER_ERROR");
++	if (!isRecord(value) || !Array.isArray(value["output"])) throw new WebError("OpenAI Codex returned a Responses object without array output", "WEB_PROVIDER_ERROR");
++	const output = [];
++	const citedSources = [];
++	const otherSources = [];
++	const cited = /* @__PURE__ */ new Set();
++	const other = /* @__PURE__ */ new Set();
++	for (const item of value["output"]) {
++		if (!isRecord(item)) continue;
++		if (item["type"] === "message" && Array.isArray(item["content"])) {
++			for (const content of item["content"]) {
++				if (!isRecord(content) || content["type"] !== "output_text") continue;
++				const text = optionalString(content, "text");
++				if (text !== void 0) output.push(text);
++				if (!Array.isArray(content["annotations"])) continue;
++				for (const annotation of content["annotations"]) {
++					if (!isRecord(annotation) || annotation["type"] !== "url_citation") continue;
++					addSource(citedSources, cited, annotation);
++				}
++			}
++			continue;
++		}
++		if (item["type"] !== "web_search_call" || !isRecord(item["action"])) continue;
++		const rawSources = item["action"]["sources"];
++		if (!Array.isArray(rawSources)) continue;
++		for (const source of rawSources) if (isRecord(source)) addSource(otherSources, other, source);
++	}
+ 	const sources = [];
+ 	const seen = /* @__PURE__ */ new Set();
+-	for (const item of rawResults ?? []) {
+-		if (!isRecord(item) || item["type"] !== "text_result") continue;
+-		const url = citeableUrl(item["url"]);
+-		if (url === void 0 || seen.has(url)) continue;
+-		seen.add(url);
+-		const title = optionalString(item, "title");
+-		const snippet = optionalString(item, "snippet");
+-		sources.push({
+-			url,
+-			...title === void 0 ? {} : { title },
+-			...snippet === void 0 ? {} : { snippet }
+-		});
++	for (const source of [...citedSources, ...otherSources]) {
++		if (seen.has(source.url)) continue;
++		seen.add(source.url);
++		sources.push(source);
+ 	}
++	const content = output.join("");
+ 	return {
+-		...output.length === 0 ? {} : { content: output },
++		...content.length === 0 ? {} : { content },
+ 		sources,
+-		truncated: false
++		truncated: value["status"] === "incomplete"
++	};
++}
++/** Parse one complete SSE response and return its terminal Responses object. */
++function terminalResponseFromSse(text) {
++	let terminal;
++	const streamedOutput = [];
++	const blocks = text.replace(/\r\n/gu, "\n").split(/\n\n+/u);
++	for (const block of blocks) {
++		const data = block.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n").trim();
++		if (data.length === 0 || data === "[DONE]") continue;
++		let event;
++		try {
++			event = JSON.parse(data);
++		} catch (error) {
++			throw new WebError("OpenAI Codex returned malformed Responses SSE data", "WEB_PROVIDER_ERROR", { cause: error });
++		}
++		if (!isRecord(event)) continue;
++		if (event["type"] === "error") throw new WebError(providerMessage(event) ?? "OpenAI Codex Responses stream failed", "WEB_PROVIDER_ERROR");
++		if (event["type"] === "response.failed") throw new WebError(providerMessage(event["response"]) ?? "OpenAI Codex Responses request failed", "WEB_PROVIDER_ERROR");
++		if (event["type"] === "response.output_item.done" && Number.isSafeInteger(event["output_index"]) && event["output_index"] >= 0 && isRecord(event["item"])) streamedOutput[event["output_index"]] = event["item"];
++		if (event["type"] === "response.completed" || event["type"] === "response.incomplete") terminal = event["response"];
++	}
++	if (terminal === void 0) throw new WebError("OpenAI Codex Responses stream ended without a terminal response", "WEB_PROVIDER_ERROR");
++	if (isRecord(terminal) && Array.isArray(terminal["output"]) && terminal["output"].length === 0 && streamedOutput.length > 0) return {
++		...terminal,
++		output: streamedOutput.filter((item) => item !== void 0)
+ 	};
++	return terminal;
+ }
+ /** Stable cancellation error for every provider phase. */
+ function searchAborted(signal, fallback) {
+@@ -5126,7 +5182,8 @@ async function readSearchJson(response, signal) {
+ 			if (size > 1048576) throw new Error("Search response exceeds the byte limit");
+ 			chunks.push(value);
+ 		}
+-		return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)));
++		const text = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks));
++		return response.ok ? terminalResponseFromSse(text) : JSON.parse(text);
+ 	} finally {
+ 		reader.cancel().catch(() => {});
+ 		reader.releaseLock();
+@@ -5182,9 +5239,12 @@ var OpenAICodexSearchProvider = class {
+ 		if (access === void 0 || access.length === 0) throw new WebError("OpenAI Codex search is signed out; run \"dsh openai-codex login\"", "WEB_PROVIDER_CREDENTIAL_MISSING");
+ 		const accountId = accountIdFromToken(access);
+ 		throwIfSearchAborted(signal);
++		const requestId = this.options.resolveRequestId();
+ 		const body = {
+-			id: this.options.resolveRequestId(),
+ 			model: this.options.model,
++			store: false,
++			stream: true,
++			instructions: OPENAI_CODEX_SEARCH_INSTRUCTIONS,
+ 			input: [{
+ 				type: "message",
+ 				role: "user",
+@@ -5193,13 +5253,14 @@ var OpenAICodexSearchProvider = class {
+ 					text: request.query
+ 				}]
+ 			}],
+-			commands: { search_query: [{ q: request.query }] },
+-			settings: {
++			tools: [{
++				type: "web_search",
+ 				search_context_size: this.options.contextSize,
+-				allowed_callers: ["direct"],
+ 				external_web_access: externalWebAccess(this.options.mode)
+-			},
+-			max_output_tokens: this.options.maxOutputTokens
++			}],
++			tool_choice: "required",
++			parallel_tool_calls: true,
++			include: ["web_search_call.action.sources"]
+ 		};
+ 		this.options.recordRequest?.({
+ 			endpoint: OPENAI_CODEX_SEARCH_URL,
+@@ -5215,7 +5276,10 @@ var OpenAICodexSearchProvider = class {
+ 					authorization: `Bearer ${access}`,
+ 					"chatgpt-account-id": accountId,
+ 					"content-type": "application/json",
+-					accept: "application/json",
++					accept: "text/event-stream",
++					"openai-beta": "responses=experimental",
++					"session-id": requestId,
++					"x-client-request-id": requestId,
+ 					originator: "deepseek-harness"
+ 				},
+ 				body: JSON.stringify(body),
+diff --git a/package.json b/package.json
+index f05168b36897cd01f0edf52a3d3ac2807505cc6d..417847edf1a24a28ced91ee8ebbe8a35f9ee1ed6 100644
+--- a/package.json
++++ b/package.json
+@@ -128,7 +128,7 @@
+     "@deepseek-ai/dsh-util-values": "0.1.2-rc.1 || 0.1.5-alpha.1 || 0.1.5-rc.1 || 0.1.5-rc.2",
+     "@deepseek-ai/dsh-web": "0.1.2-rc.1 || 0.1.5-alpha.1 || 0.1.5-rc.1 || 0.1.5-rc.2",
+     "@deepseek-ai/schemastery": "^3.18.2",
+-    "react": "^18.2.0"
++    "react": "^18.2.0 || ^19.1.1"
+   },
+   "peerDependenciesMeta": {
+     "@deepseek-ai/dsh-commands": {
+@@ -205,7 +205,7 @@
+     "eslint": "^10.10.0",
+     "jsdom": "29.1.1",
+     "playwright": "1.62.1",
+-    "react": "^18.2.0",
++    "react": "^18.2.0 || ^19.1.1",
+     "react-dom": "^18.2.0",
+     "tsdown": "^0.22.2",
+     "typescript": "^5.9.3",

@@ -1,8 +1,14 @@
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { webmcpPublicationPrompt } from '../publication-prompt.js'
 import type { ComponentType } from 'react'
 import type { FsListing } from '../publication-file-contracts.js'
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { BROWSER_API_PATH, type BrowserClientAction, type BrowserMode, type BrowserSite, type BrowserState } from '../contracts.js'
 
@@ -110,9 +116,7 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
             const known = ctx.workspaces.list.getSnapshot().items.find(item => item.path === site.workspacePath)
             const workspace = known ?? await ctx.workspaces.create({ path: site.workspacePath })
             signal?.throwIfAborted()
-            const result = await connection.api.sessions.create({ workspaceId: workspace.workspaceId })
-            if (!result.result.ok) throw new Error(result.result.error.message)
-            sessionId = result.result.value.sessionId
+            sessionId = await ctx.sessions.create({ workspaceId: workspace.workspaceId })
             createdSessions.set(site.id, sessionId)
           }
         }
@@ -122,7 +126,7 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
         bindingSignal?.throwIfAborted()
         const prior = confirmed.get(sessionId)
         const localBinding = ctx.sessions.binding(sessionId)
-        const generation = connection.hostDescription.getSnapshot()
+        const generation = connection.generation.getSnapshot()
         const alreadyReady = prior !== undefined && localBinding !== undefined
           && prior.binding === localBinding && prior.tabId === tabId && prior.mode === mode
           && prior.generation === generation
@@ -133,8 +137,8 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
             // has not been activated yet. This public session-scoped read waits
             // for the Host resolver to resume its recorded preset and cwd.
             // Reading history or selecting the Client Session alone does not.
-            const resumed = await connection.api.sessions.models({ sessionId }, signal)
-            if (!resumed.result.ok) throw new Error(resumed.result.error.message)
+            const resumed = await ctx.remote.fileReferences.list(sessionId, '', signal)
+            if (!resumed.ok) throw new Error(resumed.error.message)
             signal?.throwIfAborted()
           }
           await browserRequest({ action: 'site.bind', siteId: site.id, sessionId, tabId, mode }, bindingSignal)

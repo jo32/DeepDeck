@@ -16,9 +16,9 @@ afterEach(() => {
 describe('app conversation Client registry', () => {
   it('opens an App source Workspace with the cordis Creator preset', async () => {
     const open = vi.fn()
-    const noteAgentPreset = vi.fn()
+    const refresh = vi.fn()
     const create = vi.fn(async () => ({
-      result: { ok: true, value: { sessionId: 'session-creator', agentPreset: 'cordis' } },
+       ok: true, value: { sessionId: 'session-creator', agentPreset: 'cordis' }
     }))
     vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as { action: string }
@@ -50,6 +50,7 @@ describe('app conversation Client registry', () => {
     }))
 
     await openCreatorSession({
+      remote: { session: { create } },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-creator', path: '/plugins/reader', sessionIds: [] })),
@@ -65,20 +66,20 @@ describe('app conversation Client registry', () => {
             },
           },
         }) },
-        noteAgentPreset,
+        refresh,
         open,
       },
     } as never, { api: { sessions: { create } } } as never, 'reader')
 
     expect(create).toHaveBeenCalledWith({ workspaceId: 'workspace-creator', agentPreset: 'cordis' })
-    expect(noteAgentPreset).toHaveBeenCalledWith('session-creator', 'cordis')
+    expect(refresh).toHaveBeenCalledOnce()
     expect(open).toHaveBeenCalledWith('session-creator')
   })
 
   it('reuses a blank session atomically but refuses to open it without Host guard readiness', async () => {
     const open = vi.fn()
     const create = vi.fn(async () => ({
-      result: { ok: true, value: { sessionId: 'session-blank', agentPreset: 'cordis' } },
+       ok: true, value: { sessionId: 'session-blank', agentPreset: 'cordis' }
     }))
     vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as { action: string }
@@ -105,6 +106,7 @@ describe('app conversation Client registry', () => {
     }))
 
     await expect(openCreatorSession({
+      remote: { session: { create } },
       workspaces: {
         list: { getSnapshot: () => ({
           items: [{
@@ -126,7 +128,7 @@ describe('app conversation Client registry', () => {
             },
           },
         }) },
-        noteAgentPreset: vi.fn(),
+        refresh: vi.fn(),
         open,
       },
     } as never, { api: { sessions: { create } } } as never, 'reader'))
@@ -142,9 +144,9 @@ describe('app conversation Client registry', () => {
 
   it('does not adopt a standard-preset blank session for Creator mode', async () => {
     const open = vi.fn()
-    const create = vi.fn(async () => ({
-      result: { ok: true, value: { sessionId: 'session-creator', agentPreset: 'cordis' } },
-    }))
+    const create = vi.fn().mockResolvedValueOnce({ ok: false, error: { code: 'agent-preset/conflict', message: 'standard preset' } }).mockResolvedValue({
+       ok: true, value: { sessionId: 'session-creator', agentPreset: 'cordis' }
+    })
     vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as { action: string }
       return new Response(JSON.stringify(request.action === 'creator-ready'
@@ -175,6 +177,7 @@ describe('app conversation Client registry', () => {
     }))
 
     await openCreatorSession({
+      remote: { session: { create } },
       workspaces: {
         list: { getSnapshot: () => ({
           items: [{
@@ -196,12 +199,12 @@ describe('app conversation Client registry', () => {
             },
           },
         }) },
-        noteAgentPreset: vi.fn(),
+        refresh: vi.fn(),
         open,
       },
     } as never, { api: { sessions: { create } } } as never, 'reader')
 
-    expect(create).toHaveBeenCalledOnce()
+    expect(create).toHaveBeenCalledTimes(2)
     expect(create).toHaveBeenCalledWith({
       workspaceId: 'workspace-creator',
       agentPreset: 'cordis',
@@ -213,10 +216,10 @@ describe('app conversation Client registry', () => {
     const open = vi.fn()
     const create = vi.fn()
       .mockResolvedValueOnce({
-        result: {
+
           ok: false,
           error: {
-            code: 'agent-preset-conflict',
+            code: 'agent-preset/conflict',
             message: 'session already runs agent preset "standard"',
             details: {
               sessionId: 'session-blank',
@@ -224,10 +227,10 @@ describe('app conversation Client registry', () => {
               existingPreset: 'standard',
             },
           },
-        },
+
       })
       .mockResolvedValueOnce({
-        result: { ok: true, value: { sessionId: 'session-fresh', agentPreset: 'cordis' } },
+         ok: true, value: { sessionId: 'session-fresh', agentPreset: 'cordis' }
       })
     vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as { action: string }
@@ -259,6 +262,7 @@ describe('app conversation Client registry', () => {
     }))
 
     await openCreatorSession({
+      remote: { session: { create } },
       workspaces: {
         list: { getSnapshot: () => ({
           items: [{
@@ -280,7 +284,7 @@ describe('app conversation Client registry', () => {
             },
           },
         }) },
-        noteAgentPreset: vi.fn(),
+        refresh: vi.fn(),
         open,
       },
     } as never, { api: { sessions: { create } } } as never, 'reader')
@@ -303,7 +307,7 @@ describe('app conversation Client registry', () => {
     const rename = vi.fn(async () => ({ ok: true }))
     const open = vi.fn()
     const create = vi.fn(async () => ({
-      result: { ok: true, value: { sessionId: 'session-update', agentPreset: 'cordis' } },
+       ok: true, value: { sessionId: 'session-update', agentPreset: 'cordis' }
     }))
     vi.stubGlobal('fetch', vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body)) as { action: string }
@@ -346,6 +350,7 @@ describe('app conversation Client registry', () => {
     }))
 
     await dispatchAppUpdateTask({
+      remote: { session: { create } },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-update', path: '/plugins/reader', sessionIds: [] })),
@@ -361,7 +366,7 @@ describe('app conversation Client registry', () => {
             },
           },
         }) },
-        noteAgentPreset: vi.fn(),
+        refresh: vi.fn(),
         binding: () => ({ session: { rename, prompt } }),
         open,
       },
@@ -398,10 +403,12 @@ describe('app conversation Client registry', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const registry = new DefaultAppConversationClientRegistry({
+      uiWorkspace: { connectWorkspace: vi.fn(async () => 'session-1') },
+      uiSession: { pendingInteractions: { getSnapshot: () => new Map() } },
+      remote: { session: { follow: async function* () { const result = await history(); yield { type: 'snapshot', records: result.value.events } } } },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-1', path: '/tmp/deepdeck-reader' })),
-        connectWorkspace: vi.fn(async () => 'session-1'),
       },
       sessions: {
         list: { getSnapshot: () => ({ byId: {} }) },
@@ -504,9 +511,9 @@ describe('app conversation Client registry', () => {
       })
     }))
     const history = vi.fn()
-      .mockResolvedValueOnce({ result: { ok: true, value: { events: [] } } })
+      .mockResolvedValueOnce({  ok: true, value: { events: [] }  })
       .mockResolvedValue({
-        result: {
+
           ok: true,
           value: {
             events: [
@@ -515,7 +522,7 @@ describe('app conversation Client registry', () => {
               { event: { type: 'turn/end', seq: 3, time: 3, data: { reason: { kind: 'completed' } } } },
             ],
           },
-        },
+
       })
     let sessionRunning = false
     const sessionListeners = new Set<() => void>()
@@ -527,10 +534,12 @@ describe('app conversation Client registry', () => {
       },
     }
     const registry = new DefaultAppConversationClientRegistry({
+      uiWorkspace: { connectWorkspace: vi.fn(async () => 'session-1') },
+      uiSession: { pendingInteractions: { getSnapshot: () => new Map() } },
+      remote: { session: { follow: async function* () { const result = await history(); yield { type: 'snapshot', records: result.value.events } } } },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-1', path: '/tmp/deepdeck-reader' })),
-        connectWorkspace: vi.fn(async () => 'session-1'),
       },
       sessions: {
         list: sessionList,

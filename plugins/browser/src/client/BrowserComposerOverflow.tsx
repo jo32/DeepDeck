@@ -44,7 +44,7 @@ export const COMPOSER_CONTROL_LABELS = {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
-    'deepdeck.browser.composer.controls': { kind: 'list'; scope: 'session'; owner: SlotMap['conversation.input.right']['owner'] }
+    'deepdeck.browser.composer.controls': { kind: 'list'; scope: 'session' }
   }
 }
 
@@ -77,7 +77,7 @@ function Control({ children, label, compact, id, onAvailability }: {
 }
 
 /** Reuses the original plugin controls; the message editor and its state stay resident. */
-export function BrowserComposerOverflow({ session, input, sessionId, renderSlot, t }: Props) {
+export function BrowserComposerOverflow({ sessionId, renderSlot, t }: Props) {
   const boundary = useContext(BrowserComposerBoundary)
   const trigger = useRef<HTMLButtonElement>(null)
   const popup = useRef<HTMLDivElement>(null)
@@ -107,7 +107,7 @@ export function BrowserComposerOverflow({ session, input, sessionId, renderSlot,
     if (trigger.current) observer.observe(trigger.current)
     update()
     return () => { observer.disconnect() }
-  }, [open, panel, input])
+  }, [open, panel])
 
   useEffect(() => {
     if (!open) return
@@ -130,7 +130,7 @@ export function BrowserComposerOverflow({ session, input, sessionId, renderSlot,
 
   const controls = Object.entries(COMPOSER_CONTROL_LABELS).map(([controlId, key]) =>
     <Control key={controlId} id={controlId} label={t(key)} compact={compact} onAvailability={onAvailability}>
-      {renderSlot(COMPOSER_CONTROLS, { session, input }, { only: controlId })}
+      {renderSlot(COMPOSER_CONTROLS, {}, { only: controlId })}
     </Control>)
 
   if (!compact || !panel) return <div className={css.inline} data-browser-composer-utilities>{controls}</div>

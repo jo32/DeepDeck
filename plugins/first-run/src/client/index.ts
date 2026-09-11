@@ -1,4 +1,9 @@
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -14,7 +19,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 const NS = 'deepdeck.first-run'
-export const inject = ['slots', 'locale', 'connection']
+export const inject = ['slots', 'locale', 'connection', 'remote']
 
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'deepdeck first run: dictionaries')
@@ -25,6 +30,6 @@ export function apply(ctx: ClientContext): void {
     id: 'deepdeck-provider-choice',
     order: -50,
     locale: NS,
-    inject: (): ProviderChoiceInjected => ({ api: connection.api, t }),
+    inject: (): ProviderChoiceInjected => ({ api: ctx.remote, t }),
   }, ProviderChoice))
 }

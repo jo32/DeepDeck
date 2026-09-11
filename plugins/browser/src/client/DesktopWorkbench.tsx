@@ -1,7 +1,12 @@
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { createElement, useCallback, useEffect, useReducer, useRef, useSyncExternalStore } from 'react'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { Context } from 'dsh-better-sidebar/src/context-types.ts'
-import { allLeaves, openTabInActivePane, setWidth, toggleExpanded, togglePanel, type SidebarStore } from 'dsh-better-sidebar/src/client/state.ts'
+import { allLeaves, openTabInBottomPane, setBottomHeight, toggleExpanded, toggleBottomPanel, type SidebarStore } from 'dsh-better-sidebar/src/client/state.ts'
 import type { BetterSidebarService } from 'dsh-better-sidebar/src/client/service.ts'
 import { RenderBoundary } from 'dsh-better-sidebar/src/client/RenderBoundary.tsx'
 import { appendToDraft } from 'dsh-better-sidebar/src/client/conversation-draft.ts'
@@ -30,20 +35,20 @@ export function DesktopWorkbench({ ctx, store, service }: { ctx: ClientContext; 
   if (!sessionId || !state) return <div className={css.rail}><button disabled title={t('sidebarChooseSession')} aria-label={t('sidebarChooseSession')}><BrowserIcon name="panel" /></button></div>
   const cwd = sessions.byId[sessionId]?.cwd
   const scope = { sessionId, ...(cwd ? { cwd } : {}) }
-  const leaves = [...allLeaves(state.splits), ...allLeaves(state.bottomSplits)]
+  const leaves = [...allLeaves(state.bottomSplits)]
   const tabs = leaves.flatMap(leaf => leaf.tabs)
   const selected = (leaves.find(leaf => leaf.id === state.activePane) ?? leaves[0])?.active
   const descriptors = service.getTabs().filter(tab => !tab.hidden && service.isTabEnabled(tab.id)).sort((a, b) => (a.order ?? 100) - (b.order ?? 100))
-  const toggle = () => store.reduce(togglePanel)
-  const resize = (width: number) => store.reduce(state => setWidth(state, Math.max(280, Math.min(800, window.innerWidth * .55, width))))
+  const toggle = () => store.reduce(toggleBottomPanel)
+  const resize = (height: number) => store.reduce(state => setBottomHeight(state, Math.max(120, Math.min(800, window.innerHeight * .55, height))))
   return <>
-    {!state.panelOpen && <div className={css.rail}><button onClick={toggle} aria-label={t('sidebarOpen')} title={t('sidebarOpen')}><BrowserIcon name="panel" /></button></div>}
-    <aside ref={panel} hidden={!state.panelOpen} className={css.sidebar} style={{ width: state.width }} aria-label="Better Sidebar" data-deepdeck-workbench>
-    <div className={css.resize} role="separator" aria-label={t('filesResize')} aria-orientation="vertical" aria-valuenow={state.width} aria-valuemin={280} aria-valuemax={800} tabIndex={0}
-      onPointerDown={event => { drag.current = { x: event.clientX, width: panel.current?.getBoundingClientRect().width ?? state.width }; event.currentTarget.setPointerCapture(event.pointerId) }}
-      onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) resize(drag.current.width + drag.current.x - event.clientX) }}
+    {!state.bottomOpen && <div className={css.rail}><button onClick={toggle} aria-label={t('sidebarOpen')} title={t('sidebarOpen')}><BrowserIcon name="panel" /></button></div>}
+    <aside ref={panel} hidden={!state.bottomOpen} className={css.sidebar} style={{ height: state.bottomHeight }} aria-label="Better Sidebar" data-deepdeck-workbench>
+    <div className={css.resize} role="separator" aria-label={t('filesResize')} aria-orientation="horizontal" aria-valuenow={state.bottomHeight} aria-valuemin={120} aria-valuemax={800} tabIndex={0}
+      onPointerDown={event => { drag.current = { x: event.clientY, width: panel.current?.getBoundingClientRect().height ?? state.bottomHeight }; event.currentTarget.setPointerCapture(event.pointerId) }}
+      onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) resize(drag.current.width + drag.current.x - event.clientY) }}
       onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }}
-      onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); resize(state.width + (event.key === 'ArrowLeft' ? 20 : -20)) } }} />
+      onKeyDown={event => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); resize(state.bottomHeight + (event.key === 'ArrowUp' ? 20 : -20)) } }} />
     <div className={css.heading}><strong>Better Sidebar</strong><button onClick={toggle} title={t('sidebarClose')} aria-label={t('sidebarClose')}><BrowserIcon name="close" /></button></div>
     <div className={css.toolbar}>
       <div className={css.tabs} role="tablist" aria-label="Better Sidebar">
@@ -62,10 +67,10 @@ export function DesktopWorkbench({ ctx, store, service }: { ctx: ClientContext; 
       const descriptor = service.getTab(tab.type)
       return <div className={css.content} key={`${sessionId}:${tab.id}`} hidden={selected !== tab.id}>
         <RenderBoundary>{descriptor ? createElement(descriptor.component, {
-          ctx: context, store, scope, tab, visible: state.panelOpen && selected === tab.id, expanded: state.expanded, revealed: [],
+          ctx: context, store, scope, tab, visible: state.bottomOpen && selected === tab.id, expanded: state.expanded, revealed: [],
           onToggleDir: path => store.reduce(state => toggleExpanded(state, path)),
           onReferenceFile: path => { appendToDraft(context, sessionId, `@${path}`) },
-          onOpenDiff: diff => store.reduce(state => openTabInActivePane(state, diff)),
+          onOpenDiff: diff => store.reduce(state => openTabInBottomPane(state, diff)),
           onSubagentJump: id => ctx.sessions.open(id as Parameters<typeof ctx.sessions.open>[0]),
         }) : <p>{t('sidebarUnavailable')}</p>}</RenderBoundary>
       </div>

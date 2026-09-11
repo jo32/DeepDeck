@@ -1,5 +1,14 @@
-import type { ClientContext, SessionId, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle, HistoryEntry } from '@deepseek-ai/dsh-client-connection/client'
+import type { SessionHistoryRecord as HistoryEntry } from '@deepseek-ai/dsh-api-session-controller/types'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '../app-settings-contract.js'
@@ -63,6 +72,16 @@ function textFromContent(content: unknown): string {
     .filter(Boolean)
     .join('\n\n')
     .trim()
+}
+
+async function readSessionHistory(ctx: ClientContext, sessionId: SessionId): Promise<readonly HistoryEntry[]> {
+  const controller = new AbortController()
+  try {
+    for await (const frame of ctx.remote.session.follow({ address: { kind: 'session', sessionId }, maxMessages: 32 }, controller.signal)) {
+      if (frame.type === 'snapshot') return frame.records
+    }
+    throw new Error('Session history ended before its opening snapshot')
+  } finally { controller.abort() }
 }
 
 function latestTurnStartSequence(entries: readonly HistoryEntry[]): number {
@@ -330,17 +349,14 @@ async function prepareCreatorSession(
   workspaceView: { readonly workspaceId: WorkspaceId; readonly sessionIds?: readonly SessionId[] },
 ): Promise<SessionId> {
   const sessions = ctx.sessions.list.getSnapshot()
-  const archived = 'archivedSessionIds' in sessions && Array.isArray(sessions.archivedSessionIds)
-    ? sessions.archivedSessionIds
-    : []
+  const archived = ctx.workspaces.list.getSnapshot().archivedSessionIds ?? []
   const reusable = workspaceView.sessionIds?.find((id) => {
     const summary = sessions.byId[id]
     return summary?.blank === true
       && summary.cwd === workspace.path
-      && summary.agentPreset === 'cordis'
       && !archived.includes(id)
   })
-  let created = await connection.api.sessions.create({
+  let created = await ctx.remote.session.create({
     workspaceId: workspaceView.workspaceId,
     agentPreset: 'cordis',
     ...(reusable === undefined
@@ -351,21 +367,21 @@ async function prepareCreatorSession(
   // session. Preserve that session's immutable preset and recover by birthing
   // a dedicated Creator session instead of surfacing the Host conflict.
   if (
-    !created.result.ok
+    !created.ok
     && reusable !== undefined
-    && created.result.error.code === 'agent-preset-conflict'
+    && created.error.code === 'agent-preset/conflict'
   ) {
-    created = await connection.api.sessions.create({
+    created = await ctx.remote.session.create({
       workspaceId: workspaceView.workspaceId,
       agentPreset: 'cordis',
     })
   }
-  if (!created.result.ok) throw new Error(created.result.error.message)
-  if (created.result.value.agentPreset !== 'cordis') {
+  if (!created.ok) throw new Error(created.error.message)
+  if (created.value.agentPreset !== 'cordis') {
     throw new Error('Host created the App session without the cordis Creator preset')
   }
-  const sessionId = created.result.value.sessionId
-  ctx.sessions.noteAgentPreset(sessionId, 'cordis')
+  const sessionId = created.value.sessionId
+  await ctx.sessions.refresh()
   await assertCreatorReady(sessionId, workspace.appId)
   return sessionId
 }
@@ -556,7 +572,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
         const known = this.ctx.workspaces.list.getSnapshot().items
           .find(item => item.path === workspace.path)
         const workspaceView = known ?? await this.ctx.workspaces.create({ path: workspace.path })
-        sessionId = await this.ctx.workspaces.connectWorkspace(workspaceView.workspaceId as WorkspaceId)
+        sessionId = await this.ctx.uiWorkspace.connectWorkspace(workspaceView.workspaceId as WorkspaceId)
       } else {
         sessionId = message.sessionId as SessionId
         const summary = this.ctx.sessions.list.getSnapshot().byId[sessionId]
@@ -576,9 +592,8 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
         if (summary?.running === true) {
           throw new Error('App actions with Session-bound tools cannot be queued into a running Session')
         }
-        const history = await this.connection.api.sessions.history({ sessionId, maxMessages: 32 })
-        if (!history.result.ok) throw new Error(history.result.error.message)
-        turnBaseline = latestTurnStartSequence(history.result.value.events)
+        const history = await readSessionHistory(this.ctx, sessionId)
+        turnBaseline = latestTurnStartSequence(history)
         const retained = await this.retainAgentAction(sessionId, message, action.tools)
         retainedAction = retained.state
         createdRetainedAction = retained.created
@@ -705,7 +720,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
       await delay(POLL_INTERVAL_MS)
       if (retainedAction !== undefined) await this.drainAgentActionEffects(retainedAction)
       const summary = this.ctx.sessions.list.getSnapshot().byId[sessionId]
-      if (summary?.pendingInteraction !== undefined) {
+      if (this.ctx.uiSession.pendingInteractions.getSnapshot().has(sessionId)) {
         this.emit(message, action, {
           status: 'attention',
           sessionId,
@@ -714,9 +729,8 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
         return
       }
 
-      const history = await this.connection.api.sessions.history({ sessionId, maxMessages: 32 })
-      if (!history.result.ok) throw new Error(history.result.error.message)
-      const preview = extractAssistantPreview(history.result.value.events, turnBaseline)
+      const history = await readSessionHistory(this.ctx, sessionId)
+      const preview = extractAssistantPreview(history, turnBaseline)
       if (preview.text.length > 0 && preview.text !== lastText) {
         lastText = preview.text
         this.emit(message, action, { status: 'running', sessionId, content: lastText })
@@ -743,7 +757,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
   }
 }
 
-export const inject = ['workspaces', 'sessions', 'connection', 'slots', 'locale'] as const
+export const inject = ['remote', 'uiWorkspace', 'uiSession', 'workspaces', 'sessions', 'connection', 'slots', 'locale'] as const
 
 export function apply(ctx: ClientContext): void {
   const connection = ctx.get('connection') as ConnectionHandle | undefined

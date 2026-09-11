@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type {
-  ObservableSnapshot,
-  SessionId,
-  WorkspaceId,
-} from "@deepseek-ai/dsh-client-runtime/client";
+import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import {
   installArchiveSessionContinuity,
   type ArchiveSessionContinuityRuntime,
@@ -45,7 +43,8 @@ function fixture(current: SessionId | undefined = sessionId("current")) {
   const startSession = vi.fn();
   const runtime: ArchiveSessionContinuityRuntime = {
     sessions: { list: sessions },
-    workspaces: { list: workspaces, startSession },
+    workspaces: { list: workspaces },
+    uiWorkspace: { startSession },
   };
   return { runtime, sessions, workspaces, startSession };
 }

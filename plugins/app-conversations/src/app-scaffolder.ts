@@ -106,7 +106,7 @@ function packageManifest(appId: string, title: string, packageName: string): str
       bundle: { patch: './cordis.patch.yml' },
       client: {
         inject: [
-          '@deepseek-ai/dsh-client-runtime',
+          '@deepseek-ai/dsh-client-ui-renderer',
           '@deepdeck/dsh-client-ui-desktop-chrome',
           '@deepdeck/dsh-app-conversations',
         ],

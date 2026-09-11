@@ -3,7 +3,7 @@
 import { act, createElement, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { UseProjection } from '@deepseek-ai/dsh-client-runtime/client'
+import type { UseProjection } from '@deepseek-ai/dsh-api-session-controller/client'
 import {
   SessionMetricsPopover,
   formatCompactTokens,

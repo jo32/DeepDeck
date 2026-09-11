@@ -23,7 +23,6 @@
       "@deepseek-ai/schemastery": ["../../vendor/deepseek-harness/vendor/schemastery/lib/types/index.d.ts"],
       "@deepseek-ai/dsh-api-remotes/client": ["../../vendor/deepseek-harness/packages/api/remotes/lib/types/client/index.d.ts"],
       "@deepseek-ai/dsh-client-connection/client": ["../../vendor/deepseek-harness/packages/client/connection/lib/types/client/index.d.ts"],
-      "@deepseek-ai/dsh-client-runtime/client": ["../../vendor/deepseek-harness/packages/client/runtime/lib/types/client/index.d.ts"],
       "@deepseek-ai/dsh-client-locale/client": ["../../vendor/deepseek-harness/packages/client/locale/lib/types/client/index.d.ts"],
       "@deepseek-ai/dsh-client-ui-conversation/client": ["../../vendor/deepseek-harness/packages/client/ui-conversation/lib/types/client/index.d.ts"],
       "@deepseek-ai/dsh-client-ui-layout/client": ["../../vendor/deepseek-harness/packages/client/ui-layout/lib/types/client/index.d.ts"],
@@ -34,7 +33,17 @@
       "@deepseek-ai/dsh-client-ui-user-questions/client": ["../../vendor/deepseek-harness/packages/client/ui-user-questions/lib/types/client/index.d.ts"],
       "@deepseek-ai/dsh-client-ui-theme/client": ["../../vendor/deepseek-harness/packages/client/ui-theme/lib/types/client/index.d.ts"],
       "@deepseek-ai/dsh-session-stats/client": ["../../vendor/deepseek-harness/packages/session/session-stats/lib/types/client.d.ts"],
-      "@deepseek-ai/dsh-token-meter/client": ["../../vendor/deepseek-harness/packages/llm/token-meter/lib/types/client.d.ts"]
+      "@deepseek-ai/dsh-token-meter/client": ["../../vendor/deepseek-harness/packages/llm/token-meter/lib/types/client.d.ts"],
+      "@deepseek-ai/dsh-client-store": ["../../vendor/deepseek-harness/packages/client/store/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-api-session-controller/client": ["../../vendor/deepseek-harness/packages/api/session-controller/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-renderer/client": ["../../vendor/deepseek-harness/packages/client/ui-renderer/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-session/client": ["../../vendor/deepseek-harness/packages/client/ui-session/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-session/types": ["../../vendor/deepseek-harness/packages/core/session/lib/types/types.d.ts"],
+      "@deepseek-ai/dsh-workspace/types": ["../../vendor/deepseek-harness/packages/workspace/workspace/lib/types/types.d.ts"],
+      "@deepseek-ai/cordis": ["../../vendor/deepseek-harness/vendor/cordis/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-api-workspace-controller/client": ["../../vendor/deepseek-harness/packages/api/workspace-controller/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-workspace/client": ["../../vendor/deepseek-harness/packages/client/ui-workspace/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-api-session-controller/types": ["../../vendor/deepseek-harness/packages/api/session-controller/lib/types/types.d.ts"]
     }
   },
   "include": ["src"],

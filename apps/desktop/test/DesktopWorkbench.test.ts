@@ -27,12 +27,14 @@ it('keeps sidebar state per session, opens tabs, resizes and restores the collap
   const click = async (label: string) => { await act(async () => { container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!.click() }) }
   try {
     await act(async () => { root.render(createElement(DesktopWorkbench, { ctx, store, service })) })
+    expect(container.querySelector('aside')?.hidden).toBe(true)
+    await act(async () => { service.openTab({ type: 'editor' }, { sessionId: 'first', cwd: '/first' }) })
     expect(container.textContent).toContain('Files: /first')
     await act(async () => { const select = container.querySelector('select')!; select.value = 'git'; select.dispatchEvent(new Event('change', { bubbles: true })) })
     expect(container.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Git')
-    const width = store.getSnapshot().state!.width
-    await act(async () => { container.querySelector('[role=separator]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })) })
-    expect(store.getSnapshot().state!.width).toBeLessThan(width)
+    const height = store.getSnapshot().state!.bottomHeight
+    await act(async () => { container.querySelector('[role=separator]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })) })
+    expect(store.getSnapshot().state!.bottomHeight).toBeLessThan(height)
     const draft = container.querySelector('input')!
     draft.value = 'unsaved content'
     await click(en.sidebarClose)
@@ -44,6 +46,8 @@ it('keeps sidebar state per session, opens tabs, resizes and restores the collap
     expect(container.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Git')
     const switchSession = async (current: string) => { await act(async () => { sessions = { ...sessions, current }; listeners.forEach(listener => listener()) }) }
     await switchSession('second')
+    expect(container.querySelector('aside')?.hidden).toBe(true)
+    await act(async () => { service.openTab({ type: 'editor' }, { sessionId: 'second', cwd: '/second' }) })
     expect(container.textContent).toContain('Files: /second')
     expect(container.textContent).not.toContain('Git: /first')
     await switchSession('first')

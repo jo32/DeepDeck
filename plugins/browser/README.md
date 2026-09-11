@@ -288,10 +288,10 @@ The Community section discovers projects for the current site automatically and
 has an explicit Refresh action. It distinguishes an empty online catalog, an
 empty bundled snapshot, and a failed request; switching sites cancels stale results.
 
-Publication Files uses the published **dsh-better-sidebar@0.17.1** file tree,
+Publication Files uses the published **dsh-better-sidebar@0.19.1** file tree,
 editor/preview viewers, Cordis service/store and Host APIs. The upstream
-[v0.17.1 release](https://github.com/omdsh-dev/DSH-better-sidebar/releases/tag/v0.17.1)
-explicitly supports Harness 0.1.1-rc.x. Keep the version pinned until its source
+[v0.19.1 release](https://github.com/omdsh-dev/DSH-better-sidebar/releases/tag/v0.19.1)
+supports the Harness 0.1.5 client APIs. Keep the version pinned until its source
 exports and lazy chunks have been verified against our Harness version.
 
 DeepDeck mounts these modules in its existing Browser plugin surface. The
@@ -299,7 +299,7 @@ upstream Client entry point, DOM mounting, global link interception and iframe
 BrowserView are not activated. The browser tab descriptor calls DeepDeck's native
 Browser API, retaining the existing native tabs, sessions and WebMCP capabilities.
 The original Host serves file operations, terminal connections and lazy chunks.
-The main desktop conversation mounts a Better Sidebar workbench through the
+The main desktop conversation mounts a Better Sidebar bottom workbench through the
 `desktop.workbench` Cordis slot. It exposes file, Git, terminal, subagent and side
 conversation tabs, and keeps tab selection, width and collapsed state in Better
 Sidebar's per-session store. Its Browser tab opens the native DeepDeck Browser.

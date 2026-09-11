@@ -209,6 +209,8 @@ async function deployHarness(target, workspaceDirectory) {
       "--legacy",
       "--config.node-linker=hoisted",
       "--config.auto-install-peers=false",
+      // The production closure excludes upstream development-only patched tools.
+      "--config.allow-unused-patches=true",
       "--config.link-workspace-packages=true",
       target,
     ],
@@ -234,8 +236,8 @@ async function loadHarnessWorkspacePackages() {
     ...await collectPackageManifests(join(harnessRoot, "packages"), 2),
     ...await collectPackageManifests(join(harnessRoot, "vendor"), 1),
     ...await collectPackageManifests(join(harnessRoot, "apps"), 1),
-    ...await collectPackageManifests(join(harnessRoot, "native", "landlock-run", "packages"), 1),
-    join(harnessRoot, "native", "landlock-run", "package.json"),
+    ...await collectPackageManifests(join(harnessRoot, "native", "system", "packages"), 1),
+    join(harnessRoot, "native", "system", "package.json"),
     join(harnessRoot, "examples", "package.json"),
     join(harnessRoot, "python", "sdk-runtime", "package.json"),
   ];

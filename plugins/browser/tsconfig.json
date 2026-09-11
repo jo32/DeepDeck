@@ -3,11 +3,7 @@
     "target": "ES2024",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": [
-      "ES2024",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -19,103 +15,51 @@
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
-    "typeRoots": [
-      "../../apps/desktop/node_modules/@types"
-    ],
+    "types": ["node"],
+    "typeRoots": ["../../apps/desktop/node_modules/@types"],
     "rootDir": "src",
     "outDir": "lib/types",
     "paths": {
-      "@deepseek-ai/dsh-client-ui-theme/client": [
-        "../../vendor/deepseek-harness/packages/client/ui-theme/lib/types/client/index.d.ts"
-      ],
-      "react-dom": [
-        "../../apps/desktop/node_modules/@types/react-dom/index.d.ts"
-      ],
-      "react": [
-        "../../apps/desktop/node_modules/@types/react/index.d.ts"
-      ],
-      "react/jsx-runtime": [
-        "../../apps/desktop/node_modules/@types/react/jsx-runtime.d.ts"
-      ],
-      "@deepseek-ai/dsh-client-connection/client": [
-        "../../vendor/deepseek-harness/packages/client/connection/lib/types/client/index.d.ts"
-      ],
-      "@deepseek-ai/dsh-client-runtime/client": [
-        "../../vendor/deepseek-harness/packages/client/runtime/lib/types/client/index.d.ts"
-      ],
-      "@deepseek-ai/dsh-client-locale/client": [
-        "../../vendor/deepseek-harness/packages/client/locale/lib/types/client/index.d.ts"
-      ],
-      "@deepseek-ai/dsh-client-ui-primitives": [
-        "../../vendor/deepseek-harness/packages/client/ui-primitives/lib/types/index.d.ts"
-      ],
-      "@deepseek-ai/dsh-client-ui-settings/client": [
-        "../../vendor/deepseek-harness/packages/client/ui-settings/lib/types/client/index.d.ts"
-      ],
-      "@deepseek-ai/dsh-client-ui-slots": [
-        "../../vendor/deepseek-harness/packages/client/ui-slots/lib/types/index.d.ts"
-      ],
-      "vitest": [
-        "../../apps/desktop/node_modules/vitest"
-      ],
-      "@deepseek-ai/dsh-client-ui-conversation/client": [
-        "../../vendor/deepseek-harness/packages/client/ui-conversation/lib/types/client/index.d.ts"
-      ],
-      "@deepseek-ai/dsh-client-ui-layout/client": [
-        "../../vendor/deepseek-harness/packages/client/ui-layout/lib/types/client/index.d.ts"
-      ],
-      "@deepdeck/dsh-client-ui-desktop-chrome/sidebar-contract": [
-        "../../plugins/desktop-chrome/src/client/sidebar-contract.d.ts"
-      ],
-      "@deepdeck/dsh-client-ui-home-hero/character-contract": [
-        "../home-hero/src/character-contract.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/FileTree.tsx": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/FileTree.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/EditorHost.tsx": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/EditorHost.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/builtins/viewers.tsx": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/builtins/viewers.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/state.ts": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/state.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/service.ts": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/service.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/chunk-loader.ts": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/chunk-loader.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/locales.ts": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/locales.d.ts"
-      ],
-      "dsh-better-sidebar/src/context-types.ts": [
-        "./node_modules/dsh-better-sidebar/lib/types/context-types.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/conversation-draft.ts": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/conversation-draft.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/upload.ts": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/upload.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/builtins/tabs.tsx": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/builtins/tabs.d.ts"
-      ],
-      "dsh-better-sidebar/src/client/RenderBoundary.tsx": [
-        "./node_modules/dsh-better-sidebar/lib/types/client/RenderBoundary.d.ts"
-      ]
+      "@deepseek-ai/dsh-client-ui-theme/client": ["../../vendor/deepseek-harness/packages/client/ui-theme/lib/types/client/index.d.ts"],
+      "react-dom": ["../../apps/desktop/node_modules/@types/react-dom/index.d.ts"],
+      "react": ["../../apps/desktop/node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["../../apps/desktop/node_modules/@types/react/jsx-runtime.d.ts"],
+      "@deepseek-ai/dsh-client-connection/client": ["../../vendor/deepseek-harness/packages/client/connection/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-locale/client": ["../../vendor/deepseek-harness/packages/client/locale/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-primitives": ["../../vendor/deepseek-harness/packages/client/ui-primitives/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-settings/client": ["../../vendor/deepseek-harness/packages/client/ui-settings/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-slots": ["../../vendor/deepseek-harness/packages/client/ui-slots/lib/types/index.d.ts"],
+      "vitest": ["../../apps/desktop/node_modules/vitest"],
+      "@deepseek-ai/dsh-client-ui-conversation/client": ["../../vendor/deepseek-harness/packages/client/ui-conversation/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-layout/client": ["../../vendor/deepseek-harness/packages/client/ui-layout/lib/types/client/index.d.ts"],
+      "@deepdeck/dsh-client-ui-desktop-chrome/sidebar-contract": ["../../plugins/desktop-chrome/src/client/sidebar-contract.d.ts"],
+      "@deepdeck/dsh-client-ui-home-hero/character-contract": ["../home-hero/src/character-contract.d.ts"],
+      "dsh-better-sidebar/src/client/FileTree.tsx": ["./node_modules/dsh-better-sidebar/lib/types/client/FileTree.d.ts"],
+      "dsh-better-sidebar/src/client/EditorHost.tsx": ["./node_modules/dsh-better-sidebar/lib/types/client/EditorHost.d.ts"],
+      "dsh-better-sidebar/src/client/builtins/viewers.tsx": ["./node_modules/dsh-better-sidebar/lib/types/client/builtins/viewers.d.ts"],
+      "dsh-better-sidebar/src/client/state.ts": ["./node_modules/dsh-better-sidebar/lib/types/client/state.d.ts"],
+      "dsh-better-sidebar/src/client/service.ts": ["./node_modules/dsh-better-sidebar/lib/types/client/service.d.ts"],
+      "dsh-better-sidebar/src/client/chunk-loader.ts": ["./node_modules/dsh-better-sidebar/lib/types/client/chunk-loader.d.ts"],
+      "dsh-better-sidebar/src/client/locales.ts": ["./node_modules/dsh-better-sidebar/lib/types/client/locales.d.ts"],
+      "dsh-better-sidebar/src/context-types.ts": ["./node_modules/dsh-better-sidebar/lib/types/context-types.d.ts"],
+      "dsh-better-sidebar/src/client/conversation-draft.ts": ["./node_modules/dsh-better-sidebar/lib/types/client/conversation-draft.d.ts"],
+      "dsh-better-sidebar/src/client/upload.ts": ["./node_modules/dsh-better-sidebar/lib/types/client/upload.d.ts"],
+      "dsh-better-sidebar/src/client/builtins/tabs.tsx": ["./node_modules/dsh-better-sidebar/lib/types/client/builtins/tabs.d.ts"],
+      "dsh-better-sidebar/src/client/RenderBoundary.tsx": ["./node_modules/dsh-better-sidebar/lib/types/client/RenderBoundary.d.ts"],
+      "@deepseek-ai/dsh-client-store": ["../../vendor/deepseek-harness/packages/client/store/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-api-session-controller/client": ["../../vendor/deepseek-harness/packages/api/session-controller/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-renderer/client": ["../../vendor/deepseek-harness/packages/client/ui-renderer/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-session/client": ["../../vendor/deepseek-harness/packages/client/ui-session/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-session/types": ["../../vendor/deepseek-harness/packages/core/session/lib/types/types.d.ts"],
+      "@deepseek-ai/dsh-workspace/types": ["../../vendor/deepseek-harness/packages/workspace/workspace/lib/types/types.d.ts"],
+      "@deepseek-ai/cordis": ["../../vendor/deepseek-harness/vendor/cordis/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-api-workspace-controller/client": ["../../vendor/deepseek-harness/packages/api/workspace-controller/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-user-questions/client": ["../../vendor/deepseek-harness/packages/client/ui-user-questions/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-api-remotes/client": ["../../vendor/deepseek-harness/packages/api/remotes/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-workspace/client": ["../../vendor/deepseek-harness/packages/client/ui-workspace/lib/types/client/index.d.ts"],
+      "@deepseek-ai/dsh-api-session-controller/types": ["../../vendor/deepseek-harness/packages/api/session-controller/lib/types/types.d.ts"]
     }
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx"
-  ]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

@@ -144,6 +144,7 @@ export const inject = [
   'agentPresets',
   'agents',
   'sessions',
+  'sessionProjections',
   'tools',
   'skills',
   'systemPrompt',

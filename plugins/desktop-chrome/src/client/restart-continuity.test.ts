@@ -24,7 +24,7 @@ describe('restart Session continuity', () => {
         },
         binding: () => ({ session: { prompt } }),
       },
-      connection: { api: { sessions: { models: vi.fn() } } },
+      remote: { fileReferences: { list: vi.fn() } },
     }
     const recovery: RestartRecoverySnapshot = {
       recoveryId: 'restart-1',
@@ -40,7 +40,7 @@ describe('restart Session continuity', () => {
 
   it('cold-restores a pending interaction without adding a continuation message', async () => {
     const prompt = vi.fn()
-    const models = vi.fn(async () => ({ result: { ok: true } }))
+    const models = vi.fn(async () => ({ ok: true }))
     const runtime: RestartContinuityRuntime = {
       sessions: {
         list: {
@@ -49,7 +49,7 @@ describe('restart Session continuity', () => {
         },
         binding: () => ({ session: { prompt } }),
       },
-      connection: { api: { sessions: { models } } },
+      remote: { fileReferences: { list: models } },
     }
 
     await recoverRestartSessions(runtime, bridge(), {
@@ -57,7 +57,7 @@ describe('restart Session continuity', () => {
       sessions: [{ sessionId: 'waiting', continuation: false }],
     })
 
-    expect(models).toHaveBeenCalledWith({ sessionId: 'waiting' }, undefined)
+    expect(models).toHaveBeenCalledWith('waiting', '', undefined)
     expect(prompt).not.toHaveBeenCalled()
   })
 })

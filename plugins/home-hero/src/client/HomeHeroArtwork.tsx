@@ -8,7 +8,7 @@ import {
   type AnimationEvent,
   type CSSProperties,
 } from 'react'
-import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionSnapshot as ConversationSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import SpiderOrbThree, { type OrbActionMode } from './SpiderOrbThree.tsx'
 import type { OrbExpression } from './orb-expressions.ts'
@@ -181,7 +181,7 @@ export interface HomeHeroArtworkProps {
   readonly session: ConversationSnapshot
   readonly input: {
     readonly draft: string
-    readonly imageIds: readonly unknown[]
+    readonly attachmentIds: readonly unknown[]
     readonly draftRev: number
     readonly phase: 'plain' | 'adjudicating' | 'claimed' | 'submitting'
   }
@@ -198,7 +198,8 @@ export function HomeHeroArtwork({
   onCompositionReady,
 }: HomeHeroArtworkProps) {
   const docked = useContext(DockedComposerContext)
-  const visualPhase = docked && session.composerPhase === 'blank' ? 'active' : session.composerPhase
+  const phase = session.running || (!session.blank && !session.awaitingFirstTurn) ? 'active' : session.promptAttempted ? 'engaging' : 'blank'
+  const visualPhase = docked && phase === 'blank' ? 'active' : phase
   const [presentation, setPresentation] = useState<{
     expression: OrbExpression
     epoch: number
@@ -490,7 +491,7 @@ export function HomeHeroArtwork({
     ? presentation.expression
     : actionMode === 'doing' ? 'doing' : 'neutral'
   const busy = input.phase === 'adjudicating' || input.phase === 'submitting'
-  const empty = input.draft.trim() === '' && input.imageIds.length === 0
+  const empty = input.draft.trim() === '' && input.attachmentIds.length === 0
   const disabled = !stops && (session.removed || busy || empty)
   const accessible = motionName === 'resting'
   const handleAnimationEnd = (event: AnimationEvent<HTMLDivElement>) => {

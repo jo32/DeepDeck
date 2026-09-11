@@ -3,7 +3,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConversationSnapshot } from "@deepseek-ai/dsh-client-runtime/client";
+import type { SessionSnapshot as ConversationSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 
 const renderOrb = vi.hoisted(() => vi.fn(() => null));
@@ -32,11 +32,13 @@ let root: Root | undefined;
 let container: HTMLDivElement | undefined;
 
 function session(
-  composerPhase: ConversationSnapshot["composerPhase"],
+  composerPhase: "blank" | "engaging" | "active",
   overrides: Partial<ConversationSnapshot> = {},
 ): ConversationSnapshot {
   return {
-    composerPhase,
+    blank: composerPhase !== "active",
+    promptAttempted: composerPhase === "engaging",
+    awaitingFirstTurn: composerPhase === "engaging",
     running: false,
     subagent: null,
     removed: false,
@@ -46,14 +48,14 @@ function session(
 
 async function render(
   draftRev: number,
-  composerPhase: ConversationSnapshot["composerPhase"] = "blank",
+  composerPhase: "blank" | "engaging" | "active" = "blank",
   sessionOverrides: Partial<ConversationSnapshot> = {},
   onCompositionReady?: () => void,
 ) {
   await act(async () => {
     root?.render(createElement(HomeHeroArtwork, {
       session: session(composerPhase, sessionOverrides),
-      input: { draft: "ship it", imageIds: [], draftRev, phase: "plain" },
+      input: { draft: "ship it", attachmentIds: [], draftRev, phase: "plain" },
       t,
       onCompositionReady,
     } satisfies HomeHeroArtworkProps));

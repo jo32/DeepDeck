@@ -5,8 +5,9 @@ import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import {
   CLIENT_BUILD_RECORD_PATH,
+  CLIENT_BUILD_PROFILE_SELECTOR,
   clientBuildProcessEnvironment,
-  repositoryCommitHash,
+  repositoryClientBuildEnvironment,
   resolveClientBuildEnvironment,
   writeClientBuildRecord,
 } from '../vendor/deepseek-harness/scripts/client-build-environment.ts'
@@ -41,14 +42,16 @@ const { values } = parseArgs({
   options: { profile: { type: 'string' } },
   allowPositionals: false,
 })
-const parentEnvironment = {
-  ...process.env,
-  DSH_CLIENT_COMMIT_HASH: repositoryCommitHash(harnessRoot, process.env),
-}
-const clientEnvironment = resolveClientBuildEnvironment(parentEnvironment, values.profile)
-const buildEnvironment = clientBuildProcessEnvironment(parentEnvironment, clientEnvironment)
+const repositoryEnvironment = repositoryClientBuildEnvironment(harnessRoot, process.env)
+const profile = values.profile ?? process.env[CLIENT_BUILD_PROFILE_SELECTOR]
+const clientEnvironment = resolveClientBuildEnvironment(repositoryEnvironment, profile)
+const buildEnvironment = clientBuildProcessEnvironment(process.env, clientEnvironment)
 
+// Upstream upgrades can remove packages while leaving their ignored lib/ trees.
+// Clean generated artifacts before rebuilding so discovery cannot load retired modules.
+runPnpm(['run', 'clean'], buildEnvironment)
 rmSync(resolve(harnessRoot, CLIENT_BUILD_RECORD_PATH), { force: true })
+runPnpm(['run', 'build:native-system'], buildEnvironment)
 runPnpm(['run', 'build:lib'], buildEnvironment)
 
 // Upstream's build:web script invokes a bare `pnpm`, which resolves to this

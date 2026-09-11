@@ -1,4 +1,4 @@
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { hasUsableModelProvider } from './readiness.ts'
 
@@ -13,10 +13,11 @@ function api(options: { codex?: boolean; deepseekConfigured?: boolean }) {
   ]
   return {
     llm: {
-      providers: vi.fn(async () => ({ result: { ok: true, value: { providers } } })),
+      listConfigurableProviders: vi.fn(async () => ({ ok: true, value: providers })),
+      listProviders: vi.fn(async () => ({ ok: true, value: providers.map(entry => ({ id: entry.provider, name: entry.displayName })) })),
     },
     settings: {
-      describe: vi.fn(async () => ({ result: { ok: true, value: {
+      describe: vi.fn(async () => ({ ok: true, value: {
         writable: true,
         hasDocument: true,
         namespaces: [{
@@ -27,14 +28,14 @@ function api(options: { codex?: boolean; deepseekConfigured?: boolean }) {
           secrets: [],
           revision: 0,
         }],
-      } } })),
+      } })),
     },
     credentials: {
-      describe: vi.fn(async () => ({ result: { ok: true, value: { credentials: {
+      describe: vi.fn(async () => ({ ok: true, value: {
         DEEPSEEK_API_KEY: { configured: options.deepseekConfigured === true, writable: true },
-      } } } })),
+      } })),
     },
-  } as unknown as Pick<IApiClient, 'settings' | 'credentials' | 'llm'>
+  } as unknown as Pick<ClientRemote, 'settings' | 'credentials' | 'llm'>
 }
 
 afterEach(() => { vi.unstubAllGlobals() })
