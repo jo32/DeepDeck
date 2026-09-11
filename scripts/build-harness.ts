@@ -52,7 +52,10 @@ const buildEnvironment = clientBuildProcessEnvironment(process.env, clientEnviro
 runPnpm(['run', 'clean'], buildEnvironment)
 rmSync(resolve(harnessRoot, CLIENT_BUILD_RECORD_PATH), { force: true })
 runPnpm(['run', 'build:native-system'], buildEnvironment)
-runPnpm(['run', 'build:lib'], buildEnvironment)
+// build:lib shells out to bare pnpm, which can resolve the parent's pnpm 12
+// under Corepack in CI. Keep both compilation stages on Harness's pinned version.
+runPnpm(['run', 'build:lib:host'], buildEnvironment)
+runPnpm(['run', 'build:lib:client'], buildEnvironment)
 
 // Upstream's build:web script invokes a bare `pnpm`, which resolves to this
 // parent workspace's pnpm 12 binary in a nested checkout. Invoke the equivalent
