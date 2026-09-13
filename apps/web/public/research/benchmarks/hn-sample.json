@@ -1,0 +1,19 @@
+{
+  "example": "HN Computer Use + offline processing, run 2",
+  "date": "2026-09-13",
+  "task": "Ten discussions, first ten valid comments each",
+  "expectedComments": 100,
+  "verifiedContent": 100,
+  "verifiedPrefixes": 100,
+  "verifiedParents": 25,
+  "unknownParents": 75,
+  "verifiedTopLevel": 12,
+  "verifiedNestedParents": 13,
+  "seconds": 1004.6,
+  "toolCalls": 69,
+  "complete": false,
+  "acquisition": "Computer Use; file notes and offline scripts allowed",
+  "provenance": "hn-cu-offline-processing-2026-09-13 / baseline-2",
+  "verification": "Independently verified against page evidence in the original experiment. This is a scored example, not a live run or a measurement of a deployed WebMCP evaluator.",
+  "tokens": 9582590
+}

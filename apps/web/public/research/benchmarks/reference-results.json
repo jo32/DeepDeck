@@ -1,0 +1,53 @@
+{
+  "description": "Completed experiments used to illustrate a proposed ground-truth and reference-execution benchmark. Not a live evaluation service.",
+  "token_accounting": "Accumulated run total tokens, including repeated context; not monetary cost.",
+  "aggregation": "Time and tokens are per-run medians. Do not pool success rates across experiments.",
+  "hn_comparability": "Live runs at different times and different completion volumes: CU verified 220 comments; WebMCP 282. Not an equal-work speedup comparison.",
+  "experiments": [
+    {
+      "name": "Books to Scrape",
+      "computer_use": {
+        "successful_runs": 5,
+        "runs": 5,
+        "median_wall_seconds": 46.807,
+        "median_total_tokens": 92559
+      },
+      "webmcp": {
+        "successful_runs": 5,
+        "runs": 5,
+        "median_wall_seconds": 29.855,
+        "median_total_tokens": 44440
+      }
+    },
+    {
+      "name": "X",
+      "computer_use": {
+        "successful_runs": 5,
+        "runs": 5,
+        "median_wall_seconds": 62.176,
+        "median_total_tokens": 134038
+      },
+      "webmcp": {
+        "successful_runs": 5,
+        "runs": 5,
+        "median_wall_seconds": 55.748,
+        "median_total_tokens": 145301
+      }
+    },
+    {
+      "name": "Hacker News",
+      "computer_use": {
+        "successful_runs": 0,
+        "runs": 3,
+        "median_wall_seconds": 968.067,
+        "median_total_tokens": 9582590
+      },
+      "webmcp": {
+        "successful_runs": 3,
+        "runs": 3,
+        "median_wall_seconds": 407.268,
+        "median_total_tokens": 1184254
+      }
+    }
+  ]
+}

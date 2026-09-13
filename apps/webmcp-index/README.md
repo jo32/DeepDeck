@@ -32,3 +32,13 @@ Legacy entries already containing verified metadata remain discoverable even if 
 The website’s server-only `WEBMCP_INDEX_URL` still points at the Worker origin. Deploy the website’s larger publication proxy before enabling the new publisher. Catalog responses use `no-store` so successful publication is visible immediately. Verify `/health` reports `direct-publication`, the Worker’s schedule list is empty, and publishing a real authorized package returns `indexed` with the same commit in the official catalog.
 
 The endpoint accepts at most ten publications per minute per Cloudflare location and caps the directory at 5,000 projects. These are traffic/storage limits, independent of GitHub. Administrative recovery or suppression uses the existing D1 access; update credentials must stay out of logs, URLs and Git repositories.
+
+## Benchmark pilot applications
+
+The bilingual `/benchmarks` pages submit through the website's same-origin `/api/benchmarks/applications` proxy to this Worker. Apply the additive `0003_benchmark_applications.sql` migration before deploying the Worker and website. The existing `WEBMCP_INDEX_URL` setting is reused; no new public credentials are required.
+
+The Worker validates required fields, consent, request size and a honeypot, then synchronously saves to `benchmark_applications` in D1. It returns only a receipt ID after confirming persistence. The browser retains the same UUID for retries of an unchanged payload, so network retries cannot create duplicate rows. A reused ID with different data returns `409`; failures return `400`, `413`, `429` or `503` without a false receipt. A separate rate-limit key allows ten intake requests per minute per Cloudflare location, with a 5,000-application storage cap. There is no public listing endpoint, email delivery, payment or automatic service activation.
+
+Authorized operators can review applications in Cloudflare Dashboard → D1 → `deepdeck-webmcp-index` → `benchmark_applications`. The table contains contact details and task requirements: restrict access to the existing account administrators, do not expose it through a public endpoint, and do not paste its contents into public logs. The `status` field starts as `new`; handling the request and contacting the applicant are manual operations. Record disposal is an administrative operation in D1. No IP address or browser fingerprint is stored.
+
+Tests use local D1 to cover persistence, receipt privacy, concurrent retries, payload conflicts, input rejection and service failures. To exercise the form locally, run the migrated Worker on port 8787 and start the website with `WEBMCP_INDEX_URL=http://127.0.0.1:8787 pnpm web:dev --port 3086`.

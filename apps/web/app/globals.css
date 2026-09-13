@@ -565,10 +565,20 @@ main {
   line-height: 1.7;
 }
 
-.webmcp-compare-link {
+.webmcp-resource-links {
   display: flex;
-  width: fit-content;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
   margin-top: 18px;
+}
+
+.webmcp-compare-link {
+  max-width: 100%;
+}
+
+.webmcp-compare-link span {
+  flex-shrink: 0;
 }
 
 .webmcp-comparison {

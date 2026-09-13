@@ -115,9 +115,14 @@ export function WebMCPSection({ locale }: { locale: SiteLocale }) {
               {content.source} <span aria-hidden="true">↗</span>
             </a>
             <p className="webmcp-availability">{content.availability}</p>
-            <a className="text-link webmcp-compare-link" href="#webmcp-vs-computer-use">
-              {content.comparisonLink} <span aria-hidden="true">↓</span>
-            </a>
+            <div className="webmcp-resource-links">
+              <a className="text-link webmcp-compare-link" href="#webmcp-vs-computer-use">
+                {content.comparisonLink} <span aria-hidden="true">↓</span>
+              </a>
+              <a className="text-link webmcp-compare-link" href={locale === 'zh' ? '/zh/webmcp/experiments' : '/webmcp/experiments'}>
+                {locale === 'zh' ? '三组真实实验：WebMCP 的潜力' : 'Three real experiments: the potential of WebMCP'} <span aria-hidden="true">↗</span>
+              </a>
+            </div>
           </div>
         </div>
 

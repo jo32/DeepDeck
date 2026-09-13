@@ -3,6 +3,10 @@ import { siteUrl } from "../lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
+    { url: `${siteUrl}/benchmarks`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${siteUrl}/zh/benchmarks`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${siteUrl}/webmcp/experiments`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${siteUrl}/zh/webmcp/experiments`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${siteUrl}/webmcp`, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${siteUrl}/zh/webmcp`, changeFrequency: 'weekly', priority: 0.8 },
     {

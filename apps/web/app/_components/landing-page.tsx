@@ -272,6 +272,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
           <nav className="nav-links" aria-label={content.aria.navigation}>
             <a href="#webmcp">{content.nav.webmcp}</a>
             <a href={locale === 'zh' ? '/zh/webmcp' : '/webmcp'}>{locale === 'zh' ? '工具目录' : 'Directory'}</a>
+            <a href={locale === 'zh' ? '/zh/benchmarks' : '/benchmarks'}>Bench</a>
             <a href="#showcase">{content.nav.apps}</a>
             <a href="#install">{content.nav.install}</a>
             <a href="#vibe">{content.nav.vibe}</a>
@@ -632,6 +633,8 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
         <p>Built on DeepSeek Harness. Composed with Cordis.</p>
         <div className="footer-links">
           <a href="#webmcp">{content.nav.webmcp}</a>
+          <a href={locale === 'zh' ? '/zh/webmcp/experiments' : '/webmcp/experiments'}>{locale === 'zh' ? '实验报告' : 'Experiments'}</a>
+          <a href={locale === 'zh' ? '/zh/benchmarks' : '/benchmarks'}>Bench</a>
           <a href="#updates">{content.nav.changelog}</a>
           <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>
           <a href={`${githubUrl}/blob/main/LICENSE`} target="_blank" rel="noreferrer">MIT License</a>

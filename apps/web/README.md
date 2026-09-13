@@ -66,3 +66,38 @@ The existing `deepdeck` Vercel project remains connected to `jo32/DeepDeck`, wit
 `pnpm web:build` builds the website without requesting GitHub or regenerating snapshots. Directory pages and APIs fetch the live index at runtime. If it is unavailable or unconfigured, the catalog returns the bundled fallback with `X-WebMCP-Source: bundled` and `Cache-Control: no-store`; the page shows an outage notice. Submissions return 503 when the service is unavailable. `pnpm webmcp:sync` explicitly updates offline fallback snapshots when maintaining a desktop release.
 
 Deploy the Worker and verify the migrated NGA listing before configuring the URL and deploying the website. See `apps/webmcp-index/README.md`. For manual recovery, use the same Vercel project and verify `/api/webmcp/catalog`, `/webmcp/catalog.json`, `/api/webmcp/submissions`, `/webmcp`, and `/zh/webmcp`. No new Vercel project or DNS change is needed.
+
+## WebMCP experiments
+
+`/webmcp/experiments` and `/zh/webmcp/experiments` present the September 2026 Book,
+X, and Hacker News comparisons. Both pages share the server-rendered narrative
+and a small interactive chart; metrics live in `lib/webmcp-experiments.ts`.
+Present the final measured WebMCP results, ordinary-group capabilities, and HN
+unequal-completion caveat. Historical WebMCP versions are not part of this page. Do not pool success rates or
+present total tokens as monetary cost.
+
+Public aggregate data and a Chinese Markdown report live under
+`public/research/webmcp-2026-09/`. Raw session logs, local source paths, and
+credentials must not be copied there. `/webmcp/experiments/share-image` renders
+the share card. The homepage WebMCP section, footer, and sitemap link to both
+localized pages.
+
+## DeepDeck Bench
+
+`/benchmarks` and `/zh/benchmarks` are bilingual pilot product pages. The HN
+scoring interaction uses the published baseline-2 aggregate sample in
+`public/research/benchmarks/hn-sample.json`; it does not run an agent. Keep the
+observed independent page verification distinct from the proposed WebMCP
+evaluator architecture. The offer is a scoped pilot, with no invented task
+inventory, customers, prices or self-serve availability.
+
+The application form posts to `/api/benchmarks/applications`, which proxies the
+Cloudflare Worker using the existing server-only `WEBMCP_INDEX_URL`. Deploy its
+`0003_benchmark_applications.sql` migration and intake handler first. The form
+shows a receipt only after persistence, retains fields on failure, and reuses
+an idempotency ID when retrying unchanged content. Applications are reviewed
+manually in the private D1 `benchmark_applications` table; this flow sends no
+email and does not collect payments. See `apps/webmcp-index/README.md` for
+storage, rate limits, and operator access.
+
+The benchmark product narrative centers on WebMCP ground truth plus reference execution: verified reachable completion, token overhead, and elapsed-time gaps. The interactive comparison draws on all three completed experiments, including the X token increase and HN unequal-work caveat. Never describe a measured reference as a mathematical upper bound or guaranteed minimum resource cost. User-facing application copy omits the storage implementation.

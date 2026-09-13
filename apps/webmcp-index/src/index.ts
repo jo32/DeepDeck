@@ -1,3 +1,4 @@
+import { handleBenchmarkApplication } from './benchmark-applications.ts'
 import { boundedResponse } from '../../../plugins/browser/src/bounded-response.ts'
 import { parseCatalog } from '../../../plugins/browser/src/webmcp-package.ts'
 import { digest, MAX_SUBMISSION_BYTES, parseSubmission, submissionEntry, submissionKey } from '../../../plugins/browser/src/webmcp-submission.ts'
@@ -15,6 +16,7 @@ const json = (value: unknown, status = 200, extra = {}) => Response.json(value, 
 /** No fetches, background jobs, repository scripts or GitHub credentials. */
 export async function handle(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
+  if (url.pathname === '/api/benchmarks/applications') return handleBenchmarkApplication(request, env)
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...headers, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } })
   if (request.method === 'GET' && url.pathname === '/health') {
     await env.DB.prepare('SELECT 1').first(); return json({ ok: true, indexing: 'direct-publication' })

@@ -1,0 +1,90 @@
+{
+  "date": "2026-09-13",
+  "scope": "Synthesis of archived experiments; no new trials",
+  "rows": [
+    {
+      "experiment": "book",
+      "group": "baseline",
+      "runs": 5,
+      "successes": 5,
+      "median_seconds": 46.807,
+      "median_total_tokens": 92559,
+      "median_tool_calls": 5,
+      "baseline_boundary": "DevTools and temporary browser JavaScript allowed"
+    },
+    {
+      "experiment": "book",
+      "group": "reuse",
+      "runs": 5,
+      "successes": 5,
+      "median_seconds": 29.855,
+      "median_total_tokens": 44440,
+      "median_tool_calls": 3,
+      "baseline_boundary": "DevTools and temporary browser JavaScript allowed"
+    },
+    {
+      "experiment": "x_fixed_three",
+      "group": "baseline",
+      "runs": 5,
+      "successes": 5,
+      "median_seconds": 62.176,
+      "median_total_tokens": 134038,
+      "median_tool_calls": 7,
+      "baseline_boundary": "DevTools and temporary browser JavaScript allowed"
+    },
+    {
+      "experiment": "x_fixed_three",
+      "group": "reuse",
+      "runs": 5,
+      "successes": 5,
+      "median_seconds": 55.748,
+      "median_total_tokens": 145301,
+      "median_tool_calls": 8,
+      "baseline_boundary": "DevTools and temporary browser JavaScript allowed"
+    },
+    {
+      "experiment": "hn_fixed_ten",
+      "group": "cu_offline",
+      "runs": 3,
+      "successes": 0,
+      "median_seconds": 968.067,
+      "median_total_tokens": 9582590,
+      "median_tool_calls": 69,
+      "expected_comments": 300,
+      "verified_records": 220,
+      "verified_parents": 55,
+      "strict_prefixes": 220,
+      "baseline_boundary": "Computer Use acquisition only; local file tools and offline scripts allowed"
+    },
+    {
+      "experiment": "hn_fixed_ten",
+      "group": "webmcp",
+      "runs": 3,
+      "successes": 3,
+      "median_seconds": 407.268,
+      "median_total_tokens": 1184254,
+      "median_tool_calls": 32,
+      "expected_comments": 282,
+      "verified_records": 282,
+      "verified_parents": 282,
+      "strict_prefixes": 282,
+      "baseline_boundary": "Computer Use acquisition only; local file tools and offline scripts allowed"
+    }
+  ],
+  "caveats": [
+    "Do not pool success rates across different baseline capabilities.",
+    "HN groups ran at different times with live comments and unequal completion.",
+    "Total tokens include cache reads and do not represent monetary cost.",
+    "Tool authoring and preparation excluded from main reuse measurements.",
+    "Small samples; no claim of statistical significance or universal reliability."
+  ],
+  "provenance": {
+    "description": "Curated aggregate data from locally archived DeepDeck experiments. Raw session logs are not published.",
+    "archive_reports": [
+      "books-to-scrape-2026-09-10",
+      "x-com-lazy-context-2026-09-12",
+      "hn-webmcp-retest-2026-09-13",
+      "hn-cu-offline-processing-2026-09-13"
+    ]
+  }
+}
