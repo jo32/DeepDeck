@@ -84,6 +84,14 @@ and observes additions/removals. API presence alone is not site support. Existin
 site tools and generated WebMCP appear together with source and version details.
 The Agent calls `browser_context` to inspect this directory, then
 `browser_webmcp_call` to invoke a tool and wait for its real result.
+Context returns full schemas on first discovery or a catalog change. Later reads
+return compact tab metadata and fresh grouped targets (tool names with current
+frame/document/revision identities). `browser_list_tools` rereads all schemas or
+selected `names` on demand, including after conversation compaction. Navigation,
+tab-open and tab-close receipts contain site-local tab metadata without schemas.
+`webmcp_read_source` is available in both modes for an explicit source read;
+context does not load source or working-project contents. Use `webmcp_project`
+with operation `state` when working-project details are needed.
 
 ## Chrome DevTools MCP
 

@@ -116,6 +116,7 @@ describe('BrowserRuntime', () => {
     call = async () => ({ articles: [{ title: 'Actual result' }] })
     request = vi.fn(async (command: BrowserNativeCommand) => {
       if (command.action === 'snapshot') return snapshot
+      if (['tab.navigate', 'tab.open', 'tab.close'].includes(command.action)) return snapshot
       if (command.action === 'webmcp.install') return install(command.script)
       if (command.action === 'webmcp.call') return call()
       if (command.action === 'page.screenshot') return { image: 'data:image/png;base64,AQID', documentId: command.documentId } satisfies import('./native-contract.js').BrowserScreenshot
@@ -155,6 +156,87 @@ describe('BrowserRuntime', () => {
     if (!tool) throw new Error(`Test tool missing: ${name}`)
     return JSON.parse(await tool.execute(args, { agent, signal: new AbortController().signal }))
   }
+
+  it('exposes schemas once, keeps fresh targets after navigation, and reads source only on demand', async () => {
+    const { working } = workingProject()
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    const first = await exec('browser_context')
+    expect(first).toMatchObject({ tools: [GENERATED_TOOL], catalog: { changed: true }, targets: [{ names: [GENERATED_TOOL.name], documentId: 'document-1' }] })
+    expect(JSON.stringify(first)).not.toContain(working.source)
+    expect(WebMCPProject.prototype.read).not.toHaveBeenCalled()
+    expect(WebMCPProject.prototype.state).not.toHaveBeenCalled()
+
+    snapshot.tabs[0]!.documentId = 'document-2'
+    snapshot.tabs[0]!.tools = [{ ...GENERATED_TOOL, documentId: 'document-2', frameId: 'frame-2' }]
+    const navigation = await exec('browser_navigate', { url: '/next' })
+    expect(JSON.stringify(navigation)).not.toContain('inputSchema')
+    const second = await exec('browser_context')
+    expect(second).not.toHaveProperty('tools')
+    expect(second).toMatchObject({ catalog: { changed: false }, targets: [{ documentId: 'document-2', frameId: 'frame-2', revision: REVISION }] })
+    await expect(exec('browser_webmcp_call', { ...GENERATED_TOOL, input: {} })).rejects.toThrow('page changed')
+    expect(await exec('browser_webmcp_call', { ...snapshot.tabs[0]!.tools[0], input: {} })).toEqual({ articles: [{ title: 'Actual result' }] })
+    expect(await exec('webmcp_read_source')).toMatchObject(working)
+    expect(await exec('browser_list_tools', { names: [GENERATED_TOOL.name, 'missing'] })).toMatchObject({ tools: snapshot.tabs[0]!.tools, missing: ['missing'] })
+    expect(await exec('browser_list_tools')).toMatchObject({ tools: snapshot.tabs[0]!.tools })
+    await exec('browser_set_mode', { mode: 'builder' })
+    expect(await exec('browser_context')).not.toHaveProperty('tools')
+    expect(await exec('webmcp_read_source')).toMatchObject(working)
+  })
+
+  it('rediscovers changed schemas, descriptions, revisions, registrations and removals', async () => {
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    await exec('browser_context')
+    for (const change of [
+      { inputSchema: { type: 'object', properties: { query: { type: 'string' } } } },
+      { description: 'New capability description' },
+      { revision: PREVIOUS_REVISION },
+      { name: 'deepdeck_search' },
+    ]) {
+      snapshot.tabs[0]!.tools = [{ ...snapshot.tabs[0]!.tools[0]!, ...change }]
+      expect(await exec('browser_context')).toMatchObject({ catalog: { changed: true }, tools: snapshot.tabs[0]!.tools })
+      expect(await exec('browser_context')).not.toHaveProperty('tools')
+    }
+    snapshot.tabs[0]!.tools = []
+    expect(await exec('browser_context')).toMatchObject({ catalog: { changed: true, count: 0 }, tools: [], targets: [] })
+    snapshot.tabs[0]!.tools = [GENERATED_TOOL]
+    expect(await exec('browser_context')).toMatchObject({ tools: [GENERATED_TOOL] })
+  })
+
+  it('scopes catalogs to the bound tab and preserves distinct frame identities', async () => {
+    const tab = snapshot.tabs[0]!
+    snapshot.tabs.push({ ...tab, id: 'tab-2', tools: [{ ...GENERATED_TOOL, name: 'deepdeck_other', frameId: 'other-frame' }] })
+    snapshot.tabs.push({ ...tab, id: 'unrelated', origin: 'https://unrelated.example' })
+    snapshot.tabs[0]!.tools.push({ ...GENERATED_TOOL, frameId: 'child-frame' })
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    const first = await exec('browser_context')
+    expect(first).toMatchObject({ tools: snapshot.tabs[0]!.tools, targets: [{ frameId: 'frame-1' }, { frameId: 'child-frame' }] })
+    expect(JSON.stringify(first)).not.toContain('deepdeck_other')
+    expect(JSON.stringify(first)).not.toContain('unrelated')
+    for (const [name, args] of [['browser_open_tab', { url: '/next' }], ['browser_close_tab', { tabId: 'tab-2' }]] as const) {
+      const result = JSON.stringify(await exec(name, args))
+      expect(result).not.toContain('inputSchema')
+      expect(result).not.toContain('unrelated')
+    }
+    await exec('browser_select_tab', { tabId: 'tab-2' })
+    expect(await exec('browser_context')).toMatchObject({ tools: snapshot.tabs[1]!.tools, targets: [{ frameId: 'other-frame' }] })
+    snapshot.tabs = []
+    expect(await exec('browser_context')).toMatchObject({ tabs: [], tools: [], targets: [] })
+    await expect(exec('browser_list_tools', { names: 'invalid' })).rejects.toThrow('array')
+  })
+
+  it('keeps initial discovery after a partial schema read and resets discovery on attachment', async () => {
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    await exec('browser_list_tools', { names: [GENERATED_TOOL.name] })
+    expect(await exec('browser_context')).toHaveProperty('tools')
+    const results = await Promise.all([exec('browser_context'), exec('browser_context')])
+    expect(results.every(result => !Object.hasOwn(result as object, 'tools'))).toBe(true)
+    runtime.dispose()
+    runtime = new BrowserRuntime(context, { request, available: true, snapshot, dispose: vi.fn() } as unknown as BrowserNativeClient, sites, {
+      inspect: async () => ({ hasSource: true, enabled: true, revisions: [] }),
+    } as unknown as WebMCPStore)
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    expect(await exec('browser_context')).toHaveProperty('tools')
+  })
 
   it('filters the fallback catalog by the current site and preserves its source status', async () => {
     vi.spyOn(runtime, 'directory').mockResolvedValue({ source: 'bundled', catalog: { formatVersion: 1, generatedAt: null, entries: [
