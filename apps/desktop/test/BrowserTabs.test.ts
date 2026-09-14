@@ -24,7 +24,7 @@ describe('Browser tab pointer actions', () => {
     container = document.createElement('div'); document.body.append(container)
     root = createRoot(container)
     const props = {
-    character: { Icon: () => null, Character: () => null }, browser: { request, prepareAgent: vi.fn(async () => undefined) }, t: (key: keyof typeof en) => en[key], renderConversation: () => null,
+    character: { Icon: () => null, Character: () => null }, browser: { request, prepareAgent: vi.fn(async () => undefined) }, t: (key: keyof typeof en) => en[key], renderResources: () => null, resourcesOpen: false, renderConversation: () => null,
       useSessions: (select: (snapshot: unknown) => unknown) => select({ byId: {}, current: undefined }) } as unknown as ComponentProps<typeof BrowserFrame>
     await act(async () => { root?.render(createElement(BrowserFrame, props)) })
     const background = container.querySelectorAll('[role="tablist"] [role="tab"]')[1]!

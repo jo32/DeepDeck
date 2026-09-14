@@ -68,6 +68,11 @@
 .eyebrow { font-size: 9px; line-height: 1.5; font-weight: 500; letter-spacing: .16em; color: var(--browser-muted); }
 .welcome p { color: var(--browser-muted); max-width: 370px; margin: 2px 0 0; line-height: 1.75; font-size: 13px; text-wrap: balance; }
 .panel { container-type: inline-size; width: var(--browser-panel-width); min-width: 0; flex: 0 0 var(--browser-panel-width); position: relative; display: flex; flex-direction: column; border-left: 1px solid var(--browser-line); background: var(--browser-bg); }
+/* The owned sizing marker exposes semantic modal presence to ResizeObserver.
+   No Harness DOM nodes, generated class names or event handlers are inspected. */
+.modalSignal { position: fixed; left: 0; top: 0; width: 0; height: 1px; pointer-events: none; visibility: hidden; }
+:global(body):has(:global([role='dialog'][aria-modal='true'])) .modalSignal { width: 1px; }
+.modalBackdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
 .resizeHandle { position: absolute; inset: 0 auto 0 0; width: 6px; z-index: 20; cursor: col-resize; touch-action: none; }
 .resizeHandle:hover, .resizeHandle:active { background: color-mix(in srgb, var(--browser-accent) 25%, transparent); }
 .resizeHandle:focus-visible { outline: 2px solid var(--browser-accent); outline-offset: -2px; }
@@ -97,6 +102,11 @@
 .panelNav button[aria-selected='true'] .toolCount { color: var(--browser-text); background: var(--browser-hover); }
 .conversation { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--browser-bg); }
 .conversation > :global([data-slot='conversation']) { flex: 1; min-height: 0; min-width: 0; }
+/* The sidebar scrolls vertically; wide tool output must not move the whole
+   transcript and composer sideways. Nested code/table scrollers keep their
+   own horizontal scrolling. Hero menus retain their visible overflow below. */
+.conversation :global([data-phase='active'] [data-conversation-scroll]) { overflow-x: hidden; }
+.conversation :global([data-chat-flow]) { min-width: 0; overflow-wrap: anywhere; }
 .primaryButton, .secondaryButton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--browser-line); border-radius: 11px; padding: 10px 14px; font-size: 12px; font-weight: 500; transition: background 140ms, border-color 140ms; }
 .primaryButton { background: var(--dsw-alias-button-info-fill); border-color: transparent; color: #fff; }
 .primaryButton:hover:not(:disabled) { background: var(--dsw-alias-button-info-hover); border-color: transparent; }
@@ -248,5 +258,10 @@
 
 .filesColumn { position: relative; flex: 0 0 var(--browser-files-width); width: var(--browser-files-width); min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid var(--browser-line); background: var(--browser-bg); }
 .filesColumn[hidden] { display: none; }
+.resourcesColumn { position: relative; flex: 0 0 0; width: 0; min-width: 0; min-height: 0; overflow: hidden; contain: layout paint; background: var(--browser-bg); }
+.resourcesColumn[data-open] { flex-basis: 360px; width: 360px; border-left: 1px solid var(--browser-line); }
+.browser[data-resources-fullscreen] .panel,
+.browser[data-resources-fullscreen] .filesColumn { display: none; }
+.browser[data-resources-fullscreen] .resourcesColumn { flex: 1 0 100%; width: 100%; }
 .filesColumn > p { padding: 20px; font-size: 13px; color: var(--browser-muted); }
 .filesHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 45px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--browser-line); font-size: 13px; }

@@ -51,7 +51,7 @@ async function render() {
     character: { Icon: () => null, Character: () => null, DockedComposer: ({ children }: any) => children },
     browser: { request, prepareAgent }, t: (key: keyof typeof en) => en[key],
     useSessions: (select: (snapshot: unknown) => unknown) => select(sessions),
-    renderConversation: () => createElement('textarea', { 'aria-label': 'Message the agent' }),
+    renderResources: () => null, resourcesOpen: false, renderConversation: () => createElement('textarea', { 'aria-label': 'Message the agent' }),
   } as unknown as ComponentProps<typeof BrowserFrame>
   container = document.createElement('div')
   document.body.append(container)
@@ -73,23 +73,23 @@ describe('Browser start page', () => {
     expect(container.querySelector('textarea[aria-label="Message the agent"]')).not.toBeNull()
     expect(container.textContent).not.toContain('Start site Agent')
     await act(async () => { button('Hide Agent').click() })
-    expect(container.querySelector('aside')).toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).toBeNull()
     await act(async () => { button('Site Agent').click() })
     expect(container.querySelector('textarea')).not.toBeNull()
   })
 
   it('keeps a new tab full width, while explicit Downloads and Agent actions remain usable', async () => {
     const { request } = await render()
-    expect(container.querySelector('aside')).toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).toBeNull()
     expect(request).toHaveBeenCalledWith({ action: 'command', command: { action: 'layout', top: 0, right: 0 } })
     await act(async () => { button('Downloads').click() })
-    expect(container.querySelector('aside')?.textContent).toContain('No downloads yet.')
+    expect(container.querySelector('aside:not([hidden])')?.textContent).toContain('No downloads yet.')
     await act(async () => { button('Hide Agent').click() })
-    expect(container.querySelector('aside')).toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).toBeNull()
     await act(async () => { button('Site Agent').click() })
-    expect(container.querySelector('aside')).not.toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).not.toBeNull()
     await act(async () => { button('New tab').click() })
-    expect(container.querySelector('aside')).toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).toBeNull()
   })
 
   it('reveals saved sites and opens the chosen website in Builder through the existing Agent service', async () => {
@@ -104,6 +104,6 @@ describe('Browser start page', () => {
     await act(async () => { container.querySelector<HTMLButtonElement>('[title="https://site4.example"]')!.click() })
     expect(request).toHaveBeenCalledWith({ action: 'command', command: { action: 'tab.navigate', tabId: 'blank', url: 'https://site4.example/' } })
     expect(prepareAgent).toHaveBeenCalledWith('blank', 'builder', true)
-    expect(container.querySelector('aside')).not.toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).not.toBeNull()
   })
 })

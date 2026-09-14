@@ -2,7 +2,7 @@ import type { BrowserNativeRequest, WebMCPScript } from "../../../../../plugins/
 
 const ACTIONS = new Set(['auth.respond', 'tab.move', 'tab.mute', 'tab.print', 'tab.save', 'tab.devtools', 'tab.siteInfo', 'window.fullscreen', 'download.control',
   "open", "snapshot", "tab.open", "tab.menu", "tab.duplicate", "tab.closeOthers", "tab.closeRight", "tab.reopen", "tab.activate", "tab.close", "tab.back", "tab.forward",
-  "tab.reload", "tab.stop", "tab.navigate", "layout", "find", "zoom", "webmcp.call",
+  "tab.reload", "tab.stop", "tab.navigate", "layout", "modal", "find", "zoom", "webmcp.call",
   "webmcp.cancel", "webmcp.install", "webmcp.remove", "page.inspect", "page.screenshot",
   "page.network", "page.evaluate", "page.interact", "devtools.open", "devtools.close", "devtools.begin", "devtools.end",
   "page.menu.configure", "page.selection.ack",

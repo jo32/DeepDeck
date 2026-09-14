@@ -60,6 +60,8 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
   let activeTabId: string | undefined;
   let top = 92;
   let right = 0;
+  let modalOpen = false;
+  let modalRevision = 0;
   let closing = false;
   let windowCloseRequested = false;
   let htmlFullscreenTab: string | undefined;
@@ -121,11 +123,12 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     const [width = 0, height = 0] = window.getContentSize();
     shell?.setBounds({ x: 0, y: 0, width, height });
     for (const tab of tabs.values()) {
-      tab.view.setVisible(tab.state.id === activeTabId && tab.state.url !== "about:blank" && !tab.state.error);
+      tab.view.setVisible(!modalOpen && tab.state.id === activeTabId && tab.state.url !== "about:blank" && !tab.state.error && (!!htmlFullscreenTab || right < width));
       tab.view.setBounds(browserContentBounds(width, height, htmlFullscreenTab ? 0 : top, htmlFullscreenTab ? 0 : right));
     }
   }
   function focusActive(): void {
+    if (modalOpen) { shell?.webContents.focus(); return; }
     const tab = activeTabId ? tabs.get(activeTabId) : undefined;
     const contents = tab && tab.state.url !== "about:blank" && !tab.state.error
       ? tab.contents
@@ -704,6 +707,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
       ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 18, y: 17 } } : {}),
       title: `${displayName} Browser`, backgroundColor: "#f8fafc", show: false, autoHideMenuBar: true });
     shell = new WebContentsView({ webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    shell.webContents.on('did-navigate', () => { modalRevision++; modalOpen = false; syncBounds(); });
     window.contentView.addChildView(shell);
     installShortcuts(shell.webContents);
     // Harness Markdown uses ordinary target=_blank anchors. Route the native
@@ -888,9 +892,31 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
           callback: () => { if (tabMenu === menu) tabMenu = undefined; } });
         return reply(command.action, { ok: true });
       }
+      case "modal": {
+        if (typeof command.open !== 'boolean') throw new Error('Invalid Browser modal state.');
+        if (command.ready !== undefined) {
+          if (!command.open || !Number.isInteger(command.ready)) throw new Error('Invalid Browser modal acknowledgement.');
+          // Keep the native page visible until the replacement has been painted.
+          if (command.ready === modalRevision) { modalOpen = true; syncBounds(); shell?.webContents.focus(); }
+          return reply(command.action, {});
+        }
+        const revision = ++modalRevision;
+        if (!command.open) { modalOpen = false; syncBounds(); return reply(command.action, {}); }
+        const tab = activeTabId ? tabs.get(activeTabId) : undefined;
+        let image: string | undefined;
+        if (tab?.view.getVisible() && !tab.contents.isDestroyed()) {
+          try { image = (await tab.contents.capturePage()).toDataURL(); }
+          catch { /* The dialog must remain usable even if its background cannot be captured. */ }
+        }
+        if (revision !== modalRevision) return reply(command.action, {});
+        return reply(command.action, image ? { image, revision } : { revision });
+      }
       case "layout":
         if (!Number.isFinite(command.top) || !Number.isFinite(command.right)) throw new Error("Invalid Browser layout.");
-        top = Math.max(0, Math.min(300, command.top)); right = Math.max(0, Math.min(1000, command.right)); syncBounds(); return snapshot();
+        // The shell may use the whole window for a resource preview. Bounds
+        // clamp against the actual window; a fixed cap can expose the guest
+        // above trusted content on wide screens.
+        top = Math.max(0, Math.min(300, command.top)); right = Math.max(0, command.right); syncBounds(); return snapshot();
       case "tab.activate": if (htmlFullscreenTab && htmlFullscreenTab !== command.tabId) leaveHtmlFullscreen(tabById(htmlFullscreenTab)); activeTabId = tabById(command.tabId).state.id; syncBounds(); focusActive(); emit(); persist(); return snapshot();
       case "tab.close": await closeTab(command.tabId); return snapshot();
       case "tab.navigate": {

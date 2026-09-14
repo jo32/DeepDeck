@@ -21,12 +21,12 @@ import type { FsListing } from '../publication-file-contracts.js'
 import { addressTarget, browserRequest } from './browser-api.js'
 import { BROWSER_LOCALE } from './locales.js'
 import css from './publication-files.module.css'
-import { installDesktopWorkbench } from './DesktopWorkbench.js'
+import { installNativeWorkspaceSidebar } from './NativeWorkspaceSidebar.js'
 
 /** Compose the pinned plugin's public modules; DeepDeck owns the Cordis mount. */
 export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: boolean } = {}) {
   const store = createSidebarStore()
-  store.setPrefs({ ...store.getPrefs(), ...(options.desktop ? { openByDefault: true } : {}), editorExplorer: true, browserInterceptLinks: false })
+  store.setPrefs({ ...store.getPrefs(), editorExplorer: !options.desktop, browserInterceptLinks: false })
   const service = createBetterSidebarService(store)
   const context = ctx as unknown as Context
   const t = ctx.locale.bind(BROWSER_LOCALE)
@@ -67,7 +67,7 @@ export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: bo
       urlTarget: url => ['http:', 'https:'].includes(url.protocol), component: props => <NativeBrowser {...props} /> }))
     return () => { for (const dispose of disposers) dispose(); attachLocale(undefined); setChunkModuleSystem(undefined) }
   }, 'deepdeck browser: workspace file viewers and native browser tab')
-  if (options.desktop) installDesktopWorkbench(ctx, store, service)
+  if (options.desktop) installNativeWorkspaceSidebar(ctx, store, service)
 
   function Files({ site, root, refreshTick }: { site: BrowserSite; root: FsListing; refreshTick: number }) {
     const sessionId = site.sessionId ?? site.id

@@ -96,6 +96,7 @@ export type BrowserNativeCommand =
   | { action: 'tab.activate' | 'tab.close' | 'tab.back' | 'tab.forward' | 'tab.reload' | 'tab.stop'; tabId: string }
   | { action: 'tab.navigate'; tabId: string; url: string }
   | { action: 'layout'; top: number; right: number }
+  | { action: 'modal'; open: boolean; ready?: number }
   | { action: 'find'; tabId: string; text: string; forward?: boolean; next?: boolean }
   | { action: 'tab.print' | 'tab.save' | 'tab.devtools' | 'tab.siteInfo'; tabId: string }
   | { action: 'window.fullscreen' }
@@ -122,6 +123,7 @@ export type BrowserNativeResponseMap = {
 } & {
   [Action in 'auth.respond' | 'tab.print' | 'tab.save' | 'tab.devtools' | 'tab.siteInfo' | 'window.fullscreen' | 'download.control' | 'page.menu.configure' | 'page.selection.ack' | 'tab.menu' | 'find' | 'zoom' | 'devtools.begin' | 'devtools.close' | 'devtools.end']: { ok: true }
 } & {
+  'modal': { image?: string; revision?: number }
   'devtools.open': BrowserDevToolsLease
   'webmcp.install': WebMCPInstallReceipt
   'webmcp.remove': { removed: true }

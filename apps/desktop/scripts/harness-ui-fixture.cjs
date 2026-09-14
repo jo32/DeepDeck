@@ -1,6 +1,7 @@
 // Exercise the real desktop and Harness together using an isolated DSH profile.
 const { app, BaseWindow, webContents } = require('electron');
-const { writeFileSync } = require('node:fs');
+const { writeFileSync, rmSync } = require('node:fs');
+const { homedir } = require('node:os');
 const { join } = require('node:path');
 const { createServer } = require('node:http');
 const assert = require('node:assert/strict');
@@ -9,6 +10,7 @@ app.setPath('userData', join(process.env.DEEPDECK_UI_TEST_PROFILE, 'electron'));
 app.setAppPath(join(root, 'apps/desktop'));
 const errors = [];
 let harnessContents;
+let workspaceFixture;
 app.on('web-contents-created', (_, contents) => contents.on('console-message', event => {
   if (event.level === 'error' || /session create failed/.test(event.message)) errors.push(event.message);
 }));
@@ -27,11 +29,15 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     }
   }, 'visible desktop shell');
   harnessContents = contents;
-  const evaluate = code => contents.executeJavaScript(code);
-  const click = async (selector, labels, target = contents) => {
+  const evaluate = async code => {
+    try { return await contents.executeJavaScript(code); }
+    catch (error) { throw new Error(`Renderer verification failed: ${code.slice(0, 800)}`, { cause: error }); }
+  };
+  const click = async (selector, labels = [], target = contents) => {
+    target.focus();
     const point = await until(() => target.executeJavaScript(`(() => {
       const candidates = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).filter(e =>
-        ${JSON.stringify(labels)}.some(label => [e.getAttribute('aria-label'), e.textContent].some(value => value?.trim() === label)));
+        (${JSON.stringify(labels)}.length === 0 || ${JSON.stringify(labels)}.some(label => [e.getAttribute('aria-label'), e.textContent].some(value => value?.trim() === label))));
       for (const element of candidates) {
         const box = element.getBoundingClientRect();
         const x = box.left + box.width / 2, y = box.top + box.height / 2;
@@ -39,7 +45,7 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
         if (box.width > 0 && (hit === element || element.contains(hit))) return {x: Math.round(x), y: Math.round(y)};
       }
       return null;
-    })()`), `reachable control: ${labels.join(' / ')}`);
+    })()`), `reachable control: ${labels.join(' / ') || selector}`);
     target.sendInputEvent({ type: 'mouseMove', ...point });
     target.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...point });
     target.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point });
@@ -102,32 +108,72 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   await expectHomeHero();
   window.setBounds(originalBounds);
   await delay(400);
-  await click('button', ['打开 Better Sidebar', 'Open Better Sidebar']);
-  assert(await evaluate(`!!document.querySelector('[data-deepdeck-workbench]:not([hidden])')`));
+  window.setSize(1600, 820);
+  await delay(500);
+  const togglePlacement = await evaluate(`(() => {
+    const button = document.querySelector('[data-deepdeck-workspace-open]');
+    const bounds = button?.getBoundingClientRect();
+    return bounds && { top: bounds.top, right: innerWidth - bounds.right,
+      hit: button.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)),
+      inTitlebar: !!button.closest('[data-deepdeck-desktop-chrome]') };
+  })()`);
+  if (!togglePlacement?.inTitlebar || !togglePlacement.hit || togglePlacement.top > 16 || togglePlacement.right > 20) {
+    throw new Error('Workspace toggle must be clickable in the top-right titlebar: ' + JSON.stringify(togglePlacement));
+  }
+  const readToggleAppearance = selector => evaluate(`(() => {
+    const button = document.querySelector(${JSON.stringify(selector)});
+    const svg = button.querySelector('svg');
+    const style = getComputedStyle(svg);
+    const rect = button.getBoundingClientRect();
+    return { glyph: svg.innerHTML, transform: style.transform, color: style.color,
+      width: style.width, height: style.height, hitWidth: rect.width, hitHeight: rect.height };
+  })()`);
+  const collapsedToggle = await readToggleAppearance('[data-deepdeck-workspace-open]');
+  writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT.replace('.png', '-toggle.png'), (await contents.capturePage()).toPNG());
+  await click('[data-sidebar-right-expand], [data-deepdeck-workspace-open]');
+  await until(() => evaluate(`!!document.querySelector('[data-sidebar-right-open] [data-sidebar-right-guide]')`), 'workspace guide');
+  if (await evaluate(`!!document.querySelector('[data-deepdeck-workspace-open]')`)) throw new Error('Expanded sidebar must have only its native collapse control');
+  const expandedToggle = await readToggleAppearance('[data-sidebar-right-toggle]');
+  if (JSON.stringify(collapsedToggle) !== JSON.stringify(expandedToggle)) {
+    throw new Error('Workspace toggle appearance changes when expanded: ' + JSON.stringify({ collapsedToggle, expandedToggle }));
+  }
   const expectRightWorkbench = async () => {
+    await delay(300);
     const geometry = await evaluate(`(() => {
-      const panel = document.querySelector('[data-deepdeck-workbench]:not([hidden])');
+      const panel = document.querySelector('[data-sidebar-right-open]');
       const frame = document.querySelector('[data-deepdeck-desktop-frame]');
       const conversation = document.querySelector('[data-slot="main.conversation"]').firstElementChild;
-      const separator = panel.querySelector('[role="separator"]');
       const bounds = element => element.getBoundingClientRect().toJSON();
-      const handle = bounds(separator);
-      const hit = document.elementFromPoint(handle.x + handle.width / 2, handle.y + 100);
       return { panel: bounds(panel), frame: bounds(frame), conversation: bounds(conversation),
-        orientation: separator.getAttribute('aria-orientation'), resizeReachable: hit === separator };
+        mode: panel.getAttribute('data-sidebar-right-panel'),
+        panels: document.querySelectorAll('[data-sidebar-right-open]').length,
+        duplicate: !!document.querySelector('[data-deepdeck-workbench]') };
     })()`);
-    assert(geometry.panel.left >= geometry.conversation.right - 1, 'Better Sidebar must sit beside the conversation');
-    assert(Math.abs(geometry.panel.top - geometry.frame.top) < 1
-      && Math.abs(geometry.panel.bottom - geometry.frame.bottom) < 1,
-    `Better Sidebar must fill the right edge, not the bottom: ${JSON.stringify(geometry)}`);
-    assert.equal(geometry.orientation, 'vertical');
-    assert(geometry.resizeReachable, 'The sidebar width handle must receive pointer input');
+    assert.equal(geometry.panels, 1, 'There must be exactly one workspace sidebar');
+    assert.equal(geometry.duplicate, false, 'The duplicate workbench must not mount');
+    assert(geometry.mode === 'fullscreen' || Math.abs(geometry.panel.left - geometry.conversation.right) < 2,
+      `No empty panel may separate chat from files: ${JSON.stringify(geometry)}`);
+    assert(Math.abs(geometry.panel.right - geometry.frame.right) < 1, 'Workspace must use the right edge');
     return geometry;
   };
+  await expectRightWorkbench();
+  assert(await evaluate(`['files', 'git', 'terminal'].every(kind => document.querySelector('[data-sidebar-right-guide-entry="' + kind + '"]'))`), 'Files, Git and Terminal must share the native guide');
+  writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT.replace('.png', '-sidebar-empty.png'), (await contents.capturePage()).toPNG());
+  workspaceFixture = join(homedir(), 'DeepDeck', `sidebar-verification-${process.pid}.md`);
+  writeFileSync(workspaceFixture, '# Sidebar verification\n\nFiles and tools share one panel.\n', { flag: 'wx' });
+  await click('[data-sidebar-right-guide-entry="files"]');
+  await until(() => evaluate(`!!document.querySelector('[data-sidebar-right-open] [data-dsh-native-tab-host]')`), 'Files in native sidebar');
+  await click(`[data-sidebar-right-open] [role="button"][title=${JSON.stringify(workspaceFixture)}]`);
+  await until(() => evaluate(`document.querySelector('[data-sidebar-right-open]').innerText.includes('Files and tools share one panel.')`), 'file preview in shared sidebar');
+  window.setSize(1600, 820);
+  await delay(400);
   const beforeResize = await expectRightWorkbench();
   const handle = await evaluate(`(() => {
-    const box = document.querySelector('[data-deepdeck-workbench] [role="separator"]').getBoundingClientRect();
-    return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + 100) };
+    const element = document.querySelector('[data-side="details"]');
+    const box = element.getBoundingClientRect();
+    const x = Math.round(box.x + box.width / 2), y = Math.round(box.y + 100);
+    if (document.elementFromPoint(x, y) !== element) throw new Error('Workspace resize handle is covered');
+    return { x, y };
   })()`);
   contents.sendInputEvent({ type: 'mouseMove', ...handle });
   contents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...handle });
@@ -135,25 +181,37 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   contents.sendInputEvent({ type: 'mouseMove', modifiers: ['leftButtonDown'], x: handle.x - 60, y: handle.y });
   await delay(100);
   contents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, x: handle.x - 60, y: handle.y });
-  await delay(300);
   const afterResize = await expectRightWorkbench();
-  assert(afterResize.panel.width > beforeResize.panel.width + 40,
-    `Dragging left must widen the sidebar: ${JSON.stringify({ beforeResize, afterResize })}`);
-  await evaluate(`(() => { const select = document.querySelector('[data-deepdeck-workbench] select'); select.value = 'editor'; select.dispatchEvent(new Event('change', {bubbles:true})); })()`);
-  await until(() => evaluate(`!!document.querySelector('[data-deepdeck-workbench] [role="tab"]')`), 'Files tab');
+  assert(afterResize.panel.width > beforeResize.panel.width + 40, 'Dragging must widen the workspace sidebar');
+  // The + control opens the guide in the same strip, and choosing Git replaces it.
+  await click('[data-sidebar-right-open] [data-dockkit-add-tab]');
+  await click('[data-sidebar-right-guide-entry="git"]');
+  await until(() => evaluate(`document.querySelectorAll('[data-sidebar-right-open] [data-dockkit-tab]').length === 3`), 'files, resource and Git tabs');
   await expectRightWorkbench();
-  await click('button', ['收起 Better Sidebar', 'Close Better Sidebar']);
-  await click('button', ['打开 Better Sidebar', 'Open Better Sidebar']);
+  await click('[data-sidebar-right-toggle]');
+  await until(() => evaluate(`!document.querySelector('[data-sidebar-right-open]')`), 'workspace collapsed');
+  await click('[data-sidebar-right-expand], [data-deepdeck-workspace-open]');
   const reopened = await expectRightWorkbench();
-  assert(Math.abs(reopened.panel.width - afterResize.panel.width) < 1, 'Reopening must preserve the sidebar width');
-  assert(await evaluate(`!!document.querySelector('[data-deepdeck-workbench] [role="tab"][aria-selected="true"]')`), 'Reopening must preserve the active tab');
+  assert(Math.abs(reopened.panel.width - afterResize.panel.width) < 1, `Reopening must preserve width: ${afterResize.panel.width} -> ${reopened.panel.width}, viewport ${afterResize.frame.width} -> ${reopened.frame.width}`);
+  assert.equal(await evaluate(`document.querySelectorAll('[data-sidebar-right-open] [data-dockkit-tab]').length`), 3, 'Reopening must preserve tabs');
+  await click('[data-sidebar-right-mode="fullscreen"]');
+  await until(() => evaluate(`!!document.querySelector('[data-sidebar-right-panel="fullscreen"][data-sidebar-right-open]')`), 'workspace fullscreen');
+  await click('[data-sidebar-right-mode="push"]');
+  await expectRightWorkbench();
   window.setSize(1100, 820);
-  await delay(400);
+  await until(() => evaluate(`!document.querySelector('[data-sidebar-right-open]')`), 'narrow layout protects conversation width');
+  await click('button', ['收起侧栏']);
+  await click('[data-sidebar-right-expand], [data-deepdeck-workspace-open]');
   await expectRightWorkbench();
   window.setBounds(originalBounds);
+  await delay(500);
+  await click('button', ['打开侧栏']);
   await delay(400);
+  await expectRightWorkbench();
+  await click('[data-sidebar-right-open] [role="tab"]', [`sidebar-verification-${process.pid}.md`]);
+  await until(() => evaluate(`document.querySelector('[data-sidebar-right-open]').innerText.includes('Files and tools share one panel.')`), 'file preview retained after changing tabs');
   writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT.replace('.png', '-sidebar.png'), (await contents.capturePage()).toPNG());
-  await click('button', ['收起 Better Sidebar', 'Close Better Sidebar']);
+  await click('[data-sidebar-right-toggle]');
   await click('button', ['设置', 'Settings']);
   await until(async () => /通用设置|General/.test(await evaluate('document.body.innerText')), 'settings');
   await click('button', ['关闭', 'Close']);
@@ -205,11 +263,13 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT.replace('.png', '-browser.png'), (await browser.capturePage()).toPNG());
   } finally { siteServer.close(); }
   assert.deepEqual(errors, []);
-  console.log('PASS actual Harness UI: startup, hero geometry, sidebar toggle, input hit area, right-side workbench, width dragging, tab retention, settings, Browser Site Agent connection, saved Session restore and panel reopening.');
+  console.log('PASS actual Harness UI: startup, hero geometry, sidebar toggle, input hit area, single native workspace sidebar, file previews, width dragging and retention, tab retention, fullscreen, narrow-window collapse, settings, Browser Site Agent connection, saved Session restore and panel reopening.');
+  if (workspaceFixture) rmSync(workspaceFixture, { force: true });
   clearTimeout(deadline);
   app.quit();
 })().catch(async error => {
   console.error(error);
+  if (workspaceFixture) rmSync(workspaceFixture, { force: true });
   if (harnessContents && !harnessContents.isDestroyed()) {
     const screenshot = await harnessContents.capturePage();
     writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT, screenshot.toPNG());

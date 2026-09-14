@@ -25,6 +25,7 @@ export function isBrowserNativeResponse<C extends BrowserNativeCommand>(command:
   if (command.action === 'webmcp.call') return true
   if (!record(value)) return false
   switch (command.action) {
+    case 'modal': return (value.revision === undefined || count(value.revision)) && (value.image === undefined || text(value.image) && /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/u.test(value.image))
     case 'open': case 'snapshot': case 'tab.open': case 'tab.reopen': case 'tab.duplicate': case 'tab.closeOthers': case 'tab.closeRight':
     case 'tab.move': case 'tab.mute': case 'tab.activate': case 'tab.close': case 'tab.back': case 'tab.forward': case 'tab.reload': case 'tab.stop': case 'tab.navigate': case 'layout':
       return isBrowserSnapshot(value)

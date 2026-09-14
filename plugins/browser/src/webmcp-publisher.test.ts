@@ -24,6 +24,7 @@ async function project() {
   return { root, git, input, source, manifest }
 }
 
+// Real Git subprocesses and the intentional retry delay exceed five seconds on some hosts.
 it('publishes committed bytes without GitHub and keeps one private credential across retries and later versions', async () => {
   const { input, source, manifest, git } = await project()
   await writeFile(join(input.directory, 'webmcp.ts'), 'Uncommitted draft must stay local')
@@ -45,7 +46,7 @@ it('publishes committed bytes without GitHub and keeps one private credential ac
   expect(sent[2]?.publisherToken).toBe(sent[0]?.publisherToken)
   expect(await readdir(input.credentialsDirectory)).toHaveLength(1)
   expect(git('ls-files')).not.toContain('.key')
-})
+}, 15000)
 
 it('rejects a different site, remote, workspace and non-commit before making a publication request', async () => {
   const { input, root } = await project()

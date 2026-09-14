@@ -108,8 +108,8 @@ export function apply(ctx: ClientContext): void {
         main: { kind: 'keyed', scope: 'root' },
         rightbar: { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
+        'desktop.workspace-toggle': { kind: 'single', scope: 'root' },
         'desktop.surface': { kind: 'single', scope: 'root' },
-        'desktop.workbench': { kind: 'single', scope: 'root' },
       },
       store,
       inject: (actions: PanelActions) => {

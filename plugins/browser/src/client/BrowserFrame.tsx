@@ -14,6 +14,7 @@ import { BrowserPageSelectionContext, selectionDraft } from './BrowserPageSelect
 import type { BrowserPageMenuLabels } from '../native-contract.js'
 import type { ContextType } from 'react'
 import { BrowserAuthentication } from './BrowserAuthentication.js'
+import { BrowserModalLayer } from './BrowserModalLayer.js'
 import { BrowserDownloads } from './BrowserDownloads.js'
 import { BrowserStartPage } from './BrowserStartPage.js'
 import { GitHubAuthor } from './GitHubAuthor.js'
@@ -47,7 +48,7 @@ function TabSymbol({ favicon, loading }: { favicon: string | undefined; loading:
   return <BrowserIcon name="globe" />
 }
 
-export function BrowserFrame({ browser, character, t, renderConversation, useSessions }: BrowserFrameProps) {
+export function BrowserFrame({ browser, character, t, renderConversation, renderResources, resourcesOpen, resourcesFullscreen, useSessions }: BrowserFrameProps) {
   const [state, setState] = useState<BrowserState>()
   const [error, setError] = useState<string>()
   const [address, setAddress] = useState('')
@@ -61,6 +62,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
   const [filesOpen, setFilesOpen] = useState(false)
   const [filesWidth, setFilesWidth] = useState(360)
   const filesPanel = useRef<HTMLElement>(null)
+  const resourcePanel = useRef<HTMLElement>(null)
   const filesGrabOffset = useRef(0)
   const [findOpen, setFindOpen] = useState(false)
   const [findText, setFindText] = useState('')
@@ -194,7 +196,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
     let previous = ''
     const resize = () => {
       const top = Math.ceil(header.getBoundingClientRect().bottom)
-      const right = Math.ceil((panelVisible ? panel.current?.getBoundingClientRect().width ?? 430 : 0) + (filesOpen ? filesPanel.current?.getBoundingClientRect().width ?? 360 : 0))
+      const right = Math.ceil((panelVisible ? panel.current?.getBoundingClientRect().width ?? 430 : 0) + (filesOpen ? filesPanel.current?.getBoundingClientRect().width ?? 360 : 0) + (resourcePanel.current?.getBoundingClientRect().width ?? 0))
       const dimensions = `${String(top)}:${String(right)}`
       if (dimensions === previous) return
       previous = dimensions
@@ -205,9 +207,10 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
     observer.observe(header)
     if (panel.current !== null) observer.observe(panel.current)
     if (filesPanel.current !== null) observer.observe(filesPanel.current)
+    if (resourcePanel.current !== null) observer.observe(resourcePanel.current)
     resize()
     return () => observer.disconnect()
-  }, [browser, panelVisible, filesOpen, findOpen, utilitiesOpen, authentication?.id, error])
+  }, [browser, panelVisible, filesOpen, resourcesOpen, findOpen, utilitiesOpen, authentication?.id, error])
 
   // Switching websites switches the displayed Harness Session. A running
   // task keeps its original native tab binding until it is idle again.
@@ -346,7 +349,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
     setFilesVisited(true); setFilesOpen(true)
   }
 
-  return <div className={css.browser} data-deepdeck-browser data-deepdeck-desktop-frame style={{ '--browser-panel-width': panelVisible ? `min(${panelWidth}px, ${filesOpen ? 40 : 55}vw)` : '0px', '--browser-files-width': filesOpen ? `min(${filesWidth}px, ${panelVisible ? 40 : 65}vw)` : '0px' } as CSSProperties}>
+  return <div className={css.browser} data-deepdeck-browser data-deepdeck-desktop-frame data-resources-fullscreen={resourcesOpen && resourcesFullscreen || undefined} style={{ '--browser-panel-width': panelVisible ? `min(${panelWidth}px, ${filesOpen ? 40 : 55}vw)` : '0px', '--browser-files-width': filesOpen ? `min(${filesWidth}px, ${panelVisible ? 40 : 65}vw)` : '0px' } as CSSProperties}>
     <header ref={toolbar} className={css.chrome}>
       <div className={css.tabBar}>
         <div className={css.trafficSpace} data-mac={/Mac/i.test(navigator.platform)} aria-hidden="true" />
@@ -445,6 +448,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
 
     <main className={css.body}>
       <div className={css.page}>
+        <BrowserModalLayer request={browser.request} onError={setError} />
         {blank && <BrowserStartPage key={active?.id} sites={state?.sites ?? []} onOpen={openFromStart} character={character} t={t} />}
         {!blank && active?.error && <div className={css.welcome}><BrowserIcon name="globe" /><h2>{t('pageFailed')}</h2><p>{active.error}</p>
           <button className={css.primaryButton} onClick={() => { void command({ action: 'tab.reload', tabId: active.id }) }}>{t('retry')}</button>
@@ -553,6 +557,9 @@ export function BrowserFrame({ browser, character, t, renderConversation, useSes
         <header className={css.filesHeader}><strong>{t('filesTitle')}</strong><IconButton icon="close" label={t('filesClose')} onClick={() => setFilesOpen(false)} /></header>
         {site ? <PublicationFiles key={`${site.id}:${filesRevision}:${filesTarget.kind}`} site={site} browser={browser} t={t} webmcp={filesTarget.kind === 'webmcp'} {...(filesTarget.kind === 'draft' ? { draft: filesTarget.draft } : {})} /> : <p>{t('filesNoSite')}</p>}
       </aside>}
+      <aside ref={resourcePanel} className={css.resourcesColumn} hidden={!resourcesOpen} data-open={resourcesOpen || undefined} aria-label={t('filesPreview')}>
+        {renderResources(360, window.innerWidth)}
+      </aside>
     </main>
   </div>
 }

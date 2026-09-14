@@ -17,7 +17,7 @@ interface HostContext extends BrowserHostContext {
   reflect: { provide(name: string, value: unknown): () => void }
   effect(setup: () => (() => void), label: string): unknown
 }
-const UI_COMMANDS = new Set(['auth.respond', 'tab.move', 'tab.mute', 'tab.print', 'tab.save', 'tab.devtools', 'tab.siteInfo', 'window.fullscreen', 'download.control', 'page.menu.configure', 'page.selection.ack', 'snapshot', 'tab.open', 'tab.menu', 'tab.duplicate', 'tab.closeOthers', 'tab.closeRight', 'tab.reopen', 'tab.activate', 'tab.close', 'tab.back', 'tab.forward', 'tab.reload', 'tab.stop', 'tab.navigate', 'layout', 'find', 'zoom'])
+const UI_COMMANDS = new Set(['auth.respond', 'tab.move', 'tab.mute', 'tab.print', 'tab.save', 'tab.devtools', 'tab.siteInfo', 'window.fullscreen', 'download.control', 'page.menu.configure', 'page.selection.ack', 'snapshot', 'tab.open', 'tab.menu', 'tab.duplicate', 'tab.closeOthers', 'tab.closeRight', 'tab.reopen', 'tab.activate', 'tab.close', 'tab.back', 'tab.forward', 'tab.reload', 'tab.stop', 'tab.navigate', 'layout', 'modal', 'find', 'zoom'])
 export function trustedRequest(request: Pick<IncomingMessage, 'method' | 'headers'>): boolean {
   if (request.method !== 'POST' || typeof request.headers.origin !== 'string' || typeof request.headers.host !== 'string') return false
   try {

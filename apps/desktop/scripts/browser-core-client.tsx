@@ -13,6 +13,6 @@ const request = async (input: unknown) => {
 createRoot(document.getElementById('root')!).render(createElement(BrowserFrame, {
   browser: { request, prepareAgent: async () => undefined },
   character: { Icon: () => null, Character: () => null },
-  t: (key: keyof typeof en) => en[key], renderConversation: () => null,
+  t: (key: keyof typeof en) => en[key], renderResources: () => null, resourcesOpen: false, resourcesFullscreen: false, renderConversation: () => null,
   useSessions: (select: (value: unknown) => unknown) => select({ byId: {}, current: undefined }),
 } as unknown as Parameters<typeof BrowserFrame>[0]));

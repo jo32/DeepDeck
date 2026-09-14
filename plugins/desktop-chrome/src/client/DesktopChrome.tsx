@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { PanelActions } from './service.ts'
 import { NewSessionIcon } from './NewSessionIcon.tsx'
 import css from './desktop-chrome.module.css'
@@ -6,6 +7,8 @@ interface DesktopChromeProps {
   sidebarCollapsed: boolean
   hasConversation: boolean
   sidebarWidth: number
+  rightbarWidth?: number
+  workspaceControl?: ReactNode
   actions: PanelActions
   startSession: () => void
 }
@@ -26,6 +29,8 @@ export function DesktopChrome({
   sidebarCollapsed,
   hasConversation,
   sidebarWidth,
+  rightbarWidth = 0,
+  workspaceControl,
   actions,
   startSession,
 }: DesktopChromeProps) {
@@ -40,9 +45,10 @@ export function DesktopChrome({
         data-has-conversation={hasConversation || undefined}
         style={hasConversation
           ? { width: Math.max(0, sidebarWidth - SIDEBAR_DRAG_START) }
-          : undefined}
+          : { right: Math.max(rightbarWidth, workspaceControl ? 48 : 0) }}
         aria-hidden="true"
       />
+      {workspaceControl && <div className={css.workspaceControl}>{workspaceControl}</div>}
       <div
         className={css.controls}
         data-has-conversation={hasConversation || undefined}

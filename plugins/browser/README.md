@@ -308,12 +308,13 @@ upstream Client entry point, DOM mounting, global link interception and iframe
 BrowserView are not activated. The browser tab descriptor calls DeepDeck's native
 Browser API, retaining the existing native tabs, sessions and WebMCP capabilities.
 The original Host serves file operations, terminal connections and lazy chunks.
-The main desktop conversation mounts a Better Sidebar bottom workbench through the
-`desktop.workbench` Cordis slot. It exposes file, Git, terminal, subagent and side
-conversation tabs, and keeps tab selection, width and collapsed state in Better
-Sidebar's per-session store. Its Browser tab opens the native DeepDeck Browser.
-The desktop layout reserves space beside the conversation; the upstream DOM
-mount and layout-push hooks are not enabled.
+The main desktop conversation registers Better Sidebar's file, Git, terminal,
+subagent and side conversation tabs into Harness's canonical right sidebar.
+The file explorer opens each file as a native resource tab so its identity
+survives tab switches. File links and tool tabs share its tab strip, collapse
+control and fullscreen mode. Its Browser tab opens the native DeepDeck Browser. No second workbench
+column or upstream DOM mount is installed; the Browser export editor keeps its
+separate, window-local store.
 
 Export opens an independent **Files** column beside the Agent sidebar, so chat
 and files remain visible together. The directory tree and preview fill that

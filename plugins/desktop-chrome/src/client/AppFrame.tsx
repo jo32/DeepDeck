@@ -9,7 +9,7 @@ import {
 import type { ReactNode } from 'react'
 import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import { computeColumns, DETAILS_DEFAULT, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT, WORKBENCH_MIN, WORKBENCH_MAX } from './columns.ts'
+import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
 import type { createLayoutStore } from './stores.ts'
 import { DesktopChrome } from './DesktopChrome.tsx'
 import { scheduleDesktopFrameReveal } from './desktop-runtime.ts'
@@ -28,7 +28,7 @@ export interface AppFrameInjected {
 
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.overlay' | 'desktop.surface' | 'desktop.workbench'>
+  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.overlay' | 'desktop.surface' | 'desktop.workspace-toggle'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & AppFrameInjected
 
@@ -98,8 +98,15 @@ function DragHandle({ side, left, onStart, onDrag, onEnd }: DragHandleProps) {
 /** Standalone capabilities own their layout through a declared Cordis slot. */
 export function AppFrame(props: AppFrameProps) {
   useSyncExternalStore(props.surfaces.subscribe, props.surfaces.version, props.surfaces.version)
+  const resourcesOpen = props.useStore(state => state.details > 0 || state.rightbarFullscreen)
+  const resourcesFullscreen = props.useStore(state => state.rightbarFullscreen)
   return props.surfaces.count() > 0
-    ? props.renderSlot('desktop.surface', { renderConversation: () => props.renderSlot('main', {}, { entryKey: 'conversation' }) })
+    ? props.renderSlot('desktop.surface', {
+      renderConversation: () => props.renderSlot('main', {}, { entryKey: 'conversation' }),
+      renderResources: (width, viewportWidth) => props.renderSlot('rightbar', { width, viewportWidth, canShow: true }),
+      resourcesOpen,
+      resourcesFullscreen,
+    })
     : <DesktopAppFrame {...props} />
 }
 
@@ -117,6 +124,7 @@ function DesktopAppFrame({
     const current = state.current
     return current !== undefined && state.byId[current]?.blank === false ? current : undefined
   })
+  const blankSession = useSessions(state => state.current !== undefined && state.byId[state.current]?.blank === true)
   const emptyWorkspaceReady = useSessions(state => state.phase === 'ready' && state.current === undefined)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
@@ -168,8 +176,7 @@ function DesktopAppFrame({
     sidebarPreference,
     panels.details,
   )
-  const normalDetails = computeColumns(viewport, sidebarPreference, panels.details || DETAILS_DEFAULT).details
-  const workbenchMax = Math.max(WORKBENCH_MIN, Math.min(WORKBENCH_MAX, cols.center * .55))
+  const normalDetails = computeColumns(viewport, sidebarPreference, panels.detailsWidth).details
   const colsRef = useRef(cols)
   colsRef.current = cols
 
@@ -213,12 +220,6 @@ function DesktopAppFrame({
       </div>
       <div className={css.conversationWorkspace}>
         <CenterColumn>{renderSlot('main', {}, { entryKey: panels.panelInfo.activePanelId ?? 'conversation' })}</CenterColumn>
-        {renderSlot('desktop.workbench', {
-          width: Math.min(panels.workbenchWidth, workbenchMax),
-          minWidth: WORKBENCH_MIN,
-          maxWidth: workbenchMax,
-          onResize: actions.setWorkbenchWidth,
-        })}
       </div>
       <DetailsColumn>{renderSlot('rightbar', { width: normalDetails, viewportWidth: viewport, canShow: normalDetails > 0 })}</DetailsColumn>
       <div className={css.overlayLayer} data-shell-overlay>
@@ -228,6 +229,9 @@ function DesktopAppFrame({
         sidebarCollapsed={sidebarCollapsed}
         hasConversation={detailsSession !== undefined}
         sidebarWidth={cols.sidebar}
+        rightbarWidth={cols.details}
+        workspaceControl={blankSession && panels.panelInfo.activePanelId == null && panels.details === 0 && !panels.rightbarFullscreen
+          ? renderSlot('desktop.workspace-toggle', {}) : null}
         actions={actions}
         startSession={startSession}
       />

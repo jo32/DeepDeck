@@ -34,16 +34,16 @@ it('opens the site conversation and appends an excerpt once without replacing or
       browser: { request, prepareAgent: async () => ({ siteId: 'site', sessionId: 'session', tabId: 'tab' }) },
       t: (key: keyof typeof en) => en[key],
       useSessions: (select: any) => select({ current: 'session', byId: { session: { running: false } } }),
-      renderConversation: () => createElement(Composer),
+      renderResources: () => null, resourcesOpen: false, renderConversation: () => createElement(Composer),
     } as unknown as ComponentProps<typeof BrowserFrame>)))
     expect(draft).toBe('My existing question\n\nhttps://example.com/article\n> First line\n> Second line\n\n')
     expect(writeDraft).toHaveBeenCalledOnce()
     expect(request).toHaveBeenCalledWith({ action: 'command', command: { action: 'page.selection.ack', id: selection.id } })
     await act(async () => button('Hide Agent').click())
-    expect(container.querySelector('aside')).toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).toBeNull()
     state.native.selections = [{ ...selection, id: 'selection-2', text: 'Another excerpt' }]
     await act(async () => button('Reload').click())
-    expect(container.querySelector('aside')).not.toBeNull()
+    expect(container.querySelector('aside:not([hidden])')).not.toBeNull()
     expect(container.querySelector('textarea')?.value).toContain('> Another excerpt')
     expect(writeDraft).toHaveBeenCalledTimes(2)
     expect(draft.match(/First line/g)).toHaveLength(1)

@@ -91,6 +91,31 @@ const page = `<meta charset="utf-8"><title>Browser core fixture</title><style>bo
     guest.on('found-in-page', (_event, value) => { if (process.env.DEEPDECK_BROWSER_CORE_TRACE) console.log('FIND', value); });
     const win = BaseWindow.getAllWindows()[0];
     const view = win.contentView.children.find(view => view.webContents === guest);
+    const originalBounds = view.getBounds();
+    const contentWidth = win.getContentSize()[0];
+    await manager.execute({ action: 'layout', top: originalBounds.y, right: contentWidth - 100 });
+    assert.equal(view.getBounds().width, 100, 'wide resource columns are not capped at 1000px');
+    await manager.execute({ action: 'layout', top: originalBounds.y, right: contentWidth });
+    assert.equal(view.getVisible(), false, 'fullscreen resource hides the native website');
+    await manager.execute({ action: 'layout', top: originalBounds.y, right: contentWidth - originalBounds.width });
+    assert.equal(view.getVisible(), true, 'closing fullscreen restores the native website');
+    assert.deepEqual(view.getBounds(), originalBounds);
+    const modal = await manager.execute({ action: 'modal', open: true });
+    assert.match(modal.image, /^data:image\/png;base64,/);
+    assert.equal(view.getVisible(), true, 'native webpage remains until the replacement is painted');
+    await manager.execute({ action: 'modal', open: true, ready: modal.revision });
+    assert.equal(view.getVisible(), false, 'modal owns the entire trusted window');
+    await manager.execute({ action: 'modal', open: false });
+    assert.equal(view.getVisible(), true);
+    await manager.execute({ action: 'modal', open: true, ready: modal.revision });
+    assert.equal(view.getVisible(), true, 'late paint acknowledgement cannot hide the restored website');
+    const pendingModal = manager.execute({ action: 'modal', open: true });
+    await manager.execute({ action: 'modal', open: false });
+    const staleModal = await pendingModal;
+    if (staleModal.revision !== undefined) await manager.execute({ action: 'modal', open: true, ready: staleModal.revision });
+    assert.equal(view.getVisible(), true, 'late background capture cannot reopen a dismissed modal');
+    console.log('PASS Browser resource layout: wide columns, fullscreen hides the native website, collapse restores its bounds and visibility.');
+    if (process.env.DEEPDECK_BROWSER_CORE_LAYOUT_ONLY) return;
     // The actual BrowserFrame select must own the whole painted control. A
     // label-only arrow/padding click focuses a macOS select but never opens it.
     await until(() => has('Agent mode'), 'site mode selector');

@@ -1108,6 +1108,9 @@
   .frame[data-layout-motion-ready] .handle { transition: none; }
 }
 
+/* Above the native sidebar (10), below overlays (20) and fullscreen (40). */
+.handle[data-side='details'] { z-index: 11; }
+
 .handle[data-side='details']::after {
   content: '';
   position: absolute;
@@ -1138,3 +1141,14 @@
 }
 
 .overlayLayer > * { pointer-events: auto; }
+
+/* Align the blank-session entrance with the native right pane controls. */
+.workspaceControl {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  display: flex;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
