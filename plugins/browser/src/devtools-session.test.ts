@@ -78,3 +78,90 @@ describe('official DevTools MCP lifecycle', () => {
     finish(); await running; await f.session.close()
   })
 })
+
+
+describe('DevTools batches', () => {
+  const steps = [
+    { name: 'list_pages', arguments: {} },
+    { name: 'take_snapshot', arguments: { pageId: 1 } },
+  ]
+  it('returns focused schemas and reports missing or Browser-managed names', async () => {
+    const f = fixture()
+    expect(await f.session.list(target, '/site', ['take_snapshot', 'new_page', 'missing'])).toMatchObject({
+      tools: [{ name: 'take_snapshot' }], missing: ['new_page', 'missing'],
+    })
+    await f.session.close()
+  })
+  it('executes in order on one connection, validating the original document for each step', async () => {
+    const f = fixture()
+    expect(await f.session.batch(target, '/site', steps, signal())).toMatchObject({ status: 'completed', completed: 2, results: [{ index: 0 }, { index: 1 }] })
+    expect(f.call.mock.calls.map(([name]) => name)).toEqual(['list_pages', 'take_snapshot'])
+    expect(f.connect).toHaveBeenCalledOnce()
+    expect(f.request.mock.calls.filter(([c]) => c.action === 'devtools.begin')).toEqual([
+      [{ action: 'devtools.begin', ...target, leaseId: 'lease' }, expect.any(AbortSignal)],
+      [{ action: 'devtools.begin', ...target, leaseId: 'lease' }, expect.any(AbortSignal)],
+    ])
+    await f.session.close()
+  })
+  it('preflights names and limits before any page action', async () => {
+    const f = fixture()
+    for (const bad of [[], Array(9).fill(steps[0]), [...steps, { name: 'new_page', arguments: {} }], [...steps, { name: 'guessed', arguments: {} }]]) {
+      await expect(f.session.batch(target, '/site', bad, signal())).rejects.toThrow()
+    }
+    expect(f.call).not.toHaveBeenCalled()
+    await f.session.close()
+  })
+  it.each(['mcp', 'transport', 'navigation', 'abort'])('stops after %s failure, preserving results without replay', async failure => {
+    const f = fixture()
+    const abort = new AbortController()
+    f.call.mockImplementationOnce(async () => {
+      if (failure === 'abort') abort.abort()
+      if (failure === 'navigation') f.request.mockImplementation(async command => {
+        if (command.action === 'devtools.begin') throw new Error('Stale document')
+        return {}
+      })
+      return { content: [{ type: 'text', text: 'first action completed' }] }
+    })
+    if (failure === 'mcp') f.call.mockResolvedValueOnce({ isError: true, content: [{ type: 'text', text: 'failed' }] })
+    if (failure === 'transport') f.call.mockRejectedValueOnce(new Error('Connection lost'))
+    const result = await f.session.batch(target, '/site', [...steps, steps[0]!], abort.signal)
+    expect(result).toMatchObject({ status: 'stopped', completed: 1, stoppedAt: 1, results: [{ index: 0, result: { content: [{ text: 'first action completed' }] } } , ...(failure === 'mcp' ? [{ index: 1 }] : [])] })
+    expect(result.recovery).toContain('do not replay')
+    expect(f.call).toHaveBeenCalledTimes(['mcp', 'transport'].includes(failure) ? 2 : 1)
+    await f.session.close()
+  })
+  it('measures connection and failed MCP time without claiming semantic verification', async () => {
+    let now = 0
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const f = fixture()
+    f.connect.mockImplementationOnce(async () => {
+      now += 10
+      return { tools: steps.map(step => ({ name: step.name, inputSchema: { type: 'object' as const } })), call: f.call, close: f.close }
+    })
+    f.call.mockImplementationOnce(async () => { now += 25; return { content: [] } })
+    f.call.mockImplementationOnce(async () => { now += 7; throw new Error('Disconnected after dispatch') })
+    try {
+      const result = await f.session.batch(target, '/site', steps, signal())
+      expect(result).toMatchObject({ status: 'stopped', completed: 1, verification: {
+        postcondition: 'not_checked', visual: 'not_checked', persistence: 'not_checked',
+      }, timing: { totalMs: 42, connectionMs: 10, steps: [
+        { index: 0, totalMs: 25, mcpMs: 25 }, { index: 1, totalMs: 7, mcpMs: 7 },
+      ] } })
+      expect(f.call).toHaveBeenCalledTimes(2)
+    } finally { clock.mockRestore(); await f.session.close() }
+  })
+  it('holds the session lock across the batch and releases it afterward', async () => {
+    const f = fixture()
+    let finish!: () => void
+    f.call.mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve({ content: [] }) }))
+    const pending = f.session.batch(target, '/site', steps, signal())
+    await vi.waitFor(() => expect(f.call).toHaveBeenCalledOnce())
+    await expect(f.session.call(target, '/site', 'list_pages', {}, signal())).rejects.toThrow('current DevTools')
+    await expect(f.session.batch(target, '/site', steps, signal())).rejects.toThrow('current DevTools')
+    await expect(f.session.list(target, '/site')).rejects.toThrow('current DevTools')
+    finish()
+    await pending
+    await f.session.call(target, '/site', 'list_pages', {}, signal())
+    await f.session.close()
+  })
+})

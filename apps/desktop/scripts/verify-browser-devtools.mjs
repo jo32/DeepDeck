@@ -2,17 +2,20 @@
 import { build } from 'esbuild';
 import electron from 'electron';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
+import { benchmarkBrowserUse } from './browser-use-benchmark.mjs';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const temporary = await mkdtemp(join(tmpdir(), 'deepdeck-devtools-check-'));
-const entry = join(temporary, 'runtime.mjs');
+const entry = join(temporary, 'lib/runtime.mjs');
 let child;
 try {
+  await mkdir(join(temporary, 'lib'));
+  await symlink(join(root, 'plugins/browser/skills'), join(temporary, 'skills'), 'junction');
   await symlink(join(root, 'plugins/browser/node_modules'), join(temporary, 'node_modules'), 'junction');
   await build({ entryPoints: [join(root, 'apps/desktop/src/main/windows/browser-window.ts')], bundle: true, platform: 'node', format: 'cjs', external: ['electron'], outfile: join(temporary, 'native.cjs'),
     define: { 'import.meta.dirname': JSON.stringify(join(temporary, 'main/windows')) } });
@@ -44,6 +47,7 @@ try {
     assert(tools.has(name), `${name} must be registered`);
     return JSON.parse(await tools.get(name).execute(args, { agent, signal }));
   };
+  const writeSource = async args => invoke('webmcp_write_source', { ...args, expectedDigest: (await invoke('webmcp_read_source')).sourceDigest });
   const mcp = async (name, args = {}) => {
     const result = await invoke('mcp__chrome_devtools__call_tool', { name, arguments: args });
     assert(!result.isError, `${name}: ${JSON.stringify(result)}`);
@@ -84,7 +88,7 @@ try {
     const inspection = await invoke('browser_inspect');
     assert(inspection.content.elements.some(element => element.id === 'reply' && element.contentEditable && element.role === 'textbox' && element.label === 'Reply'));
     assert(inspection.content.elements.some(element => element.name === 'body' && element.maxLength === 2000 && !element.readOnly));
-    await invoke('webmcp_write_source', { source: WEBMCP_TEXT_EDITING_EXAMPLE + `
+    await writeSource({ source: WEBMCP_TEXT_EDITING_EXAMPLE + `
       sdk.registerTool({name:'read_rich_reply',description:'Read rich reply and preview',inputSchema:{type:'object'},execute:()=>({
         text:document.getElementById('reply').textContent, formatted:document.querySelector('#reply strong').textContent,
         preview:document.getElementById('reply-preview').textContent
@@ -99,8 +103,8 @@ try {
     ` });
     await invoke('webmcp_apply');
     const pageTool = async (name, input = {}) => {
-      const context = await invoke('browser_context');
-      const tool = context.tabs.find(tab => tab.id === first.id).tools.find(tool => tool.name === `deepdeck_${name}`);
+      const context = await invoke('browser_list_tools', { names: [`deepdeck_${name}`] });
+      const tool = context.tools.find(tool => tool.name === `deepdeck_${name}`);
       assert(tool, `Discovered ${name}`);
       return invoke('browser_webmcp_call', { name: tool.name, frameId: tool.frameId, documentId: tool.documentId, revision: tool.revision, input });
     };
@@ -151,21 +155,29 @@ try {
     assert.match(text(await mcp('evaluate_script', { pageId, function: '()=>document.body.dataset.posts' })), /"0"/, 'editing never submits');
     const searchSnapshot = text(await mcp('take_snapshot', { pageId }));
     const searchUid = searchSnapshot.match(/uid=(\S+) (?:searchbox|textbox) "Search"/)[1];
-    await mcp('fill', { pageId, uid: searchUid, value: '中文搜索 WebMCP' });
-    await mcp('press_key', { pageId, key: 'Enter' });
+    const focused = await invoke('mcp__chrome_devtools__list_tools', { names: ['fill', 'press_key'] });
+    assert.deepEqual(focused.tools.map(tool => tool.name).sort(), ['fill', 'press_key']);
+    const searchBatch = await invoke('mcp__chrome_devtools__batch', { steps: [
+      { name: 'fill', arguments: { pageId, uid: searchUid, value: '中文搜索 WebMCP' } },
+      { name: 'press_key', arguments: { pageId, key: 'Enter', includeSnapshot: true } },
+    ] });
+    assert.equal(searchBatch.status, 'completed');
+    assert.equal(searchBatch.completed, 2);
+    assert.match(text(searchBatch), /Results for: 中文搜索 WebMCP/);
+    console.log('PASS one Agent tool call fills, submits and returns the actual accessibility state.');
     assert.match(text(await mcp('evaluate_script', { pageId, function: '()=>document.getElementById("results").textContent' })), /Results for: 中文搜索 WebMCP/);
     await invoke('browser_set_mode', { mode: 'builder' });
     console.log('PASS Builder editing: exact bundled example, Chinese/multiline round trip, inherited disabled state, editor identity, stale draft and length checks, rich-editor native-input handoff in Use mode, preserved formatting, site preview, separate search submission.');
 
-    await invoke('webmcp_write_source', { source: `__deepdeckWebMCP.registerTool({name:'articles',description:'Read articles',inputSchema:{type:'object'},execute:async()=>await (await fetch('/api')).json()})` });
+    await writeSource({ source: `__deepdeckWebMCP.registerTool({name:'articles',description:'Read articles',inputSchema:{type:'object'},execute:async()=>await (await fetch('/api')).json()})` });
     await invoke('webmcp_apply');
     const available = JSON.stringify(await invoke('browser_context'));
     assert.match(available, /site_title/); assert.match(available, /deepdeck_articles/);
-    const originalTool = (await invoke('browser_context')).tabs.find(tab => tab.id === first.id).tools.find(tool => tool.name === 'deepdeck_articles');
+    const originalTool = (await invoke('browser_list_tools', { names: ['deepdeck_articles'] })).tools.find(tool => tool.name === 'deepdeck_articles');
     const callTool = tool => invoke('browser_webmcp_call', { name: tool.name, frameId: tool.frameId, documentId: tool.documentId, revision: tool.revision, input: {} });
     assert.deepEqual(await callTool(originalTool), { articles: ['one', 'two', 'three'] });
     // A same-name replacement must never execute through a stale name-only path.
-    await invoke('webmcp_write_source', { source: `__deepdeckWebMCP.registerTool({name:'articles',description:'Replacement',inputSchema:{type:'object'},execute:()=>({version:'replacement'})})` });
+    await writeSource({ source: `__deepdeckWebMCP.registerTool({name:'articles',description:'Replacement',inputSchema:{type:'object'},execute:()=>({version:'replacement'})})` });
     await invoke('webmcp_apply');
     await assert.rejects(callTool(originalTool), /stale/);
     await assert.rejects(mcp('execute_webmcp_tool', { pageId, toolName: 'deepdeck_articles' }), /browser_webmcp_call/);
@@ -173,7 +185,7 @@ try {
 
     // Fault injection: delay registration completion after the actual tool is
     // visible, so Host cancellation races an unfinished native transaction.
-    await invoke('webmcp_write_source', { source: `
+    await writeSource({ source: `
       const context=document.modelContext;
       const register=context.registerTool.bind(context);
       context.registerTool=(...args)=>Promise.resolve(register(...args)).then(()=>new Promise(resolve=>setTimeout(resolve,1200)));
@@ -197,9 +209,10 @@ try {
     await mcp('navigate_page', { pageId, type: 'reload' });
     const refreshed = await until(async () => {
       const context = await invoke('browser_context');
-      return context.tabs.find(tab => tab.id === first.id && !tab.loading && tab.tools.some(tool => tool.name === 'deepdeck_articles'));
+      if (!context.tabs.some(tab => tab.id === first.id && !tab.loading)) return;
+      return (await invoke('browser_list_tools', { names: ['deepdeck_articles'] })).tools.find(tool => tool.name === 'deepdeck_articles');
     }, 'saved WebMCP after DevTools navigation');
-    const generated = refreshed.tools.find(tool => tool.name === 'deepdeck_articles');
+    const generated = refreshed;
     assert.deepEqual(await invoke('browser_webmcp_call', { name: generated.name, frameId: generated.frameId, documentId: generated.documentId, revision: generated.revision, input: {} }), { articles: ['one', 'two', 'three'] });
     await mcp('performance_start_trace', { pageId, reload: false, autoStop: false });
     await mcp('performance_stop_trace', { pageId });
@@ -319,7 +332,23 @@ try {
     console.log('PASS native Browser window close with a connected DevTools client.');
   }
   try {
-    if (!process.argv.includes('--lifecycle-only')) await verifyAgentTools();
+    if (process.argv.includes('--benchmark')) {
+      await runtime.bind(site.id, agent.session.id, first.id, 'use');
+      await invoke('mcp__chrome_devtools__list_tools', { names: ['list_pages', 'take_snapshot', 'fill', 'press_key', 'evaluate_script'] });
+      let sequence = 0;
+      const report = await benchmarkBrowserUse({ invoke,
+        repeats: Number(process.env.DEEPDECK_BENCHMARK_REPEATS ?? 5),
+        reset: async () => {
+          await native.request({ action: 'tab.navigate', tabId: first.id, url: `${origin}/benchmark/${++sequence}` });
+          await until(async () => (await native.request({ action: 'snapshot' })).tabs.some(tab => tab.id === first.id && !tab.loading && tab.tools.length), 'fresh benchmark page');
+          return Number(text(await mcp('list_pages')).match(/^(\d+):/m)[1]);
+        },
+      });
+      const output = process.env.DEEPDECK_BENCHMARK_OUTPUT;
+      if (output) await writeFile(output, JSON.stringify(report, null, 2) + '\n');
+      console.log(JSON.stringify({ benchmark: report.summaries, output: output ?? null }, null, 2));
+      assert(report.warmups.every(sample => sample.success) && report.samples.every(sample => sample.success), 'Benchmark failures recorded; inspect report before comparing timings');
+    } else if (!process.argv.includes('--lifecycle-only')) await verifyAgentTools();
     await verifyClosures();
   } finally {
     runtime.dispose(); await new Promise(r => setTimeout(r, 250));

@@ -407,6 +407,43 @@ describe('BrowserRuntime', () => {
     expect(request).toHaveBeenCalledWith({ action: 'devtools.end', leaseId: 'lease-1' })
   })
 
+  it('registers batches in Use and Builder and renders partial receipts and images', async () => {
+    const call = vi.fn<devtoolsClient.DevToolsConnection['call']>()
+      .mockResolvedValueOnce({ content: [{ type: 'image', mimeType: 'image/png', data: 'AQID' }] })
+      .mockResolvedValueOnce({ isError: true, content: [{ type: 'text', text: 'stale element' }] })
+    vi.spyOn(devtoolsClient, 'connectDevTools').mockResolvedValue({
+      tools: ['take_screenshot', 'fill'].map(name => ({ name, inputSchema: { type: 'object' } })), call, close: vi.fn(async () => {}),
+    })
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    const batch = tools.get('mcp__chrome_devtools__batch')!
+    const result = await exec('mcp__chrome_devtools__batch', { steps: [
+      { name: 'take_screenshot', arguments: { pageId: 1 } },
+      { name: 'fill', arguments: { pageId: 1, uid: '1_1', value: 'new' } },
+      { name: 'take_screenshot', arguments: { pageId: 1 } },
+    ] })
+    expect(result).toMatchObject({ status: 'stopped', completed: 1, stoppedAt: 1 })
+    const rendered = batch.output.render({}, JSON.stringify(result))
+    expect(rendered).toContainEqual({ type: 'image', attachment: expect.objectContaining({ attachmentId: 'sha256:image' }) })
+    expect(JSON.stringify(rendered)).toContain('do not replay')
+    expect(JSON.stringify(rendered)).toContain('stale element')
+    expect(JSON.stringify(rendered)).toContain('not_checked')
+    expect(JSON.stringify(rendered)).toContain('mcpMs')
+    expect(call).toHaveBeenCalledTimes(2)
+    await exec('browser_set_mode', { mode: 'builder' })
+    expect(tools.get('mcp__chrome_devtools__batch')).toBe(batch)
+  })
+
+  it('rejects malformed batches and cross-site or non-final navigation before acting', async () => {
+    const connect = vi.spyOn(devtoolsClient, 'connectDevTools')
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    for (const steps of [null, [], Array(9).fill({}), [null], [{ name: 'fill', arguments: [] }],
+      [{ name: 'navigate_page', arguments: { url: 'https://other.example/' } }],
+      [{ name: 'navigate_page', arguments: { type: 'reload' } }, { name: 'take_snapshot', arguments: {} }],
+    ]) await expect(exec('mcp__chrome_devtools__batch', { steps })).rejects.toThrow()
+    expect(connect).not.toHaveBeenCalled()
+    await expect(exec('mcp__chrome_devtools__list_tools', { names: 'fill' })).rejects.toThrow('array of strings')
+  })
+
   it('allows an idle resumed Agent to rebind after a crash left an unfinished durable turn, without replaying it', async () => {
     await sites.update(site.id, { sessionId: agent.session.id, tabId: 'closed-before-crash', mode: 'use' })
     agent.session.append('turn/start', { turn: 7 })

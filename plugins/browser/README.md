@@ -100,7 +100,46 @@ and Builder**. No separate Chrome process, installation or global debugging port
 is required. Discover its tool names and input schemas with
 `mcp__chrome_devtools__list_tools`, then invoke them through
 `mcp__chrome_devtools__call_tool` using `{ name, arguments }`. Start with the
-official `list_pages` tool to obtain `pageId`.
+official `list_pages` tool to obtain `pageId`. Discovery accepts optional `names`
+to return only the requested schemas.
+
+Use `mcp__chrome_devtools__batch` with `{ steps: [{ name, arguments }, ...] }`
+for up to eight predictable calls using already observed targets. For example,
+fill a known page-name field, then press Enter with `includeSnapshot: true`.
+The final action supplies updated accessibility state in the same model round
+trip. A standalone input action can also use `includeSnapshot`; do not request
+a duplicate snapshot. If another step needs a new UID or a decision, inspect
+first. Explicit navigation must be the last step.
+
+Batches keep one bound connection, check the original document before every
+step, and stop on the first failure without retrying. The response includes
+`status`, the number of `completed` steps, a zero-based `stoppedAt` on failure,
+and ordered result content, including screenshot attachments. A stopped step
+may have acted: inspect current state before continuing, never replay the batch.
+
+`completed` describes execution only. Batch receipts explicitly return
+`verification.postcondition`, `verification.visual`, and
+`verification.persistence` as `not_checked`: callers must assess the evidence
+or run a semantic validator before claiming the task succeeded. A screenshot
+being returned does not automatically pass visual verification.
+
+Receipts include monotonic timings: total batch time, initial connection lookup
+or startup, and each attempted step's total and `mcpMs`. MCP time includes server
+waiting and any observation done by that call; it does not isolate browser input,
+UI stabilization, or validation. Total batch time includes document checks and
+cleanup but excludes outer tool serialization and image attachment storage.
+Model generation and scheduling between calls are not measured. Arguments and
+page content are not copied into timing records.
+
+Run `pnpm benchmark:browser` for a repeatable Electron tool-chain comparison.
+See [benchmark protocol](../../docs/browser-use-benchmark.md) for scope and output.
+
+
+For ordinary native edits, the current snapshot can supply the target and prior
+value directly. Use WebMCP when it adds semantic context or performs the action;
+there is no mandatory WebMCP read/write handoff before DevTools input. Verify
+appearance with a screenshot, text with editor/preview state, and persistence
+with a reload only when needed.
 
 The suite includes snapshots, JavaScript evaluation, interaction, console and
 network details, screenshots, performance and memory snapshots.
@@ -217,7 +256,7 @@ and verifies the resulting UI in a separate read. An interrupted action has an
 unknown outcome and must be inspected before any retry.
 
 The bundled skill describes an editing round trip: WebMCP reads the existing
-draft, the current site Agent composes or revises it, WebMCP writes back with an
+draft, the current site Agent composes or revises it, WebMCP writes back with
 target-identity and expected-value checks, and the Agent verifies the actual
 editor/preview state.
 The plain-textarea example is executable source shared with the Electron
@@ -227,7 +266,7 @@ state rather than merely changing visible DOM text.
 For editors requiring native input, a generated tool can return a
 `requires_browser_action` result with target, expected value and replacement
 text. The Agent checks it against the user's task and a fresh snapshot, uses
-the existing DevTools input tools, then verifies the editor through WebMCP.
+the existing DevTools input tools, then verifies the returned snapshot or a focused semantic WebMCP read.
 This is an Agent-mediated workflow, not a new automatic bridge or a nested
 model invocation from page code. Filling and submitting remain separate.
 

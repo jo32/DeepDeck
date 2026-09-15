@@ -17,8 +17,9 @@ process.on('uncaughtException', error => { console.error(error); app.exit(1); })
       <output id="reply-preview"></output>
       <script>console.log('fixture console');
       document.body.dataset.posts = '0';
+      document.body.dataset.searches = '0';
       document.getElementById('post').onsubmit = event => {event.preventDefault();document.body.dataset.posts=String(Number(document.body.dataset.posts)+1)};
-      document.getElementById('search').onsubmit = event => {event.preventDefault();document.getElementById('results').textContent='Results for: '+document.getElementById('query').value};
+      document.getElementById('search').onsubmit = event => {event.preventDefault();document.body.dataset.searches=String(Number(document.body.dataset.searches)+1);document.getElementById('results').textContent='Results for: '+document.getElementById('query').value};
       document.querySelector('textarea').oninput = event => {const text=event.target.value;setTimeout(()=>{document.getElementById('draft-preview').textContent=text},0)};
       document.getElementById('reply').oninput = event => {if(event.isTrusted) document.getElementById('reply-preview').textContent=event.currentTarget.textContent};
       document.modelContext.registerTool({name:'site_title',description:'Read title',inputSchema:{type:'object'},execute:()=>document.title});</script>`);
