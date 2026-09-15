@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { SiteLocale } from "../../lib/locale";
+import { WebMCPCases } from "./webmcp-cases";
 import { productUpdates, updateStatusLabels, webmcpReleaseUrl } from "../../lib/product-updates";
 
 const webmcpProjectUrl = "https://github.com/webmachinelearning/webmcp";
@@ -116,6 +117,9 @@ export function WebMCPSection({ locale }: { locale: SiteLocale }) {
             </a>
             <p className="webmcp-availability">{content.availability}</p>
             <div className="webmcp-resource-links">
+              <a className="text-link webmcp-compare-link" href="#figma-case">
+                {locale === 'zh' ? 'Figma Agent 不做的任务，DeepDeck 做了' : 'Figma Agent declined. DeepDeck delivered.'} <span aria-hidden="true">↓</span>
+              </a>
               <a className="text-link webmcp-compare-link" href="#webmcp-vs-computer-use">
                 {content.comparisonLink} <span aria-hidden="true">↓</span>
               </a>
@@ -125,6 +129,8 @@ export function WebMCPSection({ locale }: { locale: SiteLocale }) {
             </div>
           </div>
         </div>
+
+        <WebMCPCases locale={locale} />
 
         <div className="webmcp-philosophy">
           <h3>{content.philosophyTitle}</h3>

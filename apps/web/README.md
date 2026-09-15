@@ -67,6 +67,20 @@ The existing `deepdeck` Vercel project remains connected to `jo32/DeepDeck`, wit
 
 Deploy the Worker and verify the migrated NGA listing before configuring the URL and deploying the website. See `apps/webmcp-index/README.md`. For manual recovery, use the same Vercel project and verify `/api/webmcp/catalog`, `/webmcp/catalog.json`, `/api/webmcp/submissions`, `/webmcp`, and `/zh/webmcp`. No new Vercel project or DNS change is needed.
 
+## Creative task examples
+
+The homepage links directly to `#figma-case` and `#blockbench-case` in both
+languages. `app/_components/webmcp-cases.tsx` presents the September 15 Figma
+task (the built-in agent declined vector editing; DeepDeck completed the logo)
+and the Blockbench ginger-cat project. These are task records, not benchmark
+measurements. Keep the distinction between this Figma Agent response and
+Figma's broader capabilities, and note that DeepDeck used WebMCP alongside
+browser tools.
+
+Original user-provided captures are stored unchanged in `public/webmcp/cases/`.
+Responsive CSS shows focused regions, with each image linking to its full
+capture. Do not replace the original UI or invent missing task steps.
+
 ## WebMCP experiments
 
 `/webmcp/experiments` and `/zh/webmcp/experiments` present the September 2026 Book,
