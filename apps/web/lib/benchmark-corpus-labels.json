@@ -1,0 +1,270 @@
+{
+  "tailwind-nextjs-blog": {
+    "name": "Tailwind Next.js Blog",
+    "category": {
+      "zh": "内容博客",
+      "en": "Content blog"
+    },
+    "tasks": {
+      "blog-find-post": {
+        "zh": "查找指定文章标题",
+        "en": "Find a post by its title"
+      },
+      "blog-read-author": {
+        "zh": "读取 About 页作者",
+        "en": "Read the About-page author"
+      }
+    }
+  },
+  "bulletproof-react": {
+    "name": "Bulletproof React",
+    "category": {
+      "zh": "应用与权限",
+      "en": "App access"
+    },
+    "tasks": {
+      "react-public-content": {
+        "zh": "识别公开首页应用",
+        "en": "Identify the public application"
+      },
+      "react-auth-boundary": {
+        "zh": "检查未登录访问边界",
+        "en": "Check signed-out access boundaries"
+      }
+    }
+  },
+  "directory-9d8": {
+    "name": "9d8 Directory",
+    "category": {
+      "zh": "目录与筛选",
+      "en": "Directory & filters"
+    },
+    "tasks": {
+      "directory-search": {
+        "zh": "按工具类型搜索目录",
+        "en": "Search the directory by tool type"
+      },
+      "directory-filter": {
+        "zh": "筛选开发者工具",
+        "en": "Filter developer tools"
+      },
+      "directory-detail": {
+        "zh": "读取条目详情",
+        "en": "Read a listing description"
+      }
+    }
+  },
+  "nextjs-starter-medusa": {
+    "name": "Medusa",
+    "category": {
+      "zh": "电商购物",
+      "en": "E-commerce"
+    },
+    "tasks": {
+      "md-1": {
+        "zh": "统计并列出全部商品",
+        "en": "Count and list products"
+      },
+      "md-2": {
+        "zh": "查询配送政策与时效",
+        "en": "Read shipping policy and delivery times"
+      },
+      "md-3": {
+        "zh": "查询退货政策",
+        "en": "Read the returns policy"
+      },
+      "md-9": {
+        "zh": "判断指定商品是否存在",
+        "en": "Check product availability"
+      },
+      "md-4": {
+        "zh": "查询商品尺码",
+        "en": "List product sizes"
+      },
+      "md-6": {
+        "zh": "检查购物车内容",
+        "en": "Inspect the shopping cart"
+      },
+      "md-5": {
+        "zh": "将指定款式加入购物车",
+        "en": "Add a specified variant to the cart"
+      },
+      "md-7": {
+        "zh": "组合多件商品并核对数量",
+        "en": "Build a multi-product cart and check quantity"
+      },
+      "md-8": {
+        "zh": "完成访客结账与测试支付",
+        "en": "Complete guest checkout with test payment"
+      }
+    }
+  },
+  "easyappointments": {
+    "name": "Easy!Appointments",
+    "category": {
+      "zh": "服务预约",
+      "en": "Appointments"
+    },
+    "tasks": {
+      "ea-1": {
+        "zh": "列出全部服务",
+        "en": "List all services"
+      },
+      "ea-2": {
+        "zh": "查询服务价格与时长",
+        "en": "Read service price and duration"
+      },
+      "ea-3": {
+        "zh": "找出免费服务",
+        "en": "Find a free service"
+      },
+      "ea-4": {
+        "zh": "查找指定服务的提供者",
+        "en": "Find a service provider"
+      },
+      "ea-5": {
+        "zh": "判断指定服务是否存在",
+        "en": "Check service availability"
+      },
+      "ea-6": {
+        "zh": "预约最早可用时段",
+        "en": "Book the earliest available appointment"
+      },
+      "ea-7": {
+        "zh": "预约后取消同一订单",
+        "en": "Book and cancel the same appointment"
+      },
+      "ea-8": {
+        "zh": "登录后台查询客户",
+        "en": "Sign in and inspect customer records"
+      }
+    }
+  },
+  "learnhouse": {
+    "name": "LearnHouse",
+    "category": {
+      "zh": "课程学习",
+      "en": "Education"
+    },
+    "tasks": {
+      "lh-1": {
+        "zh": "列出课程目录",
+        "en": "List all courses"
+      },
+      "lh-2": {
+        "zh": "读取课程章节",
+        "en": "Read course chapters"
+      },
+      "lh-3": {
+        "zh": "查找首节课标题",
+        "en": "Find the first lesson title"
+      },
+      "lh-5": {
+        "zh": "搜索课程并读取描述",
+        "en": "Search courses and read a description"
+      },
+      "lh-6": {
+        "zh": "判断指定主题课程是否存在",
+        "en": "Check course availability by topic"
+      },
+      "lh-7": {
+        "zh": "登录并选课，确定起始课程",
+        "en": "Sign in, enroll, and identify the starting lesson"
+      },
+      "lh-8": {
+        "zh": "统计已发布课时",
+        "en": "Count published lessons"
+      }
+    }
+  },
+  "idurar-erp-crm": {
+    "name": "IDURAR ERP/CRM",
+    "category": {
+      "zh": "客户与财务",
+      "en": "CRM & finance"
+    },
+    "tasks": {
+      "id-1": {
+        "zh": "登录并查询发票客户",
+        "en": "Sign in and identify an invoice client"
+      },
+      "id-2": {
+        "zh": "查询发票总额",
+        "en": "Read an invoice total"
+      },
+      "id-3": {
+        "zh": "查询发票项目",
+        "en": "Read an invoice line item"
+      },
+      "id-4": {
+        "zh": "查询发票付款状态",
+        "en": "Check invoice payment status"
+      },
+      "id-5": {
+        "zh": "搜索客户联系方式",
+        "en": "Search client contact details"
+      },
+      "id-8": {
+        "zh": "读取月度财务汇总",
+        "en": "Read the monthly financial summary"
+      },
+      "id-6": {
+        "zh": "创建发票草稿",
+        "en": "Create a draft invoice"
+      },
+      "id-7": {
+        "zh": "记录一笔收款",
+        "en": "Record an invoice payment"
+      }
+    }
+  },
+  "hi-events": {
+    "name": "Hi.Events",
+    "category": {
+      "zh": "活动与票务",
+      "en": "Events & tickets"
+    },
+    "tasks": {
+      "hev-1": {
+        "zh": "查询活动地点",
+        "en": "Find the event location"
+      },
+      "hev-2": {
+        "zh": "按时间查询议程",
+        "en": "Find a session by its start time"
+      },
+      "hev-3": {
+        "zh": "查询年龄政策",
+        "en": "Read the age policy"
+      },
+      "hev-4": {
+        "zh": "查询录像及访问权限",
+        "en": "Check recording availability and access"
+      },
+      "hev-10": {
+        "zh": "判断是否提供停车信息",
+        "en": "Check for parking information"
+      },
+      "hev-5": {
+        "zh": "判断是否提供实时字幕",
+        "en": "Check live-caption availability"
+      },
+      "hev-6": {
+        "zh": "检验单笔购票数量限制",
+        "en": "Check the per-order ticket limit"
+      },
+      "hev-7": {
+        "zh": "为两位参与者报名",
+        "en": "Register two attendees"
+      },
+      "hev-8": {
+        "zh": "登录主办方后台查询活动状态",
+        "en": "Sign in as organizer and check event status"
+      },
+      "hev-9": {
+        "zh": "报名后通过订单编号查询状态",
+        "en": "Register and look up the resulting order"
+      }
+    }
+  }
+}

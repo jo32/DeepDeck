@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node ../../scripts/generate-benchmark-catalog.mjs && next build",
     "start": "next start",
-    "check": "tsc --noEmit"
+    "check": "node ../../scripts/generate-benchmark-catalog.mjs --check && tsc --noEmit"
   },
   "dependencies": {
     "geist": "1.7.2",

@@ -1,0 +1,492 @@
+{
+  "sites": [
+    {
+      "id": "tailwind-nextjs-blog",
+      "name": "Tailwind Next.js Blog",
+      "category": {
+        "zh": "内容博客",
+        "en": "Content blog"
+      },
+      "tasks": [
+        {
+          "id": "blog-find-post",
+          "tier": "answer",
+          "title": {
+            "zh": "查找指定文章标题",
+            "en": "Find a post by its title"
+          }
+        },
+        {
+          "id": "blog-read-author",
+          "tier": "answer",
+          "title": {
+            "zh": "读取 About 页作者",
+            "en": "Read the About-page author"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bulletproof-react",
+      "name": "Bulletproof React",
+      "category": {
+        "zh": "应用与权限",
+        "en": "App access"
+      },
+      "tasks": [
+        {
+          "id": "react-public-content",
+          "tier": "answer",
+          "title": {
+            "zh": "识别公开首页应用",
+            "en": "Identify the public application"
+          }
+        },
+        {
+          "id": "react-auth-boundary",
+          "tier": "answer",
+          "title": {
+            "zh": "检查未登录访问边界",
+            "en": "Check signed-out access boundaries"
+          }
+        }
+      ]
+    },
+    {
+      "id": "directory-9d8",
+      "name": "9d8 Directory",
+      "category": {
+        "zh": "目录与筛选",
+        "en": "Directory & filters"
+      },
+      "tasks": [
+        {
+          "id": "directory-search",
+          "tier": "act-short",
+          "title": {
+            "zh": "按工具类型搜索目录",
+            "en": "Search the directory by tool type"
+          }
+        },
+        {
+          "id": "directory-filter",
+          "tier": "act-short",
+          "title": {
+            "zh": "筛选开发者工具",
+            "en": "Filter developer tools"
+          }
+        },
+        {
+          "id": "directory-detail",
+          "tier": "answer",
+          "title": {
+            "zh": "读取条目详情",
+            "en": "Read a listing description"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nextjs-starter-medusa",
+      "name": "Medusa",
+      "category": {
+        "zh": "电商购物",
+        "en": "E-commerce"
+      },
+      "tasks": [
+        {
+          "id": "md-1",
+          "tier": "answer",
+          "title": {
+            "zh": "统计并列出全部商品",
+            "en": "Count and list products"
+          }
+        },
+        {
+          "id": "md-2",
+          "tier": "answer",
+          "title": {
+            "zh": "查询配送政策与时效",
+            "en": "Read shipping policy and delivery times"
+          }
+        },
+        {
+          "id": "md-3",
+          "tier": "answer",
+          "title": {
+            "zh": "查询退货政策",
+            "en": "Read the returns policy"
+          }
+        },
+        {
+          "id": "md-9",
+          "tier": "answer",
+          "title": {
+            "zh": "判断指定商品是否存在",
+            "en": "Check product availability"
+          }
+        },
+        {
+          "id": "md-4",
+          "tier": "act-short",
+          "title": {
+            "zh": "查询商品尺码",
+            "en": "List product sizes"
+          }
+        },
+        {
+          "id": "md-6",
+          "tier": "act-short",
+          "title": {
+            "zh": "检查购物车内容",
+            "en": "Inspect the shopping cart"
+          }
+        },
+        {
+          "id": "md-5",
+          "tier": "act-short",
+          "title": {
+            "zh": "将指定款式加入购物车",
+            "en": "Add a specified variant to the cart"
+          }
+        },
+        {
+          "id": "md-7",
+          "tier": "act-long",
+          "title": {
+            "zh": "组合多件商品并核对数量",
+            "en": "Build a multi-product cart and check quantity"
+          }
+        },
+        {
+          "id": "md-8",
+          "tier": "transaction",
+          "title": {
+            "zh": "完成访客结账与测试支付",
+            "en": "Complete guest checkout with test payment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "easyappointments",
+      "name": "Easy!Appointments",
+      "category": {
+        "zh": "服务预约",
+        "en": "Appointments"
+      },
+      "tasks": [
+        {
+          "id": "ea-1",
+          "tier": "answer",
+          "title": {
+            "zh": "列出全部服务",
+            "en": "List all services"
+          }
+        },
+        {
+          "id": "ea-2",
+          "tier": "answer",
+          "title": {
+            "zh": "查询服务价格与时长",
+            "en": "Read service price and duration"
+          }
+        },
+        {
+          "id": "ea-3",
+          "tier": "answer",
+          "title": {
+            "zh": "找出免费服务",
+            "en": "Find a free service"
+          }
+        },
+        {
+          "id": "ea-4",
+          "tier": "answer",
+          "title": {
+            "zh": "查找指定服务的提供者",
+            "en": "Find a service provider"
+          }
+        },
+        {
+          "id": "ea-5",
+          "tier": "act-short",
+          "title": {
+            "zh": "判断指定服务是否存在",
+            "en": "Check service availability"
+          }
+        },
+        {
+          "id": "ea-6",
+          "tier": "transaction",
+          "title": {
+            "zh": "预约最早可用时段",
+            "en": "Book the earliest available appointment"
+          }
+        },
+        {
+          "id": "ea-7",
+          "tier": "transaction",
+          "title": {
+            "zh": "预约后取消同一订单",
+            "en": "Book and cancel the same appointment"
+          }
+        },
+        {
+          "id": "ea-8",
+          "tier": "act-long",
+          "title": {
+            "zh": "登录后台查询客户",
+            "en": "Sign in and inspect customer records"
+          }
+        }
+      ]
+    },
+    {
+      "id": "learnhouse",
+      "name": "LearnHouse",
+      "category": {
+        "zh": "课程学习",
+        "en": "Education"
+      },
+      "tasks": [
+        {
+          "id": "lh-1",
+          "tier": "answer",
+          "title": {
+            "zh": "列出课程目录",
+            "en": "List all courses"
+          }
+        },
+        {
+          "id": "lh-2",
+          "tier": "answer",
+          "title": {
+            "zh": "读取课程章节",
+            "en": "Read course chapters"
+          }
+        },
+        {
+          "id": "lh-3",
+          "tier": "answer",
+          "title": {
+            "zh": "查找首节课标题",
+            "en": "Find the first lesson title"
+          }
+        },
+        {
+          "id": "lh-5",
+          "tier": "act-short",
+          "title": {
+            "zh": "搜索课程并读取描述",
+            "en": "Search courses and read a description"
+          }
+        },
+        {
+          "id": "lh-6",
+          "tier": "act-short",
+          "title": {
+            "zh": "判断指定主题课程是否存在",
+            "en": "Check course availability by topic"
+          }
+        },
+        {
+          "id": "lh-7",
+          "tier": "act-long",
+          "title": {
+            "zh": "登录并选课，确定起始课程",
+            "en": "Sign in, enroll, and identify the starting lesson"
+          }
+        },
+        {
+          "id": "lh-8",
+          "tier": "act-long",
+          "title": {
+            "zh": "统计已发布课时",
+            "en": "Count published lessons"
+          }
+        }
+      ]
+    },
+    {
+      "id": "idurar-erp-crm",
+      "name": "IDURAR ERP/CRM",
+      "category": {
+        "zh": "客户与财务",
+        "en": "CRM & finance"
+      },
+      "tasks": [
+        {
+          "id": "id-1",
+          "tier": "act-short",
+          "title": {
+            "zh": "登录并查询发票客户",
+            "en": "Sign in and identify an invoice client"
+          }
+        },
+        {
+          "id": "id-2",
+          "tier": "act-short",
+          "title": {
+            "zh": "查询发票总额",
+            "en": "Read an invoice total"
+          }
+        },
+        {
+          "id": "id-3",
+          "tier": "act-short",
+          "title": {
+            "zh": "查询发票项目",
+            "en": "Read an invoice line item"
+          }
+        },
+        {
+          "id": "id-4",
+          "tier": "act-short",
+          "title": {
+            "zh": "查询发票付款状态",
+            "en": "Check invoice payment status"
+          }
+        },
+        {
+          "id": "id-5",
+          "tier": "act-short",
+          "title": {
+            "zh": "搜索客户联系方式",
+            "en": "Search client contact details"
+          }
+        },
+        {
+          "id": "id-8",
+          "tier": "act-short",
+          "title": {
+            "zh": "读取月度财务汇总",
+            "en": "Read the monthly financial summary"
+          }
+        },
+        {
+          "id": "id-6",
+          "tier": "act-long",
+          "title": {
+            "zh": "创建发票草稿",
+            "en": "Create a draft invoice"
+          }
+        },
+        {
+          "id": "id-7",
+          "tier": "act-long",
+          "title": {
+            "zh": "记录一笔收款",
+            "en": "Record an invoice payment"
+          }
+        }
+      ]
+    },
+    {
+      "id": "hi-events",
+      "name": "Hi.Events",
+      "category": {
+        "zh": "活动与票务",
+        "en": "Events & tickets"
+      },
+      "tasks": [
+        {
+          "id": "hev-1",
+          "tier": "answer",
+          "title": {
+            "zh": "查询活动地点",
+            "en": "Find the event location"
+          }
+        },
+        {
+          "id": "hev-2",
+          "tier": "answer",
+          "title": {
+            "zh": "按时间查询议程",
+            "en": "Find a session by its start time"
+          }
+        },
+        {
+          "id": "hev-3",
+          "tier": "answer",
+          "title": {
+            "zh": "查询年龄政策",
+            "en": "Read the age policy"
+          }
+        },
+        {
+          "id": "hev-4",
+          "tier": "answer",
+          "title": {
+            "zh": "查询录像及访问权限",
+            "en": "Check recording availability and access"
+          }
+        },
+        {
+          "id": "hev-10",
+          "tier": "answer",
+          "title": {
+            "zh": "判断是否提供停车信息",
+            "en": "Check for parking information"
+          }
+        },
+        {
+          "id": "hev-5",
+          "tier": "act-short",
+          "title": {
+            "zh": "判断是否提供实时字幕",
+            "en": "Check live-caption availability"
+          }
+        },
+        {
+          "id": "hev-6",
+          "tier": "act-short",
+          "title": {
+            "zh": "检验单笔购票数量限制",
+            "en": "Check the per-order ticket limit"
+          }
+        },
+        {
+          "id": "hev-7",
+          "tier": "transaction",
+          "title": {
+            "zh": "为两位参与者报名",
+            "en": "Register two attendees"
+          }
+        },
+        {
+          "id": "hev-8",
+          "tier": "act-long",
+          "title": {
+            "zh": "登录主办方后台查询活动状态",
+            "en": "Sign in as organizer and check event status"
+          }
+        },
+        {
+          "id": "hev-9",
+          "tier": "act-long",
+          "title": {
+            "zh": "报名后通过订单编号查询状态",
+            "en": "Register and look up the resulting order"
+          }
+        }
+      ]
+    }
+  ],
+  "total": 49,
+  "tiers": {
+    "answer": 21,
+    "act-short": 16,
+    "act-long": 8,
+    "transaction": 4
+  },
+  "excluded": [
+    {
+      "site": "learnhouse",
+      "id": "lh-4",
+      "reason": "api-only-data"
+    }
+  ],
+  "calibrationCount": 10,
+  "templateCount": 1
+}

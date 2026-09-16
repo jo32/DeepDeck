@@ -4,7 +4,7 @@ import { setImmediate as nextTask } from "node:timers/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BrowserNativeCommand, BrowserNativeResponse, BrowserNativeResponseMap, BrowserInspection, BrowserSnapshot, BrowserTab, BrowserTarget, WebMCPScript, WebMCPInstallReceipt, WebMCPPageReceipt } from "../../../../../plugins/browser/src/native-contract.js";
-import { browserContentBounds, browserOrigin, browserUrl, validateWebMCPScript } from "./browser-policy.js";
+import { benchmarkWebMcpEnabled, browserContentBounds, browserOrigin, browserUrl, validateWebMCPScript } from "./browser-policy.js";
 import { WEBMCP_BINDING, WEBMCP_WORLD, webmcpBootstrap, webmcpDispose } from "./browser-webmcp-script.js";
 import { browserShortcut } from "./browser-shortcuts.js";
 import { createDevToolsLease, type DevToolsLease } from "./browser-devtools.js";
@@ -84,9 +84,10 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
   const statePath = join(app.getPath("userData"), "browser-tabs.json");
   const profile: Session = session.fromPartition("persist:deepdeck-browser");
   const chromePasskeys = !!findPasskeyChrome();
+  const webmcpEnabled = benchmarkWebMcpEnabled();
   const guestPreferences: Electron.WebPreferences = { session: profile, contextIsolation: true, nodeIntegration: false,
     ...(chromePasskeys ? { preload: join(import.meta.dirname, "../../preload/browser-passkey.cjs") } : {}),
-    sandbox: true, enableBlinkFeatures: "WebMCP", navigateOnDragDrop: false, spellcheck: true, plugins: true };
+    sandbox: true, ...(webmcpEnabled ? { enableBlinkFeatures: "WebMCP" } : { disableBlinkFeatures: "WebMCP" }), navigateOnDragDrop: false, spellcheck: true, plugins: true };
   const nativeSession = createBrowserSession(profile, () => window, wc => [...tabs.values()].some(tab => tab.contents === wc), emit);
 
   function guestUrl(value?: string): string {
@@ -107,7 +108,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
   }
 
   function snapshot(): BrowserSnapshot {
-    return { open: !!window && !window.isDestroyed(), tabs: [...tabs.values()].map(tab => structuredClone(tab.state)),
+    return { webmcpEnabled, open: !!window && !window.isDestroyed(), tabs: [...tabs.values()].map(tab => structuredClone(tab.state)),
       ...(activeTabId ? { activeTabId } : {}), downloads: structuredClone(nativeSession.downloads), canReopenClosedTab: closedTabs.length > 0,
       ...(authentication.size ? { authentication: [...authentication.values()].map(value => value.challenge) } : {}),
       ...(selections.length ? { selections: structuredClone(selections) } : {}) };
@@ -342,7 +343,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     }
     remember(tree.frameTree);
     for (const script of scripts.values()) await addScript(tab, script);
-    try { await send(tab, "WebMCP.enable"); }
+    try { if (webmcpEnabled) await send(tab, "WebMCP.enable"); }
     catch (error) { tab.state.webmcpError = `WebMCP discovery is unavailable: ${message(error)}`; }
     if (wc.isDestroyed()) return;
     // A popup may have started loading before its protocol session was attached.
@@ -1058,6 +1059,7 @@ export function createBrowserWindowManager(displayName: string, onSnapshot: (sna
     }
   }
   async function executeNative(command: BrowserNativeCommand): Promise<unknown> {
+    if (!webmcpEnabled && (command.action === "webmcp.install" || command.action === "webmcp.call")) throw new Error("WebMCP is disabled for this benchmark arm.");
     if (command.action === "webmcp.install" || command.action === "webmcp.remove") {
       const origin = command.action === "webmcp.install" ? command.script.origin : command.origin;
       if (!origin || browserOrigin(browserUrl(origin)) !== origin) throw new Error("Invalid WebMCP origin.");

@@ -300,6 +300,12 @@ importers:
         specifier: ^4.130.0
         version: 4.130.0(@cloudflare/workers-types@5.20260910.1)
 
+  benchmarks/webmcp:
+    dependencies:
+      js-yaml:
+        specifier: 4.3.0
+        version: 4.3.0
+
   plugins/agent-preset-sections: {}
 
   plugins/app-conversations:
@@ -3927,6 +3933,10 @@ packages:
 
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
+
+  js-yaml@4.3.0:
+    resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
+    hasBin: true
 
   js-yaml@4.3.1:
     resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
@@ -8885,6 +8895,10 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
+  js-yaml@4.3.0:
+    dependencies:
+      argparse: 2.0.1
+
   js-yaml@4.3.1:
     dependencies:
       argparse: 2.0.1
@@ -9386,7 +9400,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.2
-      '@types/node': 24.13.3
+      '@types/node': 22.20.2
       long: 5.3.2
 
   proxy-addr@2.0.7:

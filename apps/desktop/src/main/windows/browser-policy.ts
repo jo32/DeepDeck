@@ -50,3 +50,8 @@ export function browserContentBounds(width: number, height: number, top: number,
   const sidebar = Math.min(Math.max(0, Math.round(right)), Math.max(0, width - 1));
   return { x: 0, y, width: Math.max(1, width - sidebar), height: Math.max(1, height - y) };
 }
+
+/** Browser feature control belongs to the native host; normal launches stay enabled. */
+export function benchmarkWebMcpEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return !(env.DEEPDECK_BENCHMARK_TOKEN && env.DEEPDECK_BENCHMARK_WEBMCP === "off");
+}

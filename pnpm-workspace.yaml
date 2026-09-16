@@ -1,5 +1,6 @@
 packages:
   - apps/*
+  - benchmarks/*
   - plugins/*
   # Historical upstream source retained for attribution only; it is no longer
   # part of the workspace, build, Cordis patch, or packaged runtime.

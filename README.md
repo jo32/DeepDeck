@@ -135,6 +135,11 @@ pnpm package:mac       # build signed production macOS packages
 pnpm harness:build     # rebuild the pinned Harness checkout
 ```
 
+The [DeepDeck WebMCP benchmark guide](docs/webmcp-benchmark.md) explains how to
+edit the local corpus in `benchmarks/webmcp`, add your own task files, and run
+Docker websites through isolated DeepDeck Agent sessions. Start with
+`pnpm benchmark:webmcp` for the available commands.
+
 See [docs/architecture.md](docs/architecture.md) for the dependency boundary and the plugin integration direction.
 
 ## Desktop updates
@@ -152,3 +157,5 @@ See [docs/release.md](docs/release.md) for the signed release process and rollba
 ## License
 
 DeepDeck is available under the [MIT License](LICENSE). The pinned DeepSeek Harness submodule and other third-party dependencies retain their own licenses.
+
+直接测试网站的 WebMCP 增量：`pnpm benchmark:webmcp ablate --url https://your-website.example --query "你的任务" --n 3`。无需 Docker；详见 [benchmark 文档](docs/webmcp-benchmark.md)。

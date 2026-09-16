@@ -9,10 +9,11 @@ import { BrowserNativeClient } from './native-client.js'
 import { BrowserRuntime, type BrowserHostContext } from './runtime.js'
 import { BrowserSiteStore } from './site-store.js'
 import { WebMCPStore } from './webmcp-store.js'
+import { acknowledgeBenchmarkUi, startBenchmarkController, type BenchmarkContext } from './benchmark.js'
 
 export const name = 'deepdeck-browser'
-export const inject = ['workspaceRegistry', 'webServer', 'agents', 'tools', 'skills', 'systemPrompt', 'attachments', 'sessions', 'webRuntime'] as const
-interface HostContext extends BrowserHostContext {
+export const inject = ['workspaceRegistry', 'webServer', 'agents', 'tools', 'skills', 'systemPrompt', 'attachments', 'sessions', 'webRuntime', 'sessionController'] as const
+interface HostContext extends BrowserHostContext, BenchmarkContext {
   webServer: { register(route: { kind: 'exact'; path: string; handler(request: IncomingMessage, response: ServerResponse): Promise<void> }): () => void }
   reflect: { provide(name: string, value: unknown): () => void }
   effect(setup: () => (() => void), label: string): unknown
@@ -52,6 +53,8 @@ export function apply(ctx: HostContext): void {
     const native = new BrowserNativeClient()
     const sites = new BrowserSiteStore(root)
     const runtime = new BrowserRuntime(ctx, native, sites, new WebMCPStore(join(root, 'webmcp')))
+    const benchmarkFile = process.env.DEEPDECK_BENCHMARK_READY
+    const stopBenchmark = benchmarkFile ? startBenchmarkController(ctx, runtime, benchmarkFile, process.env.DEEPDECK_BENCHMARK_TOKEN ?? '') : () => {}
     const stopService = ctx.reflect.provide('deepdeckBrowser', runtime)
     const stopRoute = ctx.webServer.register({ kind: 'exact', path: BROWSER_API_PATH, async handler(request, response) {
       if (!trustedRequest(request)) { send(response, 403, { error: 'A same-origin desktop request is required.' }); return }
@@ -60,7 +63,12 @@ export function apply(ctx: HostContext): void {
         const input = await readAction(request)
         let result: unknown
         switch (input.action) {
-          case 'state': result = await runtime.state(); break
+          case 'state': result = { ...await runtime.state(), ...(benchmarkFile ? { benchmark: true } : {}) }; break
+          case 'benchmark.ui-ready': {
+            if (!benchmarkFile) throw new Error('Benchmark is not enabled.')
+            acknowledgeBenchmarkUi(runtime, input)
+            break
+          }
           case 'market.directory': result = await runtime.directory(); break
           case 'market.catalog': result = await runtime.catalog(input.origin); break
           case 'market.prepare': result = await runtime.preparePackage(input); break
@@ -108,6 +116,6 @@ export function apply(ctx: HostContext): void {
         send(response, 200, result === undefined ? { ok: true } : result)
       } catch (error) { send(response, 400, { error: error instanceof Error ? error.message : String(error) }) }
     } })
-    return () => { stopRoute(); stopService(); runtime.dispose() }
+    return () => { stopBenchmark(); stopRoute(); stopService(); runtime.dispose() }
   }, 'Browser: native bridge, site Agent and WebMCP services')
 }

@@ -19,11 +19,11 @@ export const benchmarkSample = {
 
 export function benchmarkMetadata(locale: SiteLocale): Metadata {
   const zh = locale === 'zh';
-  const title = zh ? 'DeepDeck Bench — Ground Truth、Token 与耗时的 Computer Use 评测' : 'DeepDeck Bench — Ground Truth, Tokens & Time for Computer Use';
-  const description = zh ? '用 WebMCP 与你的 Computer Use Agent 完成同一任务，检查答案是否正确，比较成功率、Token 用量和耗时。查看实验结果并申请试点评测。' : 'Run the same tasks with WebMCP and your computer-use agent. Check answers and compare success, token usage, and time. View experiments and apply for a pilot.';
+  const title = zh ? 'DeepDeck Bench — 模型 Computer Use 评测与 WebMCP 消融实验' : 'DeepDeck Bench — Model Benchmarks & WebMCP Ablation';
+  const description = zh ? '用 DeepDeck Computer Use Harness 自动评测你的模型，或输入网站与 query，自动开关 WebMCP 做消融实验，比较答案、Token 与耗时。' : 'Benchmark your model with DeepDeck’s computer-use harness, or enter a website and query to run WebMCP on/off ablations. Compare answers, tokens, and time.';
   const path = zh ? '/zh/benchmarks' : '/benchmarks';
   return { title, description, alternates: { canonical: path, languages: { en: '/benchmarks', 'zh-CN': '/zh/benchmarks', 'x-default': '/benchmarks' } },
-    openGraph: { type: 'website', title, description, url: path, locale: zh ? 'zh_CN' : 'en_US', siteName: 'DeepDeck', images: [{ url: '/benchmarks/share-image', width: 1200, height: 630, alt: 'DeepDeck Bench — Ground truth. Tokens. Time.' }] },
+    openGraph: { type: 'website', title, description, url: path, locale: zh ? 'zh_CN' : 'en_US', siteName: 'DeepDeck', images: [{ url: '/benchmarks/share-image', width: 1200, height: 630, alt: 'DeepDeck Bench — Model benchmarks. WebMCP ablation.' }] },
     twitter: { card: 'summary_large_image', title, description, images: ['/benchmarks/share-image'] },
   };
 }

@@ -1,0 +1,12 @@
+# DeepDeck task-authoring example. Copy and edit this file to start your own set.
+# It is not loaded by default and is not counted among the imported starter tasks.
+tasks:
+  - id: my-blog-author
+    tier: answer
+    start_path: /about
+    prompt: Read this About page and report the author's full name.
+    max_steps:
+      webmcp: 12
+    predicate:
+      type: answer
+      contains: [Tails Azimuth]

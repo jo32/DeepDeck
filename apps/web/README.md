@@ -98,7 +98,7 @@ localized pages.
 
 ## DeepDeck Bench
 
-`/benchmarks` and `/zh/benchmarks` are bilingual pilot product pages. The HN
+`/benchmarks` and `/zh/benchmarks` are bilingual product pages for model computer-use benchmarks and automated WebMCP on/off ablations. Local CLI usage is available; custom evaluation engagements use the pilot form. The HN
 scoring interaction uses the published baseline-2 aggregate sample in
 `public/research/benchmarks/hn-sample.json`; it does not run an agent. Keep the
 observed independent page verification distinct from the proposed WebMCP
@@ -114,4 +114,13 @@ manually in the private D1 `benchmark_applications` table; this flow sends no
 email and does not collect payments. See `apps/webmcp-index/README.md` for
 storage, rate limits, and operator access.
 
-The benchmark product narrative centers on WebMCP ground truth plus reference execution: verified reachable completion, token overhead, and elapsed-time gaps. The interactive comparison draws on all three completed experiments, including the X token increase and HN unequal-work caveat. Never describe a measured reference as a mathematical upper bound or guaranteed minimum resource cost. User-facing application copy omits the storage implementation.
+The product narrative leads with two uses of the same DeepDeck execution environment: connect a model to run computer-use task suites, or supply a website and query for a paired WebMCP ablation. The on arm retains normal page tools; only WebMCP availability changes. Without an expected answer, correctness is unscored. The Codex app comparison describes a familiar interaction workflow, not identical internal implementation or a verified SOTA ranking. Historical evidence still explains independent correctness checks, token use, and elapsed time. The interactive comparison draws on all three completed experiments, including the X token increase and HN unequal-work caveat. Never describe a measured reference as a mathematical upper bound or guaranteed minimum resource cost. User-facing application copy omits the storage implementation.
+
+The task-corpus section lists active tasks from the eight registered local sites.
+`node scripts/generate-benchmark-catalog.mjs` derives counts, tiers and task IDs
+from the YAML corpus, using bilingual public labels in
+`lib/benchmark-corpus-labels.json`. The web build regenerates the catalog and the
+web check detects stale output. Add a public label when adding a task or site;
+raw prompts, test credentials and expected answers are not published. Calibration
+tasks, the template and excluded tasks are counted separately from active tasks.
+Corpus coverage is not presented as successful end-to-end evaluation coverage.

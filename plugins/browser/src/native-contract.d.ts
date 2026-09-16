@@ -37,6 +37,7 @@ export interface BrowserDownload {
   totalBytes: number
 }
 export interface BrowserSnapshot {
+  webmcpEnabled?: boolean
   open: boolean
   tabs: BrowserTab[]
   activeTabId?: string

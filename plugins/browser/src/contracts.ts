@@ -24,6 +24,7 @@ export interface BrowserBinding {
   mode: BrowserMode
 }
 export interface BrowserState {
+  benchmark?: boolean
   native: import('./native-contract.js').BrowserSnapshot
   sites: BrowserSite[]
   available: boolean
@@ -31,6 +32,7 @@ export interface BrowserState {
 /** Same-origin Client API actions. Native page scripting is exposed only as Builder tools. */
 export type BrowserClientAction =
   | { action: 'state' }
+  | { action: 'benchmark.ui-ready'; siteId: string; sessionId: string; tabId: string }
   | { action: 'open'; url?: string }
   | { action: 'command'; command: import('./native-contract.js').BrowserNativeCommand }
   | { action: 'site.resolve'; tabId: string }

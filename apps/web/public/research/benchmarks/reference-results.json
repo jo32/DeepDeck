@@ -1,7 +1,7 @@
 {
   "description": "Completed experiments used to illustrate a proposed ground-truth and reference-execution benchmark. Not a live evaluation service.",
   "token_accounting": "Accumulated run total tokens, including repeated context; not monetary cost.",
-  "aggregation": "Time and tokens are per-run medians. Do not pool success rates across experiments.",
+  "aggregation": "Time and tokens are per-run medians except OpenAI, which reports totals across three paired runs. Do not pool success rates.",
   "hn_comparability": "Live runs at different times and different completion volumes: CU verified 220 comments; WebMCP 282. Not an equal-work speedup comparison.",
   "experiments": [
     {
@@ -48,6 +48,110 @@
         "median_wall_seconds": 407.268,
         "median_total_tokens": 1184254
       }
+    },
+    {
+      "name": "OpenAI",
+      "url": "https://openai.com/",
+      "query": "关于 Hugging Face 最新的新闻",
+      "date": "2026-09-16T09:02:38.384Z",
+      "model": "gpt-6-astra",
+      "correctness": "user-confirmed",
+      "aggregation": "sum across 3 runs",
+      "time_accounting": "Agent execution only, excluding browser startup and teardown",
+      "conditions": "Same model, query and budget; fresh browser/session per arm; alternating order. Live website state was not reset. No independent expected answer.",
+      "webmcp_tool": "search_openai",
+      "pairs": [
+        {
+          "repeat": 1,
+          "on": {
+            "totalTokens": 89325,
+            "inputTokens": 21299,
+            "outputTokens": 442,
+            "cachedInputTokens": 67584,
+            "cacheCreationTokens": 0,
+            "agentMs": 39730.421042,
+            "wallMs": 53351.094709000005,
+            "resetMs": null,
+            "toolCalls": 6
+          },
+          "off": {
+            "totalTokens": 128998,
+            "inputTokens": 51831,
+            "outputTokens": 367,
+            "cachedInputTokens": 76800,
+            "cacheCreationTokens": 0,
+            "agentMs": 36853.143208,
+            "wallMs": 51837.747334000014,
+            "resetMs": null,
+            "toolCalls": 6
+          }
+        },
+        {
+          "repeat": 2,
+          "on": {
+            "totalTokens": 103190,
+            "inputTokens": 34778,
+            "outputTokens": 444,
+            "cachedInputTokens": 67968,
+            "cacheCreationTokens": 0,
+            "agentMs": 41006.954083,
+            "wallMs": 57002.51475,
+            "resetMs": null,
+            "toolCalls": 7
+          },
+          "off": {
+            "totalTokens": 129146,
+            "inputTokens": 41075,
+            "outputTokens": 391,
+            "cachedInputTokens": 87680,
+            "cacheCreationTokens": 0,
+            "agentMs": 46716.116042,
+            "wallMs": 62804.970959,
+            "resetMs": null,
+            "toolCalls": 6
+          }
+        },
+        {
+          "repeat": 3,
+          "on": {
+            "totalTokens": 89423,
+            "inputTokens": 33047,
+            "outputTokens": 440,
+            "cachedInputTokens": 55936,
+            "cacheCreationTokens": 0,
+            "agentMs": 41701.581083,
+            "wallMs": 58946.177042000025,
+            "resetMs": null,
+            "toolCalls": 6
+          },
+          "off": {
+            "totalTokens": 129202,
+            "inputTokens": 41036,
+            "outputTokens": 358,
+            "cachedInputTokens": 87808,
+            "cacheCreationTokens": 0,
+            "agentMs": 44203.34425,
+            "wallMs": 59209.47437499999,
+            "resetMs": null,
+            "toolCalls": 6
+          }
+        }
+      ],
+      "computer_use": {
+        "successful_runs": 3,
+        "completed_runs": 3,
+        "runs": 3,
+        "total_agent_seconds": 127.7726035,
+        "total_tokens": 387346
+      },
+      "webmcp": {
+        "successful_runs": 3,
+        "completed_runs": 3,
+        "runs": 3,
+        "total_agent_seconds": 122.438956208,
+        "total_tokens": 281938
+      },
+      "grading": "User manually confirmed both arms successful (3/3 each). Original automated run had no independent expected answer and was unscored."
     }
   ]
 }

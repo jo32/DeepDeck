@@ -324,6 +324,10 @@ export function BrowserFrame({ browser, character, t, renderConversation, render
   }
   const selectedReady = !busy && selection !== undefined && selection.siteId === site?.id
     && selection.sessionId === currentSession && (selection.tabId === active?.id || running)
+  useEffect(() => {
+    if (!state?.benchmark || !selectedReady || !selection || !panelVisible || panelTab !== 'conversation' || selection.tabId !== active?.id) return
+    void browser.request({ action: 'benchmark.ui-ready', ...selection }).catch(failure => { setError(message(failure)) })
+  }, [browser, state?.benchmark, selectedReady, selection, panelVisible, panelTab, active?.id])
   const pinned = selectedReady && selection.tabId !== active?.id
   const sourceCount = active?.tools.filter(tool => tool.source === 'site').length ?? 0
   const generatedCount = active?.tools.filter(tool => tool.source === 'deepdeck').length ?? 0

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browserContentBounds, browserOrigin, browserUrl, isBrowserNativeRequest, validateWebMCPScript } from "./browser-policy.js";
+import { benchmarkWebMcpEnabled, browserContentBounds, browserOrigin, browserUrl, isBrowserNativeRequest, validateWebMCPScript } from "./browser-policy.js";
 
 describe("Browser navigation boundary", () => {
   it("allows websites and an empty tab, rejecting privileged URLs and embedded credentials", () => {
@@ -29,4 +29,11 @@ describe("Browser child requests", () => {
       expect(() => validateWebMCPScript({ origin, revision: "v1", source: "void 0" })).toThrow();
     }
   });
+});
+
+it("disables WebMCP only for an explicitly isolated benchmark arm", () => {
+  expect(benchmarkWebMcpEnabled({})).toBe(true);
+  expect(benchmarkWebMcpEnabled({ DEEPDECK_BENCHMARK_WEBMCP: "off" })).toBe(true);
+  expect(benchmarkWebMcpEnabled({ DEEPDECK_BENCHMARK_TOKEN: "test", DEEPDECK_BENCHMARK_WEBMCP: "off" })).toBe(false);
+  expect(benchmarkWebMcpEnabled({ DEEPDECK_BENCHMARK_TOKEN: "test", DEEPDECK_BENCHMARK_WEBMCP: "on" })).toBe(true);
 });

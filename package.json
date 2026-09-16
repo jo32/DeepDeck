@@ -28,7 +28,7 @@
     "check": "pnpm harness:ensure && pnpm codex-connect:check && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run check && pnpm --filter @deepdeck/dsh-bun-plugin-builder run check && pnpm --filter @deepdeck/dsh-first-run run check && pnpm --filter @deepdeck/dsh-app-conversations run check && pnpm --filter @deepdeck/dsh-computer-use run check && pnpm --filter @deepdeck/dsh-provider-aware-web run check && pnpm --filter @deepdeck/dsh-browser run check && pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome run check && pnpm --filter @deepdeck/dsh-client-ui-home-hero run check && pnpm --filter @deepdeck/dsh-client-ui-agent-preset-sections run check && pnpm --filter @deepseek-harness/desktop run check && pnpm web:check && pnpm --filter @deepdeck/webmcp-index check",
     "test:start-cache": "node --test scripts/start-build-cache.test.mjs scripts/harness-build-cache.test.mjs",
     "test:questions": "pnpm --filter @deepdeck/dsh-client-ui-desktop-chrome build && vendor/deepseek-harness/node_modules/.bin/vitest run --config apps/desktop/scripts/question-composer.vitest.config.ts",
-    "test": "pnpm test:start-cache && pnpm test:registry && pnpm test:signing && pnpm test:browser-benchmark && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-bun-plugin-builder run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepdeck/dsh-app-conversations run test && pnpm --filter @deepdeck/dsh-computer-use run test && pnpm --filter @deepdeck/dsh-provider-aware-web run test && pnpm --filter @deepdeck/dsh-browser run test && pnpm --filter @deepseek-harness/desktop run test && pnpm --filter @deepdeck/webmcp-index test",
+    "test": "pnpm test:start-cache && pnpm test:registry && pnpm test:signing && pnpm test:browser-benchmark && pnpm test:webmcp-benchmark && pnpm codex-connect:test && pnpm --filter @deepdeck/dsh-app-market-desktop-bridge run test && pnpm --filter @deepdeck/dsh-bun-plugin-builder run test && pnpm --filter @deepdeck/dsh-first-run run test && pnpm --filter @deepdeck/dsh-app-conversations run test && pnpm --filter @deepdeck/dsh-computer-use run test && pnpm --filter @deepdeck/dsh-provider-aware-web run test && pnpm --filter @deepdeck/dsh-browser run test && pnpm --filter @deepseek-harness/desktop run test && pnpm --filter @deepdeck/webmcp-index test",
     "computer-use:update": "node scripts/update-computer-use-version.mjs",
     "runtime:prepare": "node scripts/prepare-runtime.mjs",
     "runtime:verify": "node scripts/verify-runtime.mjs",
@@ -44,7 +44,9 @@
     "test:browser-benchmark": "node --test apps/desktop/scripts/browser-use-benchmark.test.mjs",
     "benchmark:browser": "node apps/desktop/scripts/verify-browser-devtools.mjs --benchmark",
     "test:harness-ui": "node apps/desktop/scripts/verify-harness-ui.mjs",
-    "harness:ensure": "node scripts/harness-build-cache.mjs"
+    "harness:ensure": "node scripts/harness-build-cache.mjs",
+    "benchmark:webmcp": "node scripts/webmcp-benchmark.mjs",
+    "test:webmcp-benchmark": "node --test scripts/webmcp-benchmark.test.mjs scripts/webmcp-comparison.test.mjs scripts/webmcp-model-config.test.mjs scripts/webmcp-ablation.test.mjs && pnpm --filter @deepdeck/webmcp-bench test"
   },
   "dependencies": {
     "dsh-codex-connect": "0.1.0-alpha.4.34"
