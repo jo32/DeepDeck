@@ -3252,6 +3252,12 @@
             "recordedSubtotal": 4.1938476
           }
         }
+      },
+      "reasoning": {
+        "requestedEffort": "provider-default",
+        "effectiveEffort": null,
+        "source": "Original run provenance; no explicit --effort override. Effective reasoning level was not retained in the run records.",
+        "sameConfigurationAcrossArms": true
       }
     },
     {
@@ -6498,6 +6504,12 @@
             "recordedSubtotal": 0.495025308
           }
         }
+      },
+      "reasoning": {
+        "requestedEffort": "provider-default",
+        "effectiveEffort": null,
+        "source": "Original run provenance; no explicit --effort override. Effective reasoning level was not retained in the run records.",
+        "sameConfigurationAcrossArms": true
       }
     },
     {
@@ -9751,6 +9763,12 @@
             "recordedSubtotal": 2.9215566987251176
           }
         }
+      },
+      "reasoning": {
+        "requestedEffort": "provider-default",
+        "effectiveEffort": null,
+        "source": "Original run provenance; no explicit --effort override. Effective reasoning level was not retained in the run records.",
+        "sameConfigurationAcrossArms": true
       }
     }
   ],
