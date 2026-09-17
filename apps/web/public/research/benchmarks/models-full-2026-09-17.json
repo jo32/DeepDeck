@@ -10,7 +10,7 @@
     "efficiency": "Only comparable pairs passing both scorers. Token totals include input, output, cache reads and writes. Agent time excludes setup and environment retries.",
     "revisionNote": "The same 49 task IDs were evaluated. Terra spans corpus revisions around an environment readiness fix; hashes are preserved per model. Do not treat these as one identical-build cross-model experiment.",
     "stepAccounting": "Agent steps count step/start events (including a started step interrupted by timeout). Tool calls count tool/call events, including failed calls. A step may issue multiple calls; neither metric is a UI click count. There is no step limit.",
-    "pricing": "Public API token-price estimates verified 2026-09-17, not actual bills. Terra uses Standard short-context USD; all observed inputs <40k. DeepSeek uses off-peak USD (recorded execution is outside weekday 01–04 and 06–10 UTC); peak rates are also preserved. Hy3 uses TokenHub Guangzhou CNY. No currency conversion, subscription allocation, free quota, tax, infrastructure, external tool fees or superseded attempts. Cached input is distinct from uncached input; reasoning is included in output. Cache writes are zero in all records; missing write tariff is not assumed free. Incomplete attempts expose recorded subtotals only, never complete cost."
+    "pricing": "Public API token-price estimates verified 2026-09-17, not actual bills. Terra uses Standard short-context USD; all observed inputs <40k. DeepSeek uses off-peak USD (recorded execution is outside weekday 01–04 and 06–10 UTC); peak rates are also preserved. Hy3 uses TokenHub Guangzhou CNY tariffs converted to USD at 1 USD = 6.7065 CNY (2026-09-16, Cinco Días); all displayed fees are USD. No subscription allocation, free quota, tax, infrastructure, external tool fees or superseded attempts. Cached input is distinct from uncached input; reasoning is included in output. Cache writes are zero in all records; missing write tariff is not assumed free. Incomplete attempts expose recorded subtotals only, never complete cost."
   },
   "models": [
     {
@@ -6717,13 +6717,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.153564,
-                "cached": 0.003232,
-                "write": 0,
-                "output": 0.006976
+                "input": 0.022897785730261685,
+                "cached": 0.00048192052486393795,
+                "write": 0.0,
+                "output": 0.001040184895250876
               },
-              "total": 0.163772,
-              "recordedSubtotal": 0.163772
+              "total": 0.024419891150376502,
+              "recordedSubtotal": 0.024419891150376502
             },
             "cacheHitPercent": 7.764937654662085
           },
@@ -6743,13 +6743,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.365418,
-                "cached": 0.004928,
-                "write": 0,
-                "output": 0.012132
+                "input": 0.054487139342428985,
+                "cached": 0.0007348095131588757,
+                "write": 0.0,
+                "output": 0.0018089912771192128
               },
-              "total": 0.382478,
-              "recordedSubtotal": 0.382478
+              "total": 0.05703094013270708,
+              "recordedSubtotal": 0.05703094013270708
             },
             "cacheHitPercent": 5.118271752395295
           }
@@ -6778,13 +6778,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.132083,
+                "input": 0.019694773726981286,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.003848
+                "write": 0.0,
+                "output": 0.0005737717140087974
               },
-              "total": 0.135931,
-              "recordedSubtotal": 0.135931
+              "total": 0.020268545440990084,
+              "recordedSubtotal": 0.020268545440990084
             },
             "cacheHitPercent": 0.0
           },
@@ -6804,13 +6804,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.05686,
+                "input": 0.008478341907105048,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001168
+                "write": 0.0,
+                "output": 0.00017415939759934392
               },
-              "total": 0.058028,
-              "recordedSubtotal": 0.058028
+              "total": 0.008652501304704392,
+              "recordedSubtotal": 0.008652501304704392
             },
             "cacheHitPercent": 0.0
           }
@@ -6839,13 +6839,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.13133,
-                "cached": 0.006832,
-                "write": 0,
-                "output": 0.005852
+                "input": 0.019582494594796093,
+                "cached": 0.0010187131886975323,
+                "write": 0.0,
+                "output": 0.0008725862968761649
               },
-              "total": 0.144014,
-              "recordedSubtotal": 0.144014
+              "total": 0.02147379408036979,
+              "recordedSubtotal": 0.02147379408036979
             },
             "cacheHitPercent": 17.224470244173002
           },
@@ -6865,13 +6865,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.117425,
+                "input": 0.017509132930738837,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.003384
+                "write": 0.0,
+                "output": 0.0005045851040035786
               },
-              "total": 0.120809,
-              "recordedSubtotal": 0.120809
+              "total": 0.018013718034742415,
+              "recordedSubtotal": 0.018013718034742415
             },
             "cacheHitPercent": 0.0
           }
@@ -6900,13 +6900,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.306352,
-                "cached": 0.004896,
-                "write": 0,
-                "output": 0.015772
+                "input": 0.04567986281965258,
+                "cached": 0.0007300380228136882,
+                "write": 0.0,
+                "output": 0.0023517483038842913
               },
-              "total": 0.32702,
-              "recordedSubtotal": 0.32702
+              "total": 0.048761649146350554,
+              "recordedSubtotal": 0.048761649146350554
             },
             "cacheHitPercent": 6.008541554170144
           },
@@ -6926,13 +6926,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.479093,
-                "cached": 0.003504,
-                "write": 0,
-                "output": 0.01316
+                "input": 0.07143711324834116,
+                "cached": 0.0005224781927980317,
+                "write": 0.0,
+                "output": 0.001962275404458361
               },
-              "total": 0.495757,
-              "recordedSubtotal": 0.495757
+              "total": 0.07392186684559755,
+              "recordedSubtotal": 0.07392186684559755
             },
             "cacheHitPercent": 2.8423735928567515
           }
@@ -6961,13 +6961,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.074654,
-                "cached": 0.003232,
-                "write": 0,
-                "output": 0.003488
+                "input": 0.011131588757175874,
+                "cached": 0.00048192052486393795,
+                "write": 0.0,
+                "output": 0.000520092447625438
               },
-              "total": 0.081374,
-              "recordedSubtotal": 0.081374
+              "total": 0.012133601729665251,
+              "recordedSubtotal": 0.012133601729665251
             },
             "cacheHitPercent": 14.761023954693886
           },
@@ -6987,13 +6987,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.180649,
+                "input": 0.026936404980243047,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.004924
+                "write": 0.0,
+                "output": 0.0007342130768657273
               },
-              "total": 0.185573,
-              "recordedSubtotal": 0.185573
+              "total": 0.027670618057108774,
+              "recordedSubtotal": 0.027670618057108774
             },
             "cacheHitPercent": 0.0
           }
@@ -7022,13 +7022,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.119933,
+                "input": 0.017883098486542907,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.004252
+                "write": 0.0,
+                "output": 0.0006340117796167897
               },
-              "total": 0.124185,
-              "recordedSubtotal": 0.124185
+              "total": 0.018517110266159695,
+              "recordedSubtotal": 0.018517110266159695
             },
             "cacheHitPercent": 0.0
           },
@@ -7048,13 +7048,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.104325,
-                "cached": 0.003232,
-                "write": 0,
-                "output": 0.002128
+                "input": 0.015555804070677701,
+                "cached": 0.00048192052486393795,
+                "write": 0.0,
+                "output": 0.00031730410795496904
               },
-              "total": 0.109685,
-              "recordedSubtotal": 0.109685
+              "total": 0.01635502870349661,
+              "recordedSubtotal": 0.01635502870349661
             },
             "cacheHitPercent": 11.02573068492917
           }
@@ -7083,13 +7083,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.154367,
+                "input": 0.023017520316111234,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.004844
+                "write": 0.0,
+                "output": 0.0007222843510027586
               },
-              "total": 0.159211,
-              "recordedSubtotal": 0.159211
+              "total": 0.023739804667113992,
+              "recordedSubtotal": 0.023739804667113992
             },
             "cacheHitPercent": 0.0
           },
@@ -7109,13 +7109,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.158853,
+                "input": 0.023686423618877208,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00262
+                "write": 0.0,
+                "output": 0.00039066577201222693
               },
-              "total": 0.161473,
-              "recordedSubtotal": 0.161473
+              "total": 0.024077089390889435,
+              "recordedSubtotal": 0.024077089390889435
             },
             "cacheHitPercent": 0.0
           }
@@ -7144,13 +7144,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 1.024732,
-                "cached": 0.024272,
-                "write": 0,
-                "output": 0.032928
+                "input": 0.1527968388876463,
+                "cached": 0.0036191754268247224,
+                "write": 0.0,
+                "output": 0.004909863565197943
               },
-              "total": 1.081932,
-              "recordedSubtotal": 1.081932
+              "total": 0.16132587787966898,
+              "recordedSubtotal": 0.16132587787966898
             },
             "cacheHitPercent": 8.6545078533098
           },
@@ -7170,13 +7170,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.880223,
-                "cached": 0.040736,
-                "write": 0,
-                "output": 0.056864
+                "input": 0.1312492358159994,
+                "cached": 0.006074107209423693,
+                "write": 0.0,
+                "output": 0.008478938343398195
               },
-              "total": 0.977823,
-              "recordedSubtotal": 0.977823
+              "total": 0.14580228136882128,
+              "recordedSubtotal": 0.14580228136882128
             },
             "cacheHitPercent": 15.620126020090744
           }
@@ -7205,13 +7205,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.091549,
-                "cached": 0.003728,
-                "write": 0,
-                "output": 0.003768
+                "input": 0.01365078655036159,
+                "cached": 0.0005558786252143443,
+                "write": 0.0,
+                "output": 0.0005618429881458286
               },
-              "total": 0.099045,
-              "recordedSubtotal": 0.099045
+              "total": 0.014768508163721763,
+              "recordedSubtotal": 0.014768508163721763
             },
             "cacheHitPercent": 14.007007260874873
           },
@@ -7231,13 +7231,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.263461,
-                "cached": 0.004832,
-                "write": 0,
-                "output": 0.0073
+                "input": 0.03928442555729516,
+                "cached": 0.0007204950421233132,
+                "write": 0.0,
+                "output": 0.0010884962349958995
               },
-              "total": 0.275593,
-              "recordedSubtotal": 0.275593
+              "total": 0.04109341683441437,
+              "recordedSubtotal": 0.04109341683441437
             },
             "cacheHitPercent": 6.834777873255325
           }
@@ -7266,13 +7266,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.106165,
+                "input": 0.015830164765525984,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.002988
+                "write": 0.0,
+                "output": 0.00044553791098188327
               },
-              "total": 0.109153,
-              "recordedSubtotal": 0.109153
+              "total": 0.016275702676507867,
+              "recordedSubtotal": 0.016275702676507867
             },
             "cacheHitPercent": 0.0
           },
@@ -7292,13 +7292,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.44595,
-                "cached": 0.015776,
-                "write": 0,
-                "output": 0.01606
+                "input": 0.0664951912323865,
+                "cached": 0.00235234474017744,
+                "write": 0.0,
+                "output": 0.0023946917169909787
               },
-              "total": 0.477786,
-              "recordedSubtotal": 0.477786
+              "total": 0.0712422276895549,
+              "recordedSubtotal": 0.0712422276895549
             },
             "cacheHitPercent": 12.396327305158197
           }
@@ -7327,13 +7327,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.219033,
-                "cached": 0.010208,
-                "write": 0,
-                "output": 0.008148
+                "input": 0.03265980764929546,
+                "cached": 0.001522105420114814,
+                "write": 0.0,
+                "output": 0.0012149407291433684
               },
-              "total": 0.237389,
-              "recordedSubtotal": 0.237389
+              "total": 0.03539685379855364,
+              "recordedSubtotal": 0.03539685379855364
             },
             "cacheHitPercent": 15.712773940315165
           },
@@ -7353,13 +7353,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.327491,
-                "cached": 0.014544,
-                "write": 0,
-                "output": 0.013196
+                "input": 0.04883187951986878,
+                "cached": 0.002168642361887721,
+                "write": 0.0,
+                "output": 0.001967643331096697
               },
-              "total": 0.355231,
-              "recordedSubtotal": 0.355231
+              "total": 0.052968165212853205,
+              "recordedSubtotal": 0.052968165212853205
             },
             "cacheHitPercent": 15.084515916580884
           }
@@ -7388,13 +7388,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.338319,
+                "input": 0.050446432565421605,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.008372
+                "write": 0.0,
+                "output": 0.0012483411615596808
               },
-              "total": 0.346691,
-              "recordedSubtotal": 0.346691
+              "total": 0.05169477372698129,
+              "recordedSubtotal": 0.05169477372698129
             },
             "cacheHitPercent": 0.0
           },
@@ -7414,13 +7414,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.561844,
+                "input": 0.08377603817192276,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.013168
+                "write": 0.0,
+                "output": 0.0019634682770446584
               },
-              "total": 0.575012,
-              "recordedSubtotal": 0.575012
+              "total": 0.08573950644896743,
+              "recordedSubtotal": 0.08573950644896743
             },
             "cacheHitPercent": 0.0
           }
@@ -7449,13 +7449,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.110429,
+                "input": 0.016465965854022217,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00234
+                "write": 0.0,
+                "output": 0.00034891523149183627
               },
-              "total": 0.112769,
-              "recordedSubtotal": 0.112769
+              "total": 0.016814881085514054,
+              "recordedSubtotal": 0.016814881085514054
             },
             "cacheHitPercent": 0.0
           },
@@ -7475,13 +7475,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.163826,
+                "input": 0.024427943040334004,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00298
+                "write": 0.0,
+                "output": 0.00044434503839558637
               },
-              "total": 0.166806,
-              "recordedSubtotal": 0.166806
+              "total": 0.02487228807872959,
+              "recordedSubtotal": 0.02487228807872959
             },
             "cacheHitPercent": 0.0
           }
@@ -7510,13 +7510,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.147945,
-                "cached": 0.0044,
-                "write": 0,
-                "output": 0.004668
+                "input": 0.022059941847461417,
+                "cached": 0.0006560799224632819,
+                "write": 0.0,
+                "output": 0.0006960411541042272
               },
-              "total": 0.157013,
-              "recordedSubtotal": 0.157013
+              "total": 0.023412062924028927,
+              "recordedSubtotal": 0.023412062924028927
             },
             "cacheHitPercent": 10.63155033374611
           },
@@ -7536,13 +7536,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.386041,
-                "cached": 0.0156,
-                "write": 0,
-                "output": 0.009456
+                "input": 0.057562215760829046,
+                "cached": 0.0023261015432789085,
+                "write": 0.0,
+                "output": 0.0014099753970029077
               },
-              "total": 0.411097,
-              "recordedSubtotal": 0.411097
+              "total": 0.06129829270111086,
+              "recordedSubtotal": 0.06129829270111086
             },
             "cacheHitPercent": 13.914873974502779
           }
@@ -7571,13 +7571,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.151342,
+                "input": 0.02256646536941773,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.004668
+                "write": 0.0,
+                "output": 0.0006960411541042272
               },
-              "total": 0.15601,
-              "recordedSubtotal": 0.15601
+              "total": 0.023262506523521957,
+              "recordedSubtotal": 0.023262506523521957
             },
             "cacheHitPercent": 0.0
           },
@@ -7597,13 +7597,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.594439,
-                "cached": 0.005344,
-                "write": 0,
-                "output": 0.010292
+                "input": 0.0886362484157161,
+                "cached": 0.0007968388876463132,
+                "write": 0.0,
+                "output": 0.0015346305822709313
               },
-              "total": 0.610075,
-              "recordedSubtotal": 0.610075
+              "total": 0.09096771788563333,
+              "recordedSubtotal": 0.09096771788563333
             },
             "cacheHitPercent": 3.471172348838531
           }
@@ -7632,13 +7632,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.366304,
-                "cached": 0.008688,
-                "write": 0,
-                "output": 0.012108
+                "input": 0.05461924998136137,
+                "cached": 0.0012954596287184075,
+                "write": 0.0,
+                "output": 0.0018054126593603221
               },
-              "total": 0.3871,
-              "recordedSubtotal": 0.3871
+              "total": 0.057720122269440094,
+              "recordedSubtotal": 0.057720122269440094
             },
             "cacheHitPercent": 8.665124072448736
           },
@@ -7658,13 +7658,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.965418,
-                "cached": 0.024768,
-                "write": 0,
-                "output": 0.018396
+                "input": 0.1439525833146947,
+                "cached": 0.0036931335271751286,
+                "write": 0.0,
+                "output": 0.0027430105121896667
               },
-              "total": 1.008582,
-              "recordedSubtotal": 1.008582
+              "total": 0.1503887273540595,
+              "recordedSubtotal": 0.1503887273540595
             },
             "cacheHitPercent": 9.306992080714709
           }
@@ -7693,13 +7693,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.262468,
-                "cached": 0.009328,
-                "write": 0,
-                "output": 0.008688
+                "input": 0.03913636024752106,
+                "cached": 0.0013908894356221577,
+                "write": 0.0,
+                "output": 0.0012954596287184075
               },
-              "total": 0.280484,
-              "recordedSubtotal": 0.280484
+              "total": 0.041822709311861626,
+              "recordedSubtotal": 0.041822709311861626
             },
             "cacheHitPercent": 12.44646073787444
           },
@@ -7719,13 +7719,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.093734,
+                "input": 0.013976589875493923,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001876
+                "write": 0.0,
+                "output": 0.00027972862148661746
               },
-              "total": 0.09561,
-              "recordedSubtotal": 0.09561
+              "total": 0.01425631849698054,
+              "recordedSubtotal": 0.01425631849698054
             },
             "cacheHitPercent": 0.0
           }
@@ -7754,13 +7754,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.384655,
-                "cached": 0.014272,
-                "write": 0,
-                "output": 0.016436
+                "input": 0.057355550585253115,
+                "cached": 0.002128084693953627,
+                "write": 0.0,
+                "output": 0.002450756728546932
               },
-              "total": 0.415363,
-              "recordedSubtotal": 0.415363
+              "total": 0.06193439200775367,
+              "recordedSubtotal": 0.06193439200775367
             },
             "cacheHitPercent": 12.923351360406391
           },
@@ -7780,13 +7780,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.222833,
-                "cached": 0.004944,
-                "write": 0,
-                "output": 0.004984
+                "input": 0.033226422127786474,
+                "cached": 0.0007371952583314694,
+                "write": 0.0,
+                "output": 0.0007431596212629538
               },
-              "total": 0.232761,
-              "recordedSubtotal": 0.232761
+              "total": 0.034706777007380896,
+              "recordedSubtotal": 0.034706777007380896
             },
             "cacheHitPercent": 8.151387623707281
           }
@@ -7815,13 +7815,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.04348,
+                "input": 0.006483262506523522,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001244
+                "write": 0.0,
+                "output": 0.00018549168716916424
               },
-              "total": 0.044724,
-              "recordedSubtotal": 0.044724
+              "total": 0.006668754193692686,
+              "recordedSubtotal": 0.006668754193692686
             },
             "cacheHitPercent": 0.0
           },
@@ -7841,13 +7841,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.531634,
+                "input": 0.07927145306791919,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.015172
+                "write": 0.0,
+                "output": 0.0022622828599120257
               },
-              "total": 0.546806,
-              "recordedSubtotal": 0.546806
+              "total": 0.08153373592783121,
+              "recordedSubtotal": 0.08153373592783121
             },
             "cacheHitPercent": 0.0
           }
@@ -7876,13 +7876,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.46656,
-                "cached": 0.012384,
-                "write": 0,
-                "output": 0.014108
+                "input": 0.06956832923283382,
+                "cached": 0.0018465667635875643,
+                "write": 0.0,
+                "output": 0.0021036308059345413
               },
-              "total": 0.493052,
-              "recordedSubtotal": 0.493052
+              "total": 0.07351852680235592,
+              "recordedSubtotal": 0.07351852680235592
             },
             "cacheHitPercent": 9.598214285714286
           },
@@ -7902,13 +7902,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.124331,
+                "input": 0.018538880190859613,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.002056
+                "write": 0.0,
+                "output": 0.0003065682546782972
               },
-              "total": 0.126387,
-              "recordedSubtotal": 0.126387
+              "total": 0.01884544844553791,
+              "recordedSubtotal": 0.01884544844553791
             },
             "cacheHitPercent": 0.0
           }
@@ -7937,13 +7937,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.094903,
+                "input": 0.014150898382166556,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.002876
+                "write": 0.0,
+                "output": 0.000428837694773727
               },
-              "total": 0.097779,
-              "recordedSubtotal": 0.097779
+              "total": 0.014579736076940282,
+              "recordedSubtotal": 0.014579736076940282
             },
             "cacheHitPercent": 0.0
           },
@@ -7963,13 +7963,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.147197,
+                "input": 0.02194840826064266,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00214
+                "write": 0.0,
+                "output": 0.00031909341683441437
               },
-              "total": 0.149337,
-              "recordedSubtotal": 0.149337
+              "total": 0.022267501677477073,
+              "recordedSubtotal": 0.022267501677477073
             },
             "cacheHitPercent": 0.0
           }
@@ -7998,13 +7998,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.098616,
+                "input": 0.014704540371281593,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00472
+                "write": 0.0,
+                "output": 0.0007037948259151569
               },
-              "total": 0.103336,
-              "recordedSubtotal": 0.103336
+              "total": 0.015408335197196749,
+              "recordedSubtotal": 0.015408335197196749
             },
             "cacheHitPercent": 0.0
           },
@@ -8024,13 +8024,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.621458,
+                "input": 0.0926650264668605,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.019564
+                "write": 0.0,
+                "output": 0.0029171699097890105
               },
-              "total": 0.641022,
-              "recordedSubtotal": 0.641022
+              "total": 0.09558219637664953,
+              "recordedSubtotal": 0.09558219637664953
             },
             "cacheHitPercent": 0.0
           }
@@ -8059,13 +8059,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.305174,
-                "cached": 0.00856,
-                "write": 0,
-                "output": 0.012776
+                "input": 0.04550421233132036,
+                "cached": 0.0012763736673376575,
+                "write": 0.0,
+                "output": 0.0019050175203161113
               },
-              "total": 0.32651,
-              "recordedSubtotal": 0.32651
+              "total": 0.04868560351897413,
+              "recordedSubtotal": 0.04868560351897413
             },
             "cacheHitPercent": 10.087975157182674
           },
@@ -8085,13 +8085,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.99999,
+                "input": 0.14910758219637665,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.014104
+                "write": 0.0,
+                "output": 0.0021030343696413927
               },
-              "total": 1.014094,
-              "recordedSubtotal": 1.014094
+              "total": 0.15121061656601803,
+              "recordedSubtotal": 0.15121061656601803
             },
             "cacheHitPercent": 0.0
           }
@@ -8120,13 +8120,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.07182,
-                "cached": 0.00352,
-                "write": 0,
-                "output": 0.001592
+                "input": 0.010709013643480206,
+                "cached": 0.0005248639379706255,
+                "write": 0.0,
+                "output": 0.00023738164467307834
               },
-              "total": 0.076932,
-              "recordedSubtotal": 0.076932
+              "total": 0.011471259226123909,
+              "recordedSubtotal": 0.011471259226123909
             },
             "cacheHitPercent": 16.391152502910362
           },
@@ -8146,13 +8146,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.182722,
-                "cached": 0.004848,
-                "write": 0,
-                "output": 0.003484
+                "input": 0.027245508089167227,
+                "cached": 0.0007228807872959069,
+                "write": 0.0,
+                "output": 0.0005194960113322895
               },
-              "total": 0.191054,
-              "recordedSubtotal": 0.191054
+              "total": 0.028487884887795422,
+              "recordedSubtotal": 0.028487884887795422
             },
             "cacheHitPercent": 9.594585234075819
           }
@@ -8181,13 +8181,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.379933,
-                "cached": 0.027568,
-                "write": 0,
-                "output": 0.02998
+                "input": 0.05665145754119138,
+                "cached": 0.004110638932379035,
+                "write": 0.0,
+                "output": 0.004470290017147544
               },
-              "total": 0.437481,
-              "recordedSubtotal": 0.437481
+              "total": 0.06523238649071796,
+              "recordedSubtotal": 0.06523238649071796
             },
             "cacheHitPercent": 22.49507858956967
           },
@@ -8207,13 +8207,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.173272,
+                "input": 0.02583642734660404,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.0046
+                "write": 0.0,
+                "output": 0.0006859017371207038
               },
-              "total": 0.177872,
-              "recordedSubtotal": 0.177872
+              "total": 0.026522329083724743,
+              "recordedSubtotal": 0.026522329083724743
             },
             "cacheHitPercent": 0.0
           }
@@ -8242,13 +8242,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.107743,
+                "input": 0.01606545888317304,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00376
+                "write": 0.0,
+                "output": 0.0005606501155595318
               },
-              "total": 0.111503,
-              "recordedSubtotal": 0.111503
+              "total": 0.016626108998732573,
+              "recordedSubtotal": 0.016626108998732573
             },
             "cacheHitPercent": 0.0
           },
@@ -8268,13 +8268,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.143777,
-                "cached": 0.003328,
-                "write": 0,
-                "output": 0.002608
+                "input": 0.021438455230000746,
+                "cached": 0.0004962349958995005,
+                "write": 0.0,
+                "output": 0.0003888764631327816
               },
-              "total": 0.149713,
-              "recordedSubtotal": 0.149713
+              "total": 0.022323566689033028,
+              "recordedSubtotal": 0.022323566689033028
             },
             "cacheHitPercent": 8.47417705886472
           }
@@ -8303,13 +8303,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.158229,
-                "cached": 0.004208,
-                "write": 0,
-                "output": 0.004492
+                "input": 0.023593379557146053,
+                "cached": 0.0006274509803921569,
+                "write": 0.0,
+                "output": 0.000669797957205696
               },
-              "total": 0.166929,
-              "recordedSubtotal": 0.166929
+              "total": 0.024890628494743904,
+              "recordedSubtotal": 0.024890628494743904
             },
             "cacheHitPercent": 9.614934222928008
           },
@@ -8329,13 +8329,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.172751,
-                "cached": 0.00496,
-                "write": 0,
-                "output": 0.004068
+                "input": 0.025758741519421455,
+                "cached": 0.0007395810035040633,
+                "write": 0.0,
+                "output": 0.0006065757101319615
               },
-              "total": 0.181779,
-              "recordedSubtotal": 0.181779
+              "total": 0.027104898233057482,
+              "recordedSubtotal": 0.027104898233057482
             },
             "cacheHitPercent": 10.301623648041705
           }
@@ -8364,13 +8364,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.160824,
+                "input": 0.023980317602326103,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.005864
+                "write": 0.0,
+                "output": 0.0008743756057556102
               },
-              "total": 0.166688,
-              "recordedSubtotal": 0.166688
+              "total": 0.024854693208081712,
+              "recordedSubtotal": 0.024854693208081712
             },
             "cacheHitPercent": 0.0
           },
@@ -8390,13 +8390,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.160454,
-                "cached": 0.005088,
-                "write": 0,
-                "output": 0.00404
+                "input": 0.02392514724520987,
+                "cached": 0.0007586669648848133,
+                "write": 0.0,
+                "output": 0.0006024006560799225
               },
-              "total": 0.169582,
-              "recordedSubtotal": 0.169582
+              "total": 0.025286214866174606,
+              "recordedSubtotal": 0.025286214866174606
             },
             "cacheHitPercent": 11.256263619570147
           }
@@ -8425,13 +8425,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.157838,
+                "input": 0.023535077909490793,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.005332
+                "write": 0.0,
+                "output": 0.0007950495787668679
               },
-              "total": 0.16317,
-              "recordedSubtotal": 0.16317
+              "total": 0.02433012748825766,
+              "recordedSubtotal": 0.02433012748825766
             },
             "cacheHitPercent": 0.0
           },
@@ -8451,13 +8451,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.146818,
-                "cached": 0.013536,
-                "write": 0,
-                "output": 0.002768
+                "input": 0.021891895921866845,
+                "cached": 0.0020183404160143146,
+                "write": 0.0,
+                "output": 0.00041273391485871914
               },
-              "total": 0.163122,
-              "recordedSubtotal": 0.163122
+              "total": 0.02432297025273988,
+              "recordedSubtotal": 0.02432297025273988
             },
             "cacheHitPercent": 26.942407022223108
           }
@@ -8486,13 +8486,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.330707,
-                "cached": 0.015536,
-                "write": 0,
-                "output": 0.01352
+                "input": 0.04931141429956013,
+                "cached": 0.0023165585625885333,
+                "write": 0.0,
+                "output": 0.0020159546708417206
               },
-              "total": 0.359763,
-              "recordedSubtotal": 0.359763
+              "total": 0.05364392753299038,
+              "recordedSubtotal": 0.05364392753299038
             },
             "cacheHitPercent": 15.818720074532076
           },
@@ -8512,13 +8512,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.288941,
-                "cached": 0.005264,
-                "write": 0,
-                "output": 0.005612
+                "input": 0.04308372474465071,
+                "cached": 0.0007849101617833445,
+                "write": 0.0,
+                "output": 0.0008368001192872586
               },
-              "total": 0.299817,
-              "recordedSubtotal": 0.299817
+              "total": 0.044705435025721316,
+              "recordedSubtotal": 0.044705435025721316
             },
             "cacheHitPercent": 6.792323796681904
           }
@@ -8547,13 +8547,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 1.148591,
-                "cached": 0.004288,
-                "write": 0,
-                "output": 0.029588
+                "input": 0.17126533959591442,
+                "cached": 0.0006393797062551256,
+                "write": 0.0,
+                "output": 0.004411839260418996
               },
-              "total": 1.182467,
-              "recordedSubtotal": 1.182467
+              "total": 0.17631655856258854,
+              "recordedSubtotal": 0.17631655856258854
             },
             "cacheHitPercent": 1.4713363065444098
           },
@@ -8573,13 +8573,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 1.357539,
-                "cached": 0.0048,
-                "write": 0,
-                "output": 0.02398
+                "input": 0.20242138224110937,
+                "cached": 0.0007157235517781257,
+                "write": 0.0,
+                "output": 0.0035756355774248863
               },
-              "total": 1.386319,
-              "recordedSubtotal": 1.386319
+              "total": 0.2067127413703124,
+              "recordedSubtotal": 0.2067127413703124
             },
             "cacheHitPercent": 1.394599847901454
           }
@@ -8608,13 +8608,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.285334,
-                "cached": 0.011184,
-                "write": 0,
-                "output": 0.009964
+                "input": 0.04254588831730411,
+                "cached": 0.001667635875643033,
+                "write": 0.0,
+                "output": 0.0014857228062327592
               },
-              "total": 0.306482,
-              "recordedSubtotal": 0.306482
+              "total": 0.0456992469991799,
+              "recordedSubtotal": 0.0456992469991799
             },
             "cacheHitPercent": 13.553488653921894
           },
@@ -8634,13 +8634,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.22422,
-                "cached": 0.004976,
-                "write": 0,
-                "output": 0.00524
+                "input": 0.033433236412435695,
+                "cached": 0.000741966748676657,
+                "write": 0.0,
+                "output": 0.0007813315440244539
               },
-              "total": 0.234436,
-              "recordedSubtotal": 0.234436
+              "total": 0.03495653470513681,
+              "recordedSubtotal": 0.03495653470513681
             },
             "cacheHitPercent": 8.153233602595403
           }
@@ -8669,13 +8669,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.073808,
+                "input": 0.011005442481174979,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.0023
+                "write": 0.0,
+                "output": 0.0003429508685603519
               },
-              "total": 0.076108,
-              "recordedSubtotal": 0.076108
+              "total": 0.011348393349735331,
+              "recordedSubtotal": 0.011348393349735331
             },
             "cacheHitPercent": 0.0
           },
@@ -8695,13 +8695,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.295279,
+                "input": 0.04402877805114441,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00624
+                "write": 0.0,
+                "output": 0.0009304406173115635
               },
-              "total": 0.301519,
-              "recordedSubtotal": 0.301519
+              "total": 0.04495921866845597,
+              "recordedSubtotal": 0.04495921866845597
             },
             "cacheHitPercent": 0.0
           }
@@ -8730,13 +8730,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.370171,
-                "cached": 0.0124,
-                "write": 0,
-                "output": 0.008292
+                "input": 0.05519585476776262,
+                "cached": 0.001848952508760158,
+                "write": 0.0,
+                "output": 0.001236412435696712
               },
-              "total": 0.390863,
-              "recordedSubtotal": 0.390863
+              "total": 0.05828121971221949,
+              "recordedSubtotal": 0.05828121971221949
             },
             "cacheHitPercent": 11.815966324495975
           },
@@ -8756,13 +8756,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.31289,
-                "cached": 0.010256,
-                "write": 0,
-                "output": 0.007604
+                "input": 0.0466547379408037,
+                "cached": 0.0015292626556325953,
+                "write": 0.0,
+                "output": 0.0011338253932751808
               },
-              "total": 0.33075,
-              "recordedSubtotal": 0.33075
+              "total": 0.049317825989711475,
+              "recordedSubtotal": 0.049317825989711475
             },
             "cacheHitPercent": 11.591516583124713
           }
@@ -8791,13 +8791,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.221062,
-                "cached": 0.009072,
-                "write": 0,
-                "output": 0.00672
+                "input": 0.032962349958995,
+                "cached": 0.0013527175128606576,
+                "write": 0.0,
+                "output": 0.001002012972489376
               },
-              "total": 0.236854,
-              "recordedSubtotal": 0.236854
+              "total": 0.03531708044434504,
+              "recordedSubtotal": 0.03531708044434504
             },
             "cacheHitPercent": 14.100641150184574
           },
@@ -8817,13 +8817,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.162346,
-                "cached": 0.00968,
-                "write": 0,
-                "output": 0.005168
+                "input": 0.024207261611869084,
+                "cached": 0.0014433758294192202,
+                "write": 0.0,
+                "output": 0.000770595690747782
               },
-              "total": 0.177194,
-              "recordedSubtotal": 0.177194
+              "total": 0.026421233132036086,
+              "recordedSubtotal": 0.026421233132036086
             },
             "cacheHitPercent": 19.25735828036565
           }
@@ -8852,13 +8852,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.08845,
+                "input": 0.013188697532244838,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001876
+                "write": 0.0,
+                "output": 0.00027972862148661746
               },
-              "total": 0.090326,
-              "recordedSubtotal": 0.090326
+              "total": 0.013468426153731455,
+              "recordedSubtotal": 0.013468426153731455
             },
             "cacheHitPercent": 0.0
           },
@@ -8878,13 +8878,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.266937,
+                "input": 0.03980272869604115,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.004096
+                "write": 0.0,
+                "output": 0.0006107507641840005
               },
-              "total": 0.271033,
-              "recordedSubtotal": 0.271033
+              "total": 0.04041347946022515,
+              "recordedSubtotal": 0.04041347946022515
             },
             "cacheHitPercent": 0.0
           }
@@ -8913,13 +8913,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.139634,
-                "cached": 0.003232,
-                "write": 0,
-                "output": 0.004268
+                "input": 0.020820696339372252,
+                "cached": 0.00048192052486393795,
+                "write": 0.0,
+                "output": 0.0006363975247893834
               },
-              "total": 0.147134,
-              "recordedSubtotal": 0.147134
+              "total": 0.021939014389025572,
+              "recordedSubtotal": 0.021939014389025572
             },
             "cacheHitPercent": 8.473931909649847
           },
@@ -8939,13 +8939,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 1.019558,
-                "cached": 0.047536,
-                "write": 0,
-                "output": 0.041776
+                "input": 0.1520253485424588,
+                "cached": 0.007088048907776038,
+                "write": 0.0,
+                "output": 0.006229180645642287
               },
-              "total": 1.10887,
-              "recordedSubtotal": 1.10887
+              "total": 0.16534257809587713,
+              "recordedSubtotal": 0.16534257809587713
             },
             "cacheHitPercent": 15.718251271800824
           }
@@ -8974,13 +8974,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 1.42326,
-                "cached": 0.02784,
-                "write": 0,
-                "output": 0.024536
+                "input": 0.2122209796466115,
+                "cached": 0.004151196600313129,
+                "write": 0.0,
+                "output": 0.003658540222172519
               },
-              "total": 1.475636,
-              "recordedSubtotal": 1.475636
+              "total": 0.22003071646909714,
+              "recordedSubtotal": 0.22003071646909714
             },
             "cacheHitPercent": 7.256519529264574
           },
@@ -9000,13 +9000,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.619455,
-                "cached": 0.015104,
-                "write": 0,
-                "output": 0.010968
+                "input": 0.09236636099306643,
+                "cached": 0.0022521434429285023,
+                "write": 0.0,
+                "output": 0.0016354283158130172
               },
-              "total": 0.645527,
-              "recordedSubtotal": 0.645527
+              "total": 0.09625393275180795,
+              "recordedSubtotal": 0.09625393275180795
             },
             "cacheHitPercent": 8.886391683128123
           }
@@ -9035,13 +9035,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.106812,
-                "cached": 0.00416,
-                "write": 0,
-                "output": 0.003732
+                "input": 0.015926638335942742,
+                "cached": 0.0006202937448743756,
+                "write": 0.0,
+                "output": 0.0005564750615074927
               },
-              "total": 0.114704,
-              "recordedSubtotal": 0.114704
+              "total": 0.01710340714232461,
+              "recordedSubtotal": 0.01710340714232461
             },
             "cacheHitPercent": 13.47892298221171
           },
@@ -9061,13 +9061,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.415091,
-                "cached": 0.010464,
-                "write": 0,
-                "output": 0.008152
+                "input": 0.06189383433981958,
+                "cached": 0.001560277342876314,
+                "write": 0.0,
+                "output": 0.0012155371654365167
               },
-              "total": 0.433707,
-              "recordedSubtotal": 0.433707
+              "total": 0.06466964884813241,
+              "recordedSubtotal": 0.06466964884813241
             },
             "cacheHitPercent": 9.159924455133746
           }
@@ -9096,13 +9096,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.290585,
-                "cached": 0.003712,
-                "write": 0,
-                "output": 0.008468
+                "input": 0.04332886006113472,
+                "cached": 0.0005534928800417506,
+                "write": 0.0,
+                "output": 0.0012626556325952434
               },
-              "total": 0.302765,
-              "recordedSubtotal": 0.302765
+              "total": 0.04514500857377171,
+              "recordedSubtotal": 0.04514500857377171
             },
             "cacheHitPercent": 4.86129527588702
           },
@@ -9122,13 +9122,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.11929,
+                "input": 0.017787221352419294,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.002144
+                "write": 0.0,
+                "output": 0.0003196898531275628
               },
-              "total": 0.121434,
-              "recordedSubtotal": 0.121434
+              "total": 0.018106911205546857,
+              "recordedSubtotal": 0.018106911205546857
             },
             "cacheHitPercent": 0.0
           }
@@ -9157,13 +9157,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.093497,
+                "input": 0.01394125102512488,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.002604
+                "write": 0.0,
+                "output": 0.0003882800268396332
               },
-              "total": 0.096101,
-              "recordedSubtotal": 0.096101
+              "total": 0.014329531051964512,
+              "recordedSubtotal": 0.014329531051964512
             },
             "cacheHitPercent": 0.0
           },
@@ -9183,13 +9183,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.081987,
+                "input": 0.012225005591590248,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001716
+                "write": 0.0,
+                "output": 0.0002558711697606799
               },
-              "total": 0.083703,
-              "recordedSubtotal": 0.083703
+              "total": 0.012480876761350929,
+              "recordedSubtotal": 0.012480876761350929
             },
             "cacheHitPercent": 0.0
           }
@@ -9218,13 +9218,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.078804,
-                "cached": 0.003696,
-                "write": 0,
-                "output": 0.002884
+                "input": 0.011750391411317378,
+                "cached": 0.0005511071348691568,
+                "write": 0.0,
+                "output": 0.00043003056736002384
               },
-              "total": 0.085384,
-              "recordedSubtotal": 0.085384
+              "total": 0.01273152911354656,
+              "recordedSubtotal": 0.01273152911354656
             },
             "cacheHitPercent": 15.796897038081806
           },
@@ -9244,13 +9244,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.117338,
+                "input": 0.017496160441362856,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001896
+                "write": 0.0,
+                "output": 0.00028271080295235964
               },
-              "total": 0.119234,
-              "recordedSubtotal": 0.119234
+              "total": 0.017778871244315216,
+              "recordedSubtotal": 0.017778871244315216
             },
             "cacheHitPercent": 0.0
           }
@@ -9279,13 +9279,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.094079,
+                "input": 0.014028032505777976,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.003508
+                "write": 0.0,
+                "output": 0.0005230746290911802
               },
-              "total": 0.097587,
-              "recordedSubtotal": 0.097587
+              "total": 0.014551107134869156,
+              "recordedSubtotal": 0.014551107134869156
             },
             "cacheHitPercent": 0.0
           },
@@ -9305,13 +9305,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.079873,
+                "input": 0.011909789010661299,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001816
+                "write": 0.0,
+                "output": 0.00027078207708939087
               },
-              "total": 0.081689,
-              "recordedSubtotal": 0.081689
+              "total": 0.01218057108775069,
+              "recordedSubtotal": 0.01218057108775069
             },
             "cacheHitPercent": 0.0
           }
@@ -9340,13 +9340,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.142224,
-                "cached": 0.005344,
-                "write": 0,
-                "output": 0.003336
+                "input": 0.021206888839185863,
+                "cached": 0.0007968388876463132,
+                "write": 0.0,
+                "output": 0.0004974278684857973
               },
-              "total": 0.150904,
-              "recordedSubtotal": 0.150904
+              "total": 0.022501155595317974,
+              "recordedSubtotal": 0.022501155595317974
             },
             "cacheHitPercent": 13.066014669926652
           },
@@ -9366,13 +9366,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.068323,
+                "input": 0.010187579214195185,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001924
+                "write": 0.0,
+                "output": 0.0002868858570043987
               },
-              "total": 0.070247,
-              "recordedSubtotal": 0.070247
+              "total": 0.010474465071199583,
+              "recordedSubtotal": 0.010474465071199583
             },
             "cacheHitPercent": 0.0
           }
@@ -9401,13 +9401,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.241442,
+                "input": 0.036001192872586296,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00594
+                "write": 0.0,
+                "output": 0.0008857078953254306
               },
-              "total": 0.247382,
-              "recordedSubtotal": 0.247382
+              "total": 0.03688690076791173,
+              "recordedSubtotal": 0.03688690076791173
             },
             "cacheHitPercent": 0.0
           },
@@ -9427,13 +9427,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.086715,
+                "input": 0.012929993290091701,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.00164
+                "write": 0.0,
+                "output": 0.00024453888019085963
               },
-              "total": 0.088355,
-              "recordedSubtotal": 0.088355
+              "total": 0.013174532170282562,
+              "recordedSubtotal": 0.013174532170282562
             },
             "cacheHitPercent": 0.0
           }
@@ -9462,13 +9462,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.043213,
+                "input": 0.0064434503839558635,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.001856
+                "write": 0.0,
+                "output": 0.0002767464400208753
               },
-              "total": 0.045069,
-              "recordedSubtotal": 0.045069
+              "total": 0.006720196823976739,
+              "recordedSubtotal": 0.006720196823976739
             },
             "cacheHitPercent": 0.0
           },
@@ -9488,13 +9488,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.266178,
-                "cached": 0.008736,
-                "write": 0,
-                "output": 0.01206
+                "input": 0.03968955490941624,
+                "cached": 0.0013026168642361888,
+                "write": 0.0,
+                "output": 0.0017982554238425408
               },
-              "total": 0.286974,
-              "recordedSubtotal": 0.286974
+              "total": 0.04279042719749497,
+              "recordedSubtotal": 0.04279042719749497
             },
             "cacheHitPercent": 11.604598800486182
           }
@@ -9523,13 +9523,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.208418,
-                "cached": 0.00376,
-                "write": 0,
-                "output": 0.008
+                "input": 0.031077014836352793,
+                "cached": 0.0005606501155595318,
+                "write": 0.0,
+                "output": 0.0011928725862968763
               },
-              "total": 0.220178,
-              "recordedSubtotal": 0.220178
+              "total": 0.0328305375382092,
+              "recordedSubtotal": 0.0328305375382092
             },
             "cacheHitPercent": 6.730571293039408
           },
@@ -9549,13 +9549,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.215878,
-                "cached": 0.004816,
-                "write": 0,
-                "output": 0.006472
+                "input": 0.03218936852307463,
+                "cached": 0.0007181092969507194,
+                "write": 0.0,
+                "output": 0.0009650339223141729
               },
-              "total": 0.227166,
-              "recordedSubtotal": 0.227166
+              "total": 0.033872511742339524,
+              "recordedSubtotal": 0.033872511742339524
             },
             "cacheHitPercent": 8.19249644895425
           }
@@ -9584,13 +9584,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.08393,
+                "input": 0.012514724520987102,
                 "cached": 0.0,
-                "write": 0,
-                "output": 0.002296
+                "write": 0.0,
+                "output": 0.0003423544322672035
               },
-              "total": 0.086226,
-              "recordedSubtotal": 0.086226
+              "total": 0.012857078953254306,
+              "recordedSubtotal": 0.012857078953254306
             },
             "cacheHitPercent": 0.0
           },
@@ -9610,13 +9610,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.219219,
-                "cached": 0.004784,
-                "write": 0,
-                "output": 0.009668
+                "input": 0.03268754193692686,
+                "cached": 0.0007133378066055319,
+                "write": 0.0,
+                "output": 0.0014415865205397748
               },
-              "total": 0.233671,
-              "recordedSubtotal": 0.233671
+              "total": 0.03484246626407217,
+              "recordedSubtotal": 0.03484246626407217
             },
             "cacheHitPercent": 8.028361058085629
           }
@@ -9645,13 +9645,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 0.415292,
-                "cached": 0.006176,
-                "write": 0,
-                "output": 0.022876
+                "input": 0.061923805263550284,
+                "cached": 0.0009208976366211884,
+                "write": 0.0,
+                "output": 0.0034110191605159173
               },
-              "total": 0.444344,
-              "recordedSubtotal": 0.444344
+              "total": 0.06625572206068739,
+              "recordedSubtotal": 0.06625572206068739
             },
             "cacheHitPercent": 5.614596496331785
           },
@@ -9671,13 +9671,13 @@
             "usageComplete": true,
             "cost": {
               "parts": {
-                "input": 2.749592,
-                "cached": 0.034464,
-                "write": 0,
-                "output": 0.096772
+                "input": 0.40998911503765006,
+                "cached": 0.005138895101766942,
+                "write": 0.0,
+                "output": 0.014429583240140162
               },
-              "total": 2.880828,
-              "recordedSubtotal": 2.880828
+              "total": 0.4295575933795571,
+              "recordedSubtotal": 0.4295575933795571
             },
             "cacheHitPercent": 4.774319745325284
           }
@@ -9688,16 +9688,29 @@
         "4aa384f931b21bd45f0501af580aafd91f50e3c15e41a35e757bb4c4fc4a507c"
       ],
       "pricing": {
-        "currency": "CNY",
+        "currency": "USD",
         "rates": {
+          "input": 0.1491090732871095,
+          "cached": 0.03727726832177738,
+          "write": null,
+          "output": 0.596436293148438
+        },
+        "source": "https://cloud.tencent.com/document/product/1823/130055",
+        "label": "Tencent TokenHub · Hy3 · Guangzhou",
+        "checkedAt": "2026-09-17",
+        "originalCurrency": "CNY",
+        "originalRates": {
           "input": 1,
           "cached": 0.25,
           "write": null,
           "output": 4
         },
-        "source": "https://cloud.tencent.com/document/product/1823/130055",
-        "label": "Tencent TokenHub · Hy3 · Guangzhou",
-        "checkedAt": "2026-09-17"
+        "fx": {
+          "cnyPerUsd": 6.7065,
+          "date": "2026-09-16",
+          "source": "https://cincodias.elpais.com/mercados/divisas/dolar-usa-yuan/",
+          "method": "CNY amount / 6.7065; prior-day published USD/CNY observation, fixed for this estimate"
+        }
       },
       "costSummary": {
         "on": {
@@ -9710,13 +9723,13 @@
           "completeAttempts": 49,
           "cost": {
             "parts": {
-              "input": 12.199657,
-              "cached": 0.259728,
-              "write": 0,
-              "output": 0.403452
+              "input": 1.8190795496905987,
+              "cached": 0.03872780138671438,
+              "write": 0.0,
+              "output": 0.06015835383583091
             },
-            "total": 12.862837,
-            "recordedSubtotal": 12.862837
+            "total": 1.917965704913144,
+            "recordedSubtotal": 1.917965704913144
           }
         },
         "off": {
@@ -9729,13 +9742,13 @@
           "completeAttempts": 49,
           "cost": {
             "parts": {
-              "input": 18.738936,
-              "cached": 0.330848,
-              "write": 0,
-              "output": 0.523636
+              "input": 2.7941453813464547,
+              "cached": 0.04933243867889361,
+              "write": 0.0,
+              "output": 0.07807887869976889
             },
-            "total": 19.59342,
-            "recordedSubtotal": 19.59342
+            "total": 2.9215566987251176,
+            "recordedSubtotal": 2.9215566987251176
           }
         }
       }
@@ -10039,13 +10052,13 @@
           },
           "cost": {
             "parts": {
-              "input": 11.479459,
-              "cached": 0.25032,
-              "write": 0,
-              "output": 0.368932
+              "input": 1.711691493327369,
+              "cached": 0.03732498322522926,
+              "write": 0.0,
+              "output": 0.05501110862595989
             },
-            "total": 12.098711,
-            "recordedSubtotal": 12.098711
+            "total": 1.804027585178558,
+            "recordedSubtotal": 1.804027585178558
           }
         },
         "off": {
@@ -10061,13 +10074,13 @@
           },
           "cost": {
             "parts": {
-              "input": 15.029487,
-              "cached": 0.286112,
-              "write": 0,
-              "output": 0.40444
+              "input": 2.24103287855066,
+              "cached": 0.04266189517632148,
+              "write": 0.0,
+              "output": 0.06030567360023857
             },
-            "total": 15.720039,
-            "recordedSubtotal": 15.720039
+            "total": 2.34400044732722,
+            "recordedSubtotal": 2.34400044732722
           }
         }
       }
