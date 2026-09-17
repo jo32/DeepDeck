@@ -1,3 +1,4 @@
+import { timeBudget } from '../benchmarks/webmcp/harness/tasks.mjs';
 import { mkdtemp, mkdir, readFile, writeFile, copyFile, chmod, rm, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
@@ -15,12 +16,12 @@ export function validateAblationOptions(v) {
   if (Buffer.byteLength(v.query) > 32 * 1024) throw new Error('--query must be at most 32 KiB.');
   if (v['expected-answer'] !== undefined && !v['expected-answer'].trim()) throw new Error('--expected-answer cannot be empty.');
   if (!Number.isInteger(Number(v.n ?? 3)) || Number(v.n ?? 3) < 1 || Number(v.n ?? 3) > 20) throw new Error('--n must be 1–20.');
-  if (!Number.isInteger(Number(v['max-steps'] ?? 12)) || Number(v['max-steps'] ?? 12) < 1 || Number(v['max-steps'] ?? 12) > 100) throw new Error('--max-steps must be 1–100.');
+  timeBudget({}, v['timeout-seconds']);
   if (v.webmcp && v.webmcp !== 'compare') throw new Error('ablate always compares WebMCP on/off; omit --webmcp or use compare.');
   if (v['task-file'] || v['task-ids'] || v.port || (v.sites && v.sites !== 'lite')) throw new Error('ablate uses --url and --query, not corpus tasks or managed containers.');
   if (Boolean(v.provider) !== Boolean(v.model)) throw new Error('Specify both --provider and --model.');
   validateModelOptions(v);
-  return { url: url.href, n: Number(v.n ?? 3), maxSteps: Number(v['max-steps'] ?? 12) };
+  return { url: url.href, n: Number(v.n ?? 3), timeoutMs: timeBudget({}, v['timeout-seconds']) };
 }
 export function scoreAblationAnswer(answer, expected) {
   if (expected === undefined) return { pass: null, detail: 'Unscored: no independent expected answer supplied.' };
@@ -37,7 +38,7 @@ export function toolDiagnostics(result) {
 const fmt = value => value === null || value === undefined ? '—' : Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
 export function ablationMarkdown(report) {
   const lines = ['# 网站 WebMCP 消融实验', '', `网站：${report.url}`, '', 'Query：', '', '```text', report.query.replaceAll('```', "'''"), '```', '', `状态：${report.status}`, '',
-    '两组使用相同模型、query 和步数预算，每次启动全新浏览器与会话，按轮交替执行顺序。线上网站的后端状态没有重置，内容变化、缓存与服务负载可能影响结果。', '',
+    '两组使用相同模型、query 和Agent 时间上限，每次启动全新浏览器与会话，按轮交替执行顺序。线上网站的后端状态没有重置，内容变化、缓存与服务负载可能影响结果。', '',
     report.expectedAnswer === undefined ? '未提供标准答案：正确性未评分。有 WebMCP 的答案仅作为参照，不能因此认定正确，也不能仅凭速度判断使用效果更好。' : '正确性采用预期答案的文本包含匹配；这不等同于完整的语义质量评价。', ''];
   if (report.reason) lines.push(report.reason, '');
   if (report.comparison) {
@@ -56,7 +57,7 @@ export function ablationMarkdown(report) {
 
 /** External-site runner: no corpus or Docker; remote backend state is not reset. */
 export async function runWebsiteAblation(v, { runAttempt, outputRoot = resolve('.deepdeck/benchmarks') } = {}) {
-  const { url, n, maxSteps } = validateAblationOptions(v);
+  const { url, n, timeoutMs } = validateAblationOptions(v);
   let source;
   if (v['webmcp-file']) {
     source = await readFile(resolve(v['webmcp-file']), 'utf8');
@@ -73,7 +74,7 @@ export async function runWebsiteAblation(v, { runAttempt, outputRoot = resolve('
   process.on('SIGINT', stop); process.on('SIGTERM', stop);
   const task = { site: new URL(url).origin, id: 'website-query' };
   const report = { formatVersion: 2, kind: 'deepdeck-website-ablation', startedAt: new Date().toISOString(), url, query: v.query, expectedAnswer: v['expected-answer'], status: 'starting', rows: [], preflight: {},
-    provenance: { n, maxSteps, provider: v.provider ?? 'configured-default', model: v.model ?? 'configured-default', effort: v.effort ?? 'provider-default', webmcpSource: source ? 'provided-script' : 'site-native', scriptSha256: source ? createHash('sha256').update(source).digest('hex') : null, isolation: 'Fresh desktop, session and browser storage for every arm; no remote backend reset; identical frozen settings and query.' } };
+    provenance: { n, timeoutMs, provider: v.provider ?? 'configured-default', model: v.model ?? 'configured-default', effort: v.effort ?? 'provider-default', webmcpSource: source ? 'provided-script' : 'site-native', scriptSha256: source ? createHash('sha256').update(source).digest('hex') : null, isolation: 'Fresh desktop, session and browser storage for every arm; no remote backend reset; identical frozen settings and query.' } };
   const save = async () => { await writeFile(reportFile + '.tmp', JSON.stringify(report, null, 2) + '\n', { mode: 0o600 }); await rename(reportFile + '.tmp', reportFile); };
   try {
     const settingsFrom = resolve(v['settings-from'] ?? process.env.DSH_HOME ?? join(homedir(), '.dsh'));
@@ -82,7 +83,7 @@ export async function runWebsiteAblation(v, { runAttempt, outputRoot = resolve('
     }
     const model = await configureBenchmarkModel(snapshot, v);
     Object.assign(report.provenance, model);
-    const attempt = (arm, name, inspect = false) => runAttempt({ url, prompt: v.query, maxSteps, webmcp: arm, ...(arm === 'on' && source ? { webmcpSource: source } : {}), inspect, allowMissingTools: inspect, today: report.startedAt.slice(0, 10), provider: model.provider, model: model.model, reasoningEffort: v.effort, settingsFrom: snapshot, logFile: join(output, `${name}.desktop.log`), signal: controller.signal });
+    const attempt = (arm, name, inspect = false) => runAttempt({ url, prompt: v.query, timeoutMs, webmcp: arm, ...(arm === 'on' && source ? { webmcpSource: source } : {}), inspect, allowMissingTools: inspect, today: report.startedAt.slice(0, 10), provider: model.provider, model: model.model, reasoningEffort: v.effort, settingsFrom: snapshot, logFile: join(output, `${name}.desktop.log`), signal: controller.signal });
     report.status = 'checking-webmcp'; await save();
     console.log(`Checking WebMCP: ${url}`);
     for (const arm of ['on', 'off']) {
@@ -100,7 +101,7 @@ export async function runWebsiteAblation(v, { runAttempt, outputRoot = resolve('
     for (let repeat = 0; repeat < n; repeat++) for (const arm of armOrder('compare', repeat)) {
       controller.signal.throwIfAborted();
       console.log(`Website query ${repeat + 1}/${n} [WebMCP ${arm}]`);
-      const row = { site: task.site, taskId: task.id, repeat, arm, maxSteps, pass: null };
+      const row = { site: task.site, taskId: task.id, repeat, arm, timeoutMs, pass: null };
       const started = performance.now();
       try {
         row.result = await attempt(arm, `query-${repeat + 1}-${arm}`);

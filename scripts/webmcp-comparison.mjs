@@ -37,7 +37,8 @@ export function compareRows(rows, tasks, repeats) {
     const finished = row => !!row?.result && !row.error && !row.result.failure && row.result.stopReason?.kind === 'completed';
     const complete = ons.length === 1 && offs.length === 1 && finished(on) && finished(off);
     const sameModel = routes(on).length > 0 && JSON.stringify(routes(on)) === JSON.stringify(routes(off));
-    const sameBudget = on?.maxSteps === off?.maxSteps;
+    const sameBudget = Number.isInteger(on?.timeoutMs) && on.timeoutMs > 0 && on.timeoutMs === off?.timeoutMs
+      && on?.maxSteps === off?.maxSteps; // Keep legacy step-limited reports distinct from time-only runs.
     const comparable = complete && sameModel && sameBudget;
     const onMetrics = metrics(on), offMetrics = metrics(off);
     pairs.push({ site: task.site, taskId: task.id, repeat, complete, sameModel, sameBudget, models: { on: routes(on), off: routes(off) }, comparable,
@@ -46,7 +47,7 @@ export function compareRows(rows, tasks, repeats) {
       correctness: { on: on?.pass ?? null, off: off?.pass ?? null },
       metrics: { on: onMetrics, off: offMetrics },
       deltas: Object.fromEntries(Object.keys(onMetrics).map(key => [key, comparable ? delta(onMetrics[key], offMetrics[key]) : null])),
-      note: !complete ? 'Missing, duplicate, failed or interrupted attempt; no efficiency comparison.' : !sameModel ? 'Model route differs or is unavailable; no efficiency comparison.' : !sameBudget ? 'Step budgets differ; no efficiency comparison.' : on.pass == null || off.pass == null ? 'Correctness is unscored; efficiency alone cannot establish task quality.' : on.pass !== true ? 'WebMCP reference did not pass the independent oracle; do not treat its answer as ground truth.' : null });
+      note: !complete ? 'Missing, duplicate, failed or interrupted attempt; no efficiency comparison.' : !sameModel ? 'Model route differs or is unavailable; no efficiency comparison.' : !sameBudget ? 'Time budgets differ or are unavailable; no efficiency comparison.' : on.pass == null || off.pass == null ? 'Correctness is unscored; efficiency alone cannot establish task quality.' : on.pass !== true ? 'WebMCP reference did not pass the independent oracle; do not treat its answer as ground truth.' : null });
   }
   const aggregate = selected => ({ pairs: selected.length, metrics: Object.fromEntries(['totalTokens', 'agentMs', 'wallMs', 'toolCalls'].map(key => {
     const eligible = selected.filter(pair => pair.deltas[key]);

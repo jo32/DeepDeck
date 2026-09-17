@@ -54,13 +54,9 @@ export const startUrl = (task, capsule) => new URL(task?.start_path ?? "/", caps
 // every arm uniformly so no interface gets an information edge.
 export const withToday = (text) => `${text} Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 
-// Per-interface turn budget. Task YAML may give max_steps as a number (same
-// budget for every interface) or as an object keyed by interface class
-// ({ webmcp: 8, cu: 20, structured: 15 }) — a screenshot agent needs ~3 model
-// turns per journey step, a tool-calling agent ~1.
-export function stepBudget(task, interfaceClass, fallback) {
-  const ms = task?.max_steps;
-  if (typeof ms === "number") return ms;
-  if (ms && typeof ms === "object") return ms[interfaceClass] ?? fallback;
-  return fallback;
+// A shared Agent execution deadline for every arm; setup is measured separately.
+export function timeBudget(task, overrideSeconds) {
+  const seconds = Number(overrideSeconds ?? task?.timeout_seconds ?? 600);
+  if (!Number.isInteger(seconds) || seconds < 1 || seconds > 600) throw new Error('timeout-seconds must be 1–600.');
+  return seconds * 1000;
 }

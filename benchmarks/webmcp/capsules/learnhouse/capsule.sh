@@ -76,7 +76,9 @@ wait_http_health() {
 wait_dependencies() {
   local deadline=$((SECONDS + 120))
   while [ "$SECONDS" -lt "$deadline" ]; do
-    if capsule_compose exec -T db pg_isready -U learnhouse -d learnhouse >/dev/null 2>&1 &&
+    # PostgreSQL initialization briefly opens a Unix socket before restarting.
+    # TCP readiness only succeeds once the final server is listening.
+    if capsule_compose exec -T db pg_isready -h 127.0.0.1 -U learnhouse -d learnhouse >/dev/null 2>&1 &&
       capsule_compose exec -T redis redis-cli ping 2>/dev/null | grep -q PONG; then
       return 0
     fi

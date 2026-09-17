@@ -6,12 +6,12 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type { BrowserRuntime } from './runtime.js'
 import { validateBenchmarkCatalog, acknowledgeBenchmarkUi, runBenchmarkAttempt, startBenchmarkController, validateBenchmarkRequest, summarizeBenchmarkEvents, type BenchmarkContext } from './benchmark.js'
 
-const request = { url: 'http://localhost:3215/about', shellUrl: 'http://127.0.0.1:9999', prompt: 'Read the author', maxSteps: 12, timeoutMs: 600_000 }
+const request = { url: 'http://localhost:3215/about', shellUrl: 'http://127.0.0.1:9999', prompt: 'Read the author', timeoutMs: 600_000 }
 describe('benchmark boundaries', () => {
   it('permits remote websites but keeps the controller shell local and attempts bounded', () => {
     expect(() => validateBenchmarkRequest(request)).not.toThrow()
     expect(() => validateBenchmarkRequest({ ...request, url: 'https://example.com' })).not.toThrow()
-    for (const patch of [{ url: 'file:///tmp/private' }, { url: 'https://user:secret@example.com' }, { allowMissingTools: true }, { webmcpSource: 'test', webmcp: 'off' as const }, { shellUrl: 'http://evil.test' }, { maxSteps: 0 }, { timeoutMs: 600_001 }, { provider: 'test' }, { prompt: '' }, { today: 'not-a-date' }]) {
+    for (const patch of [{ url: 'file:///tmp/private' }, { url: 'https://user:secret@example.com' }, { allowMissingTools: true }, { webmcpSource: 'test', webmcp: 'off' as const }, { shellUrl: 'http://evil.test' }, { timeoutMs: 600_001 }, { provider: 'test' }, { prompt: '' }, { today: 'not-a-date' }]) {
       expect(() => validateBenchmarkRequest({ ...request, ...patch })).toThrow()
     }
   })
@@ -27,9 +27,9 @@ describe('benchmark boundaries', () => {
     expect(result.usageComplete).toBe(true)
     expect(result.stopReason).toEqual({ kind: 'completed' })
   })
-  it('preserves normal tools and presentation while enforcing the step budget, even without WebMCP', async () => {
+  it.each([false, true])('uses only an execution deadline (timeout=%s)', async (timeout) => {
     const hooks = new Map<string, (...args: any[]) => Promise<unknown>>()
-    let presentation = '', restricted = false, disposed = false
+    let presentation = '', restricted = false, disposed = false, cancelled = false
     const agent = { status: 'idle', session: { id: 'session' }, ctx: { inject: (_names: string[], setup: (scope: unknown) => () => void) => {
       const stop = setup({
         tools: { presentAs(mode: string) { presentation = mode; return () => {} }, restrict(filter: { allow: string[] }) { restricted = filter.allow.length === 0; return () => {} } },
@@ -39,20 +39,26 @@ describe('benchmark boundaries', () => {
     } } }
     const runtime = { ctx: { agents: { get: () => agent } }, native: { request: async (command: { shellUrl: string }) => { expect(command.shellUrl).toContain('deepdeck-surface=browser'); acknowledgeBenchmarkUi(runtime, { siteId: 'site', sessionId: 'session', tabId: 'tab' }) } }, snapshot: async () => ({ tabs: [{ id: 'tab', origin: 'http://localhost:3215', loading: false, tools: [] }] }), sites: { ensure: async () => ({ id: 'site', workspacePath: '/tmp/site' }), get: () => ({ sessionId: 'session', tabId: 'tab' }) }, bind: async () => {} } as unknown as BrowserRuntime
     const ctx = { sessionController: {
-      create: async () => { throw new Error('Benchmark must use the visible session, not create a second one') }, cancel: async () => {}, selectModel: async () => {},
+      create: async () => { throw new Error('Benchmark must use the visible session, not create a second one') }, cancel: () => { cancelled = true; agent.status = 'idle' }, selectModel: async () => {},
       prompt: async (input: { content: { text: string }[] }, signal: AbortSignal) => {
         expect(signal).toBeInstanceOf(AbortSignal)
         expect(hooks.has('tools/pre-execute')).toBe(false)
         expect(input.content[0].text).toContain('choosing from the available tools')
         expect(input.content[0].text).toContain("Today's date is 2026-01-01")
         expect(input.content[0].text).not.toContain('Operate exclusively')
-        expect(await hooks.get('agent/pre-step')!({}, async () => ({ kind: 'enter' }))).toEqual({ kind: 'enter' })
-        expect(await hooks.get('agent/pre-step')!({}, async () => ({ kind: 'enter' }))).toEqual({ kind: 'reject' })
+        expect(hooks.has('agent/pre-step')).toBe(false)
+        if (timeout) {
+          agent.status = 'running'
+          await new Promise(resolve => setTimeout(resolve, 1100))
+          return
+        }
+        for (let i = 0; i < 150; i++) await hooks.get('session/event')!({ id: 'session' }, { type: 'step/start', data: {} })
         await hooks.get('session/event')!({ id: 'session' }, { type: 'turn/end', data: { reason: { kind: 'completed' } } })
       },
     } }
-    const result = await runBenchmarkAttempt(ctx as unknown as BenchmarkContext, runtime, { ...request, maxSteps: 1, today: '2026-01-01' }, new AbortController().signal)
-    expect(result).toMatchObject({ budgetExhausted: true, failure: 'step budget exhausted' })
+    const result = await runBenchmarkAttempt(ctx as unknown as BenchmarkContext, runtime, { ...request, timeoutMs: 1000, today: '2026-01-01' }, new AbortController().signal)
+    expect(result).toMatchObject({ timedOut: timeout, failure: timeout ? 'attempt timeout' : '', timeoutMs: 1000 })
+    expect(cancelled).toBe(timeout)
     expect(presentation).toBe(''); expect(restricted).toBe(false); expect(disposed).toBe(true)
   })
   it('does not run a model when the visible conversation never connects, and rejects a mismatched acknowledgement', async () => {

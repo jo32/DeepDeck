@@ -4,7 +4,7 @@ import s from './benchmark.module.css';
 export function BenchmarkFoundations({ locale }: { locale: SiteLocale }) {
   const t = (cn: string, en: string) => locale === 'zh' ? cn : en;
   const steps = [
-    [t('固定条件，只切换 WebMCP', 'Fix conditions; toggle WebMCP'), t('同一模型、Harness、任务和步数预算，每轮新会话并交替执行顺序。两组都可操作页面，开启组额外获得 WebMCP 工具。', 'Use the same model, harness, task and step budget, with fresh sessions and alternating order. Both arms can interact with pages; the on arm also receives WebMCP tools.')],
+    [t('固定条件，只切换 WebMCP', 'Fix conditions; toggle WebMCP'), t('同一模型、Harness 和任务，每组默认 10 分钟 Agent 时间上限，不限制步数；每轮新会话并交替执行顺序。两组都可操作页面，开启组额外获得 WebMCP 工具。', 'Use the same model, harness and task, with a default ten-minute Agent deadline and no step cap. Use fresh sessions and alternating order. Both arms can interact with pages; the on arm also receives WebMCP tools.')],
     [t('独立检查完成情况', 'Check completion independently'), t('标准答案与 Agent 隔离，逐项核对任务要求。没有标准答案时标为未评分；人工确认的结果注明来源，不把开启组自动视为正确。', 'Keep expected answers separate from the agent and check each requirement. Without an expected answer, mark correctness unscored; attribute manual judgments. The on arm is not automatically correct.')],
     [t('比较 token 与耗时', 'Compare tokens and time'), t('记录累计 token、Agent 耗时、工具调用与错误，失败消耗也保留。Token 不等于费用；启动成本单列。线上内容未重置、任务完成量不同等限制随报告说明。', 'Retain accumulated tokens, agent time, tool calls and errors, including failed-run usage. Tokens are not monetary cost; startup is recorded separately. Reports disclose live-state and unequal-completion limits.')],
   ];

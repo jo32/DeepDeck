@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { armOrder, compareRows, metrics, delta } from './webmcp-comparison.mjs';
 const task = { site: 'blog', id: 'author' };
-const row = (arm, patch = {}) => ({ site: 'blog', taskId: 'author', repeat: 0, arm, pass: true, result: { finalText: 'Author', usageComplete: true, usage: { input_tokens: 10, output_tokens: 2, cached_input_tokens: 4, cache_creation_tokens: 1 }, agentMs: arm === 'on' ? 100 : 200, toolCalls: 2, stopReason: { kind: 'completed' }, routes: [{ provider: 'p', model: 'm' }] }, ...patch });
+const row = (arm, patch = {}) => ({ site: 'blog', taskId: 'author', repeat: 0, arm, timeoutMs: 300000, pass: true, result: { finalText: 'Author', usageComplete: true, usage: { input_tokens: 10, output_tokens: 2, cached_input_tokens: 4, cache_creation_tokens: 1 }, agentMs: arm === 'on' ? 100 : 200, toolCalls: 2, stopReason: { kind: 'completed' }, routes: [{ provider: 'p', model: 'm' }] }, ...patch });
 test('paired schedules alternate and do not mix arms when aggregating', () => {
  assert.deepEqual(armOrder('compare',0), ['on','off']); assert.deepEqual(armOrder('compare',1), ['off','on']);
  assert.deepEqual(armOrder('off'),['off']); assert.throws(()=>armOrder('typo'));
@@ -25,4 +25,9 @@ test('missing usage, partial pairs, failed baseline and route differences cannot
  assert.equal(duplicate.completedPairs,0);
  const failed=row('off');failed.result.failure='timeout';
  assert.equal(compareRows([row('on'),failed],[task],1).allComparable.pairs,0);
+});
+
+test('different or missing time limits and legacy step limits are not comparable', () => {
+ for (const patch of [{timeoutMs: 600000}, {timeoutMs: undefined}, {maxSteps: 6}])
+  assert.equal(compareRows([row('on'), row('off', patch)], [task], 1).pairs[0].sameBudget, false);
 });

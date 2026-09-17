@@ -16,8 +16,7 @@ tasks:
     tier: answer
     start_path: /about
     prompt: Read this About page and report the author's full name.
-    max_steps:
-      webmcp: 12
+    timeout_seconds: 600
     predicate:
       type: answer
       contains: [Tails Azimuth]
@@ -98,8 +97,7 @@ collects its formal session events. The Agent uses DeepDeck's normal tool set an
 WebMCP and ordinary browser tools. The benchmark adds no tool whitelist and does
 not require WebMCP tools to exist for `run` (`smoke` still checks their discovery).
 The prompt prohibits reading benchmark source files, fixtures and evaluation data.
-The task's WebMCP step budget and a
-600-second Agent deadline apply. Login remains part of the task.
+A shared 600-second Agent execution deadline applies, with no step limit. Site/browser startup is excluded; login remains part of the task. Set `timeout_seconds` in a task or override all tasks with `--timeout-seconds` (1–600).
 
 Expected answers stay in the runner. After completion, the local scorer checks
 the final answer or the capsule's actual state. Failed mutations are not retried.
@@ -156,7 +154,7 @@ Benchmark 使用浏览器界面自动创建并选中的站点会话，不再另�
 pnpm benchmark:webmcp run --sites tailwind-nextjs-blog --task-file benchmarks/webmcp/templates/blog-author.yaml --webmcp compare --n 3
 ```
 
-单侧运行用 `--webmcp on` 或 `--webmcp off`。`smoke --webmcp compare` 可以不调用模型，检查两侧浏览器的 WebMCP 状态和界面会话连接。`--max-steps 20` 可以给两侧统一指定预算；未指定时，两侧都采用题目中的 WebMCP 步数预算，不能给某一侧额外步骤。
+单侧运行用 `--webmcp on` 或 `--webmcp off`。`smoke --webmcp compare` 可以不调用模型，检查两侧浏览器的 WebMCP 状态和界面会话连接。`--timeout-seconds 600` 给两侧统一指定 Agent 时间上限；默认每题每组 10 分钟，不含网站／浏览器启动。没有步数限制，旧 `max_steps` 字段不再生效。
 
 网站源码、补丁、数据、端口、题目、模型设置和预算相同。每侧开始前重置网站，并启动独立的 Electron/Harness 会话；一次命令的模型设置先保存为临时快照，清理时删除。关闭侧通过 Electron 的 Blink feature 开关关闭 WebMCP，禁止安装或执行 WebMCP 工具，并检查工具列表为空。网站补丁仍然存在于两侧，避免把 UI 修复或后端差异混进对照。普通浏览器、DevTools 工具在两侧保持可用。
 
@@ -210,7 +208,7 @@ pnpm benchmark:webmcp ablate \
   --n 3
 ```
 
-不需要 Docker、站点注册或题目文件。命令使用现有 DeepDeck 模型配置；同样支持 `--provider`、`--model`、`--base-url`、`--api-key-env`、`--api-key-file`、`--effort`、`--settings-from`、`--max-steps` 和 `--output`。例如增加 `--provider deepseek-official --model deepseek-v4.1 --api-key-env DEEPSEEK_API_KEY`。
+不需要 Docker、站点注册或题目文件。命令使用现有 DeepDeck 模型配置；同样支持 `--provider`、`--model`、`--base-url`、`--api-key-env`、`--api-key-file`、`--effort`、`--settings-from`、`--timeout-seconds` 和 `--output`。例如增加 `--provider deepseek-official --model deepseek-v4.1 --api-key-env DEEPSEEK_API_KEY`。
 
 执行过程：
 

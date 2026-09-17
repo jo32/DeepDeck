@@ -6,7 +6,7 @@ Source and licensing history are in [NOTICE.md](NOTICE.md).
 
 | What to customize | Location |
 | --- | --- |
-| Task prompts, parameters, start pages, step budgets and expected outcomes | `tasks/<site>.yaml` |
+| Task prompts, parameters, start pages, Agent time limits and expected outcomes | `tasks/<site>.yaml` |
 | Standalone task template | `templates/blog-author.yaml` |
 | Website registry and named profiles | `sites/sites.yaml` |
 | Site source revisions, startup, reset and state probes | `capsules/<site>/` |

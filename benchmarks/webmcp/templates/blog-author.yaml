@@ -5,8 +5,7 @@ tasks:
     tier: answer
     start_path: /about
     prompt: Read this About page and report the author's full name.
-    max_steps:
-      webmcp: 12
+    timeout_seconds: 600
     predicate:
       type: answer
       contains: [Tails Azimuth]

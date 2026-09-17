@@ -18,6 +18,7 @@ test('one command performs both preflights, alternates paired arms and never gue
   const { options } = await fixture(t), calls = [];
   const out = await runWebsiteAblation(options, { runAttempt: async args => { calls.push(args); return result(args); } });
   assert.equal(out.exitCode, 0);
+  assert.ok(calls.every(x => x.timeoutMs === 600000 && !Object.hasOwn(x, 'maxSteps')));
   assert.deepEqual(calls.map(x => [x.inspect, x.webmcp]), [[true, 'on'], [true, 'off'], [false, 'on'], [false, 'off'], [false, 'off'], [false, 'on']]);
   assert.equal(new Set(calls.map(x => x.settingsFrom)).size, 1);
   await assert.rejects(access(calls[0].settingsFrom));
@@ -48,7 +49,7 @@ test('failed, interrupted or contaminated attempts cannot establish an efficienc
 });
 test('validates query/URL/budgets and optional oracle', () => {
   const v = { url: 'https://example.com', query: 'Read', n: '1' };
-  for (const patch of [{ url: 'file:///etc/passwd' }, { url: 'https://u:p@example.com' }, { query: '' }, { n: '0' }, { 'max-steps': '101' }, { 'expected-answer': '' }, { webmcp: 'off' }, { 'task-file': 'tasks.yaml' }]) assert.throws(() => validateAblationOptions({ ...v, ...patch }));
+  for (const patch of [{ url: 'file:///etc/passwd' }, { url: 'https://u:p@example.com' }, { query: '' }, { n: '0' }, { 'timeout-seconds': '601' }, { 'expected-answer': '' }, { webmcp: 'off' }, { 'task-file': 'tasks.yaml' }]) assert.throws(() => validateAblationOptions({ ...v, ...patch }));
   assert.equal(scoreAblationAnswer('Final answer: ＡＵＲＯＲＡ', 'aurora').pass, true);
   assert.equal(scoreAblationAnswer('wrong', 'Aurora').pass, false);
   assert.equal(scoreAblationAnswer('anything').pass, null);

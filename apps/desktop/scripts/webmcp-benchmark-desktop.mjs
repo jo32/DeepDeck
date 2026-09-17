@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** Each attempt owns a fresh Electron storage partition, Harness and workspace. */
-export async function runDesktopAttempt({ url, prompt, maxSteps, inspect = false, allowMissingTools = false, webmcpSource, webmcp = "on", today, provider, model, reasoningEffort, settingsFrom, logFile, signal, timeoutMs = 600_000 }) {
+export async function runDesktopAttempt({ url, prompt, inspect = false, allowMissingTools = false, webmcpSource, webmcp = "on", today, provider, model, reasoningEffort, settingsFrom, logFile, signal, timeoutMs = 600_000 }) {
   const profile = await mkdtemp(join(tmpdir(), 'deepdeck-webmcp-bench-'));
   const readyFile = join(profile, 'controller.json');
   const token = randomBytes(32).toString('hex');
@@ -55,7 +55,7 @@ export async function runDesktopAttempt({ url, prompt, maxSteps, inspect = false
       if (!response.ok) throw new Error(data.error ?? `Controller HTTP ${response.status}`);
       return data;
     };
-    await call('/run', { webmcp, webmcpSource, allowMissingTools, today, url, shellUrl, prompt, maxSteps, timeoutMs, inspect, provider, model, reasoningEffort });
+    await call('/run', { webmcp, webmcpSource, allowMissingTools, today, url, shellUrl, prompt, timeoutMs, inspect, provider, model, reasoningEffort });
     const deadline = Date.now() + timeoutMs + 120_000;
     let phase;
     while (true) {

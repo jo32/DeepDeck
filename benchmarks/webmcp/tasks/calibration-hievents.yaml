@@ -9,21 +9,21 @@ tasks:
     site: hi-events
     tier: answer
     prompt: "What date and time does the WebMCP Community Workshop start?"
-    max_steps: { webmcp: 6, cu: 18, structured: 18 }
+    timeout_seconds: 600
     predicate: { type: answer, contains: ["10:00"] }
 
   - id: he-2
     site: hi-events
     tier: answer
     prompt: "Is a ticket to this workshop free, and what is the General admission price?"
-    max_steps: { webmcp: 6, cu: 18, structured: 18 }
+    timeout_seconds: 600
     predicate: { type: answer, contains: ["free"] }
 
   - id: he-3
     site: hi-events
     tier: answer
     prompt: "What is the refund policy for this event?"
-    max_steps: { webmcp: 6, cu: 18, structured: 18 }
+    timeout_seconds: 600
     predicate: { type: answer, contains: ["refund"] }
 
   - id: he-4
@@ -34,12 +34,12 @@ tasks:
     # registrations consumed tickets — a benchmark-design lesson: never hardcode
     # mutable state in an answer predicate).
     prompt: "What is the maximum number of General admission tickets I can buy in a single order?"
-    max_steps: { webmcp: 6, cu: 18, structured: 18 }
+    timeout_seconds: 600
     predicate: { type: answer, matches: "(max|maximum|limit|allowed)[^.]{0,40}\\b(4|four)\\b" }
 
   - id: he-5
     site: hi-events
     tier: transaction
     prompt: "Register Test Flight (email test-flight@example.com) for one free General admission ticket, and confirm the registration went through."
-    max_steps: { webmcp: 12, cu: 30, structured: 30 }
+    timeout_seconds: 600
     predicate: { type: answer, contains_any: ["confirmed", "registered", "order", "complete"] }

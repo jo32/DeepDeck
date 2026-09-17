@@ -1,0 +1,1157 @@
+{
+  "date": "2026-09-16",
+  "model": "gpt-5.6-terra",
+  "provider": "openai-codex",
+  "repetitions": 1,
+  "timeoutSeconds": 600,
+  "stepLimit": null,
+  "summary": {
+    "on": {
+      "attempts": 49,
+      "passed": 49,
+      "totalTokens": 4040411,
+      "agentSeconds": 1230.2202186279999
+    },
+    "off": {
+      "attempts": 49,
+      "passed": 49,
+      "totalTokens": 7323081,
+      "agentSeconds": 2091.0849199990002
+    }
+  },
+  "sites": [
+    {
+      "id": "tailwind-nextjs-blog",
+      "name": "Tailwind Next.js Blog",
+      "category": {
+        "zh": "内容博客",
+        "en": "Content blog"
+      },
+      "on": {
+        "attempts": 2,
+        "passed": 2,
+        "totalTokens": 62743,
+        "agentSeconds": 28.923847834
+      },
+      "off": {
+        "attempts": 2,
+        "passed": 2,
+        "totalTokens": 99923,
+        "agentSeconds": 29.504606791999997
+      }
+    },
+    {
+      "id": "bulletproof-react",
+      "name": "Bulletproof React",
+      "category": {
+        "zh": "应用与权限",
+        "en": "App access"
+      },
+      "on": {
+        "attempts": 2,
+        "passed": 2,
+        "totalTokens": 73040,
+        "agentSeconds": 23.3318735
+      },
+      "off": {
+        "attempts": 2,
+        "passed": 2,
+        "totalTokens": 130494,
+        "agentSeconds": 47.28919483300001
+      }
+    },
+    {
+      "id": "directory-9d8",
+      "name": "9d8 Directory",
+      "category": {
+        "zh": "目录与筛选",
+        "en": "Directory & filters"
+      },
+      "on": {
+        "attempts": 3,
+        "passed": 3,
+        "totalTokens": 140538,
+        "agentSeconds": 47.211546041999995
+      },
+      "off": {
+        "attempts": 3,
+        "passed": 3,
+        "totalTokens": 287197,
+        "agentSeconds": 84.525233126
+      }
+    },
+    {
+      "id": "nextjs-starter-medusa",
+      "name": "Medusa",
+      "category": {
+        "zh": "电商购物",
+        "en": "E-commerce"
+      },
+      "on": {
+        "attempts": 9,
+        "passed": 9,
+        "totalTokens": 1042124,
+        "agentSeconds": 268.641335166
+      },
+      "off": {
+        "attempts": 9,
+        "passed": 9,
+        "totalTokens": 1955963,
+        "agentSeconds": 492.60089537399995
+      }
+    },
+    {
+      "id": "easyappointments",
+      "name": "Easy!Appointments",
+      "category": {
+        "zh": "服务预约",
+        "en": "Appointments"
+      },
+      "on": {
+        "attempts": 8,
+        "passed": 8,
+        "totalTokens": 712423,
+        "agentSeconds": 202.172496374
+      },
+      "off": {
+        "attempts": 8,
+        "passed": 8,
+        "totalTokens": 1243387,
+        "agentSeconds": 307.13914525
+      }
+    },
+    {
+      "id": "learnhouse",
+      "name": "LearnHouse",
+      "category": {
+        "zh": "课程学习",
+        "en": "Education"
+      },
+      "on": {
+        "attempts": 7,
+        "passed": 7,
+        "totalTokens": 352363,
+        "agentSeconds": 129.80949125200002
+      },
+      "off": {
+        "attempts": 7,
+        "passed": 7,
+        "totalTokens": 691363,
+        "agentSeconds": 224.595422999
+      }
+    },
+    {
+      "id": "idurar-erp-crm",
+      "name": "IDURAR ERP/CRM",
+      "category": {
+        "zh": "客户与财务",
+        "en": "CRM & finance"
+      },
+      "on": {
+        "attempts": 8,
+        "passed": 8,
+        "totalTokens": 1047072,
+        "agentSeconds": 331.572788835
+      },
+      "off": {
+        "attempts": 8,
+        "passed": 8,
+        "totalTokens": 1382633,
+        "agentSeconds": 429.039801541
+      }
+    },
+    {
+      "id": "hi-events",
+      "name": "Hi.Events",
+      "category": {
+        "zh": "活动与票务",
+        "en": "Events & tickets"
+      },
+      "on": {
+        "attempts": 10,
+        "passed": 10,
+        "totalTokens": 610108,
+        "agentSeconds": 198.55683962500004
+      },
+      "off": {
+        "attempts": 10,
+        "passed": 10,
+        "totalTokens": 1532121,
+        "agentSeconds": 476.39062008400003
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-1",
+      "title": {
+        "zh": "统计并列出全部商品",
+        "en": "Count and list products"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 34044,
+        "seconds": 19.192969375
+      },
+      "off": {
+        "passed": true,
+        "tokens": 180379,
+        "seconds": 60.110733042
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-2",
+      "title": {
+        "zh": "查询配送政策与时效",
+        "en": "Read shipping policy and delivery times"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32938,
+        "seconds": 10.644417833
+      },
+      "off": {
+        "passed": true,
+        "tokens": 126859,
+        "seconds": 44.692465167
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-3",
+      "title": {
+        "zh": "查询退货政策",
+        "en": "Read the returns policy"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32699,
+        "seconds": 18.680960417
+      },
+      "off": {
+        "passed": true,
+        "tokens": 175748,
+        "seconds": 53.371215
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-9",
+      "title": {
+        "zh": "判断指定商品是否存在",
+        "en": "Check product availability"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33867,
+        "seconds": 8.275656417
+      },
+      "off": {
+        "passed": true,
+        "tokens": 80665,
+        "seconds": 26.143469875
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-4",
+      "title": {
+        "zh": "查询商品尺码",
+        "en": "List product sizes"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33077,
+        "seconds": 11.311374999999996
+      },
+      "off": {
+        "passed": true,
+        "tokens": 111404,
+        "seconds": 31.058845249999997
+      },
+      "rerun": false
+    },
+    {
+      "site": "tailwind-nextjs-blog",
+      "id": "blog-find-post",
+      "title": {
+        "zh": "查找指定文章标题",
+        "en": "Find a post by its title"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 31663,
+        "seconds": 18.814550375
+      },
+      "off": {
+        "passed": true,
+        "tokens": 56507,
+        "seconds": 16.575855124999997
+      },
+      "rerun": false
+    },
+    {
+      "site": "tailwind-nextjs-blog",
+      "id": "blog-read-author",
+      "title": {
+        "zh": "读取 About 页作者",
+        "en": "Read the About-page author"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 31080,
+        "seconds": 10.109297459
+      },
+      "off": {
+        "passed": true,
+        "tokens": 43416,
+        "seconds": 12.928751667
+      },
+      "rerun": false
+    },
+    {
+      "site": "bulletproof-react",
+      "id": "react-public-content",
+      "title": {
+        "zh": "识别公开首页应用",
+        "en": "Identify the public application"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 30998,
+        "seconds": 9.999997125000002
+      },
+      "off": {
+        "passed": true,
+        "tokens": 41193,
+        "seconds": 18.673893625
+      },
+      "rerun": false
+    },
+    {
+      "site": "bulletproof-react",
+      "id": "react-auth-boundary",
+      "title": {
+        "zh": "检查未登录访问边界",
+        "en": "Check signed-out access boundaries"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 42042,
+        "seconds": 13.331876375
+      },
+      "off": {
+        "passed": true,
+        "tokens": 89301,
+        "seconds": 28.615301208000005
+      },
+      "rerun": false
+    },
+    {
+      "site": "directory-9d8",
+      "id": "directory-search",
+      "title": {
+        "zh": "按工具类型搜索目录",
+        "en": "Search the directory by tool type"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 31496,
+        "seconds": 10.092058584
+      },
+      "off": {
+        "passed": true,
+        "tokens": 42452,
+        "seconds": 12.125664334000001
+      },
+      "rerun": false
+    },
+    {
+      "site": "directory-9d8",
+      "id": "directory-filter",
+      "title": {
+        "zh": "筛选开发者工具",
+        "en": "Filter developer tools"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 42707,
+        "seconds": 15.661566665999999
+      },
+      "off": {
+        "passed": true,
+        "tokens": 147051,
+        "seconds": 43.317623250000004
+      },
+      "rerun": false
+    },
+    {
+      "site": "directory-9d8",
+      "id": "directory-detail",
+      "title": {
+        "zh": "读取条目详情",
+        "en": "Read a listing description"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 66335,
+        "seconds": 21.457920792
+      },
+      "off": {
+        "passed": true,
+        "tokens": 97694,
+        "seconds": 29.081945541999996
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-6",
+      "title": {
+        "zh": "检查购物车内容",
+        "en": "Inspect the shopping cart"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32681,
+        "seconds": 10.697471125
+      },
+      "off": {
+        "passed": true,
+        "tokens": 40958,
+        "seconds": 12.930516083
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-5",
+      "title": {
+        "zh": "将指定款式加入购物车",
+        "en": "Add a specified variant to the cart"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 71026,
+        "seconds": 23.210226249999995
+      },
+      "off": {
+        "passed": true,
+        "tokens": 190298,
+        "seconds": 49.536991916
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-7",
+      "title": {
+        "zh": "组合多件商品并核对数量",
+        "en": "Build a multi-product cart and check quantity"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 105066,
+        "seconds": 40.353184708
+      },
+      "off": {
+        "passed": true,
+        "tokens": 427152,
+        "seconds": 87.27972774999999
+      },
+      "rerun": false
+    },
+    {
+      "site": "nextjs-starter-medusa",
+      "id": "md-8",
+      "title": {
+        "zh": "完成访客结账与测试支付",
+        "en": "Complete guest checkout with test payment"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 666726,
+        "seconds": 126.275074041
+      },
+      "off": {
+        "passed": true,
+        "tokens": 622500,
+        "seconds": 127.47693129099999
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-1",
+      "title": {
+        "zh": "列出全部服务",
+        "en": "List all services"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33367,
+        "seconds": 9.422214332999998
+      },
+      "off": {
+        "passed": true,
+        "tokens": 41360,
+        "seconds": 12.806311125
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-2",
+      "title": {
+        "zh": "查询服务价格与时长",
+        "en": "Read service price and duration"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 75940,
+        "seconds": 24.713126208000002
+      },
+      "off": {
+        "passed": true,
+        "tokens": 88298,
+        "seconds": 35.420502084000006
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-3",
+      "title": {
+        "zh": "找出免费服务",
+        "en": "Find a free service"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33338,
+        "seconds": 11.202997167
+      },
+      "off": {
+        "passed": true,
+        "tokens": 152149,
+        "seconds": 44.028153208000006
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-4",
+      "title": {
+        "zh": "查找指定服务的提供者",
+        "en": "Find a service provider"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33293,
+        "seconds": 10.093539250000001
+      },
+      "off": {
+        "passed": true,
+        "tokens": 55429,
+        "seconds": 15.841947583999998
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-5",
+      "title": {
+        "zh": "判断指定服务是否存在",
+        "en": "Check service availability"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33389,
+        "seconds": 12.431397540999999
+      },
+      "off": {
+        "passed": true,
+        "tokens": 52969,
+        "seconds": 14.936545708
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-6",
+      "title": {
+        "zh": "预约最早可用时段",
+        "en": "Book the earliest available appointment"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 271000,
+        "seconds": 54.28046641700001
+      },
+      "off": {
+        "passed": true,
+        "tokens": 235106,
+        "seconds": 54.279619583000006
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-7",
+      "title": {
+        "zh": "预约后取消同一订单",
+        "en": "Book and cancel the same appointment"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 171084,
+        "seconds": 59.14388325
+      },
+      "off": {
+        "passed": true,
+        "tokens": 525362,
+        "seconds": 94.920512042
+      },
+      "rerun": false
+    },
+    {
+      "site": "easyappointments",
+      "id": "ea-8",
+      "title": {
+        "zh": "登录后台查询客户",
+        "en": "Sign in and inspect customer records"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 61012,
+        "seconds": 20.884872208
+      },
+      "off": {
+        "passed": true,
+        "tokens": 92714,
+        "seconds": 34.905553915999995
+      },
+      "rerun": false
+    },
+    {
+      "site": "learnhouse",
+      "id": "lh-1",
+      "title": {
+        "zh": "列出课程目录",
+        "en": "List all courses"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32017,
+        "seconds": 9.519806084000002
+      },
+      "off": {
+        "passed": true,
+        "tokens": 77337,
+        "seconds": 26.208700458
+      },
+      "rerun": false
+    },
+    {
+      "site": "learnhouse",
+      "id": "lh-2",
+      "title": {
+        "zh": "读取课程章节",
+        "en": "Read course chapters"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32385,
+        "seconds": 11.829498624999996
+      },
+      "off": {
+        "passed": true,
+        "tokens": 83599,
+        "seconds": 25.160195499999997
+      },
+      "rerun": false
+    },
+    {
+      "site": "learnhouse",
+      "id": "lh-3",
+      "title": {
+        "zh": "查找首节课标题",
+        "en": "Find the first lesson title"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32202,
+        "seconds": 16.492395000000005
+      },
+      "off": {
+        "passed": true,
+        "tokens": 55058,
+        "seconds": 15.372231625
+      },
+      "rerun": false
+    },
+    {
+      "site": "learnhouse",
+      "id": "lh-5",
+      "title": {
+        "zh": "搜索课程并读取描述",
+        "en": "Search courses and read a description"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 56262,
+        "seconds": 16.889060792
+      },
+      "off": {
+        "passed": true,
+        "tokens": 98863,
+        "seconds": 30.066852000000004
+      },
+      "rerun": false
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-1",
+      "title": {
+        "zh": "登录并查询发票客户",
+        "en": "Sign in and identify an invoice client"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 57364,
+        "seconds": 17.577258666999995
+      },
+      "off": {
+        "passed": true,
+        "tokens": 77971,
+        "seconds": 24.724047042000002
+      },
+      "rerun": false
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-2",
+      "title": {
+        "zh": "查询发票总额",
+        "en": "Read an invoice total"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 57410,
+        "seconds": 26.128903084
+      },
+      "off": {
+        "passed": true,
+        "tokens": 119791,
+        "seconds": 42.385828083
+      },
+      "rerun": false
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-4",
+      "title": {
+        "zh": "查询发票付款状态",
+        "en": "Check invoice payment status"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 77996,
+        "seconds": 29.560403042000004
+      },
+      "off": {
+        "passed": true,
+        "tokens": 65209,
+        "seconds": 23.297030832999997
+      },
+      "rerun": false
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-5",
+      "title": {
+        "zh": "搜索客户联系方式",
+        "en": "Search client contact details"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 105241,
+        "seconds": 31.871013917000003
+      },
+      "off": {
+        "passed": true,
+        "tokens": 132843,
+        "seconds": 40.916672417
+      },
+      "rerun": false
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-8",
+      "title": {
+        "zh": "读取月度财务汇总",
+        "en": "Read the monthly financial summary"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 430592,
+        "seconds": 124.98752825
+      },
+      "off": {
+        "passed": true,
+        "tokens": 431744,
+        "seconds": 128.4787795
+      },
+      "rerun": false
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-6",
+      "title": {
+        "zh": "创建发票草稿",
+        "en": "Create a draft invoice"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 99116,
+        "seconds": 34.929656833
+      },
+      "off": {
+        "passed": true,
+        "tokens": 183146,
+        "seconds": 55.639257375
+      },
+      "rerun": false
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-7",
+      "title": {
+        "zh": "记录一笔收款",
+        "en": "Record an invoice payment"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 161789,
+        "seconds": 50.06269533299999
+      },
+      "off": {
+        "passed": true,
+        "tokens": 240174,
+        "seconds": 65.991276208
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-1",
+      "title": {
+        "zh": "查询活动地点",
+        "en": "Find the event location"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33096,
+        "seconds": 17.148157041999998
+      },
+      "off": {
+        "passed": true,
+        "tokens": 44475,
+        "seconds": 14.8540135
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-2",
+      "title": {
+        "zh": "按时间查询议程",
+        "en": "Find a session by its start time"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33098,
+        "seconds": 8.527907500000001
+      },
+      "off": {
+        "passed": true,
+        "tokens": 52648,
+        "seconds": 20.203393083999995
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-3",
+      "title": {
+        "zh": "查询年龄政策",
+        "en": "Read the age policy"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 41381,
+        "seconds": 13.221439709000002
+      },
+      "off": {
+        "passed": true,
+        "tokens": 54876,
+        "seconds": 15.843556750000001
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-4",
+      "title": {
+        "zh": "查询录像及访问权限",
+        "en": "Check recording availability and access"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33168,
+        "seconds": 9.595141417
+      },
+      "off": {
+        "passed": true,
+        "tokens": 53632,
+        "seconds": 14.941089792
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-10",
+      "title": {
+        "zh": "判断是否提供停车信息",
+        "en": "Check for parking information"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32830,
+        "seconds": 8.676245917000003
+      },
+      "off": {
+        "passed": true,
+        "tokens": 54862,
+        "seconds": 15.954788042000002
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-5",
+      "title": {
+        "zh": "判断是否提供实时字幕",
+        "en": "Check live-caption availability"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32947,
+        "seconds": 11.827720625
+      },
+      "off": {
+        "passed": true,
+        "tokens": 44392,
+        "seconds": 16.15095725
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-6",
+      "title": {
+        "zh": "检验单笔购票数量限制",
+        "en": "Check the per-order ticket limit"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 33329,
+        "seconds": 11.519230875000002
+      },
+      "off": {
+        "passed": true,
+        "tokens": 43582,
+        "seconds": 16.8532545
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-7",
+      "title": {
+        "zh": "为两位参与者报名",
+        "en": "Register two attendees"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 207148,
+        "seconds": 69.006651166
+      },
+      "off": {
+        "passed": true,
+        "tokens": 136228,
+        "seconds": 47.613584
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-8",
+      "title": {
+        "zh": "登录主办方后台查询活动状态",
+        "en": "Sign in as organizer and check event status"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 53300,
+        "seconds": 16.034743291
+      },
+      "off": {
+        "passed": true,
+        "tokens": 96873,
+        "seconds": 37.553998666
+      },
+      "rerun": false
+    },
+    {
+      "site": "hi-events",
+      "id": "hev-9",
+      "title": {
+        "zh": "报名后通过订单编号查询状态",
+        "en": "Register and look up the resulting order"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 109811,
+        "seconds": 32.999602083000006
+      },
+      "off": {
+        "passed": true,
+        "tokens": 950553,
+        "seconds": 276.4219845
+      },
+      "rerun": false
+    },
+    {
+      "site": "learnhouse",
+      "id": "lh-6",
+      "title": {
+        "zh": "判断指定主题课程是否存在",
+        "en": "Check course availability by topic"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 32066,
+        "seconds": 12.317288708
+      },
+      "off": {
+        "passed": true,
+        "tokens": 69880,
+        "seconds": 19.591369957999998
+      },
+      "rerun": true
+    },
+    {
+      "site": "learnhouse",
+      "id": "lh-7",
+      "title": {
+        "zh": "登录并选课，确定起始课程",
+        "en": "Sign in, enroll, and identify the starting lesson"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 58314,
+        "seconds": 22.916648334
+      },
+      "off": {
+        "passed": true,
+        "tokens": 149008,
+        "seconds": 46.82246679200001
+      },
+      "rerun": true
+    },
+    {
+      "site": "learnhouse",
+      "id": "lh-8",
+      "title": {
+        "zh": "统计已发布课时",
+        "en": "Count published lessons"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 109117,
+        "seconds": 39.84479370900001
+      },
+      "off": {
+        "passed": true,
+        "tokens": 157618,
+        "seconds": 61.37360666600001
+      },
+      "rerun": true
+    },
+    {
+      "site": "idurar-erp-crm",
+      "id": "id-3",
+      "title": {
+        "zh": "查询发票项目",
+        "en": "Read an invoice line item"
+      },
+      "on": {
+        "passed": true,
+        "tokens": 57564,
+        "seconds": 16.455329709
+      },
+      "off": {
+        "passed": true,
+        "tokens": 131755,
+        "seconds": 47.606910082999995
+      },
+      "rerun": true
+    }
+  ],
+  "method": {
+    "tools": "Both arms retain DeepDeck default tools including Chrome DevTools MCP; only WebMCP differs.",
+    "isolation": "Same local site reset before each arm, fresh desktop profile and session.",
+    "order": "One pair per task; on then off.",
+    "tokens": "Input + output + cache-read + cache-write; accumulated across turns, not billed cost.",
+    "time": "Agent execution only; excludes site build/reset and desktop startup.",
+    "scoring": "Current task scorers; a pass does not independently verify every answer detail. hev-9 checks order creation only.",
+    "limitations": "One repetition; no confidence intervals. Provider caching, load, randomness and fixed order may affect the comparison."
+  },
+  "retries": {
+    "initialAttempts": 98,
+    "initialPassed": 93,
+    "environmentFailures": 5,
+    "retriedTasks": 4,
+    "retryAttempts": 8,
+    "reason": "LearnHouse database initialization race (1), prepared-adapter integrity check after readiness fix (3), CRM fetch connection failure (1). Entire affected pairs rerun; prompts and scorers unchanged."
+  },
+  "sources": [
+    {
+      "run": "2026-09-16T11-50-06.541Z",
+      "corpusSha256": "f2f72c47e6b8ad01e5bc7312c7e064bad05660d229961bd5beab204dfc8ab913",
+      "taskSetSha256": "6085ac1a09b79969a6d067bac82ec35c3a7dfdad836814d84db5f48d27921d3d",
+      "commit": "40601f60b56cd029172e1a83ffda3ee7fb563320",
+      "dirty": true
+    },
+    {
+      "run": "2026-09-16T12-12-51.201Z",
+      "corpusSha256": "f2f72c47e6b8ad01e5bc7312c7e064bad05660d229961bd5beab204dfc8ab913",
+      "taskSetSha256": "dde252c1c0c10bf5e5574f9da8cb85664eaaf75a60836efd1ec4ee0640ee021e",
+      "commit": "40601f60b56cd029172e1a83ffda3ee7fb563320",
+      "dirty": true
+    },
+    {
+      "run": "2026-09-16T14-06-47.949Z",
+      "corpusSha256": "4aa384f931b21bd45f0501af580aafd91f50e3c15e41a35e757bb4c4fc4a507c",
+      "taskSetSha256": "8cac0b2c04d378415fc73a10fc4401746d4ab8df8477e3fab90bebda86490891",
+      "commit": "40601f60b56cd029172e1a83ffda3ee7fb563320",
+      "dirty": true
+    }
+  ]
+}

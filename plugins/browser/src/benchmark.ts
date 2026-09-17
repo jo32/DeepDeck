@@ -8,7 +8,6 @@ import type { BrowserTool } from './native-contract.js'
 import type { BrowserRuntime, BrowserAgent } from './runtime.js'
 
 interface BenchmarkScope {
-  on(event: 'agent/pre-step', handler: (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>): () => void
   on(event: 'session/event', handler: (session: { id: string }, event: SessionEvent) => void): () => void
 }
 interface BenchmarkAgent {
@@ -38,7 +37,6 @@ export interface BenchmarkRequest {
   provider?: string
   model?: string
   reasoningEffort?: string
-  maxSteps: number
   timeoutMs: number
 }
 const pause = () => new Promise(resolve => setTimeout(resolve, 100))
@@ -71,7 +69,6 @@ export function validateBenchmarkRequest(input: BenchmarkRequest): void {
   if (input.allowMissingTools && !input.inspect) throw new Error('Missing tools may only be allowed during inspection.')
   if (input.webmcpSource !== undefined && (input.webmcp !== 'on' || typeof input.webmcpSource !== 'string' || !input.webmcpSource.trim() || Buffer.byteLength(input.webmcpSource) > 256 * 1024)) throw new Error('WebMCP source requires the on arm and a nonempty script up to 256 KiB.')
   if (typeof input.prompt !== 'string' || !input.prompt.trim()) throw new Error('Missing task prompt.')
-  if (!Number.isInteger(input.maxSteps) || input.maxSteps < 1 || input.maxSteps > 100) throw new Error('maxSteps must be 1–100.')
   if (!Number.isInteger(input.timeoutMs) || input.timeoutMs < 1000 || input.timeoutMs > 600_000) throw new Error('timeoutMs must be 1000–600000.')
   if (Boolean(input.provider) !== Boolean(input.model)) throw new Error('Set both provider and model, or neither.')
 }
@@ -154,17 +151,12 @@ export async function runBenchmarkAttempt(ctx: BenchmarkContext, runtime: Browse
   if (input.inspect) return { kind: 'discovery-only', url: tab.url, tools: tab.tools, connection, webmcp: input.webmcp ?? 'unspecified', setupMs: performance.now() - started }
   progress('selecting-model')
   if (input.provider && input.model) await ctx.sessionController.selectModel({ sessionId, provider: input.provider, model: input.model, ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {}) })
-  let admitted = 0, budgetExhausted = false, timedOut = false
+  let timedOut = false
   const events: SessionEvent[] = []
   progress('installing-run-limits')
   const scoped = (agent as BenchmarkAgent).ctx.inject([], scope => {
     const stops = [
       scope.on('session/event', (session, event) => { if (session.id === sessionId) events.push(event) }),
-      scope.on('agent/pre-step', async (_payload, next) => {
-        if (admitted >= input.maxSteps) { budgetExhausted = true; return { kind: 'reject' } }
-        admitted++
-        return next()
-      }),
     ]
     return () => stops.reverse().forEach(stop => stop())
   })
@@ -187,8 +179,8 @@ export async function runBenchmarkAttempt(ctx: BenchmarkContext, runtime: Browse
     if (input.webmcp === 'off' && (finalSnapshot.webmcpEnabled !== false || finalSnapshot.tabs.some(value => value.tools.length))) throw new Error('Off arm was contaminated by WebMCP.')
     const result = summarizeBenchmarkEvents(events)
     return { ...result, url: tab.url, sessionId, connection, webmcp: input.webmcp ?? 'unspecified', initialTools: tab.tools, setupMs, agentMs: performance.now() - started - setupMs,
-      budgetExhausted, timedOut, cost: null,
-      failure: timedOut ? 'attempt timeout' : signal.aborted ? 'attempt cancelled' : budgetExhausted ? 'step budget exhausted' : result.stopReason?.kind !== 'completed' ? JSON.stringify(result.stopReason ?? 'no completed turn') : '',
+      timedOut, timeoutMs: input.timeoutMs, cost: null,
+      failure: timedOut ? 'attempt timeout' : signal.aborted ? 'attempt cancelled' : result.stopReason?.kind !== 'completed' ? JSON.stringify(result.stopReason ?? 'no completed turn') : '',
     }
   } finally {
     clearTimeout(timer)

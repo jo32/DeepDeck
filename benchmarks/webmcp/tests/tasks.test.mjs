@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadTasks, resolveTask } from "../harness/tasks.mjs";
+import { loadTasks, resolveTask, timeBudget } from "../harness/tasks.mjs";
 
 test("resolveTask fills prompt and nested predicate params", () => {
   const task = resolveTask({
@@ -21,4 +21,11 @@ test("loadTasks reads each lite site task file", () => {
 
 test("loadTasks excludes retired tasks", () => {
   assert.ok(!loadTasks("learnhouse").some(({ id }) => id === "lh-4"));
+});
+
+test('time budgets default to ten minutes, ignore old step caps and validate overrides', () => {
+  assert.equal(timeBudget({max_steps: {webmcp: 6}}), 600000);
+  assert.equal(timeBudget({timeout_seconds: 60}), 60000);
+  assert.equal(timeBudget({timeout_seconds: 60}, '120'), 120000);
+  for (const value of [0, -1, 601, 'bad', 1.5]) assert.throws(() => timeBudget({}, value));
 });

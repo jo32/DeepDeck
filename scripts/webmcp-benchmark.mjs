@@ -71,12 +71,12 @@ async function atomicJson(file, value) { await writeFile(file + '.tmp', JSON.str
 export async function main(args = process.argv.slice(2)) {
   const { values: v, positionals } = parseArgs({ args, allowPositionals: true, options: {
     sites: { type: 'string', default: 'lite' }, 'task-ids': { type: 'string' }, 'task-file': { type: 'string' }, n: { type: 'string', default: '3' }, port: { type: 'string' },
-    webmcp: { type: 'string' }, 'max-steps': { type: 'string' }, output: { type: 'string' }, provider: { type: 'string' }, model: { type: 'string' }, effort: { type: 'string' },
+    webmcp: { type: 'string' }, 'timeout-seconds': { type: 'string' }, output: { type: 'string' }, provider: { type: 'string' }, model: { type: 'string' }, effort: { type: 'string' },
     ...modelOptions, ...ablationOptions, 'settings-from': { type: 'string' }, 'run-id': { type: 'string', default: 'deepdeck-local' }, help: { type: 'boolean' },
   } });
   const action = positionals[0] ?? 'help';
   if (v.help || action === 'help') {
-    console.log('pnpm benchmark:webmcp <doctor|list|up|down|smoke|run|ablate> [--sites lite|core|full|site1,site2] [--task-file PATH] [--task-ids id1,id2] [--n 3] [--webmcp on|off|compare] [--max-steps 12] [--provider ID --model ID] [--base-url URL] [--api-key-env NAME | --api-key-file PATH | --api-key KEY] [--api PROTOCOL] [--settings-from ~/.dsh] [--output PATH]\nablate --url URL --query TEXT [--expected-answer TEXT] [--webmcp-file script.js]: compare any website without Docker.\nsmoke: discover native WebMCP tools in a fresh DeepDeck per selected site, without model calls.\nrun: local editable tasks and scoring, real DeepDeck Agent, fresh desktop per attempt.\nrun/smoke automatically start and stop their own websites; no up/down needed. Ctrl+C waits for safe cleanup.\nup/down: keep/stop local websites (stable --run-id and --port).'); return;
+    console.log('pnpm benchmark:webmcp <doctor|list|up|down|smoke|run|ablate> [--sites lite|core|full|site1,site2] [--task-file PATH] [--task-ids id1,id2] [--n 3] [--webmcp on|off|compare] [--timeout-seconds 600] [--provider ID --model ID] [--base-url URL] [--api-key-env NAME | --api-key-file PATH | --api-key KEY] [--api PROTOCOL] [--settings-from ~/.dsh] [--output PATH]\nablate --url URL --query TEXT [--expected-answer TEXT] [--webmcp-file script.js]: compare any website without Docker.\nsmoke: discover native WebMCP tools in a fresh DeepDeck per selected site, without model calls.\nrun: local editable tasks and scoring, real DeepDeck Agent, fresh desktop per attempt.\nrun/smoke automatically start and stop their own websites; no up/down needed. Ctrl+C waits for safe cleanup.\nup/down: keep/stop local websites (stable --run-id and --port).'); return;
   }
   if (action === 'ablate') {
     const result = await runWebsiteAblation(v); process.exitCode = result.exitCode; return;
@@ -91,7 +91,7 @@ export async function main(args = process.argv.slice(2)) {
   }
   if (!['list', 'up', 'down', 'smoke', 'run'].includes(action)) throw new Error(`Unknown command ${action}`);
   const { loadRegistry, resolveProfile } = await import(pathToFileURL(join(corpus, 'harness/sites.mjs')));
-  const { loadTasks, loadTaskFile, resolveTask, startUrl, stepBudget } = await import(pathToFileURL(join(corpus, 'harness/tasks.mjs')));
+  const { loadTasks, loadTaskFile, resolveTask, startUrl, timeBudget } = await import(pathToFileURL(join(corpus, 'harness/tasks.mjs')));
   const registry = loadRegistry();
   const sites = registry.profiles[v.sites] ? resolveProfile(v.sites, registry) : v.sites.split(',');
   if (new Set(sites).size !== sites.length || sites.some(id => !registry.sites.some(site => site.id === id))) throw new Error('Unknown or duplicate site selection.');
@@ -103,7 +103,7 @@ export async function main(args = process.argv.slice(2)) {
   const webmcp = v.webmcp ?? (action === 'run' ? 'compare' : 'on');
   const arms = armOrder(webmcp);
   if ((action === 'up' || action === 'down') && v.webmcp) throw new Error('--webmcp controls benchmark browsers; use it with run or smoke.');
-  if (v['max-steps'] && (!Number.isInteger(Number(v['max-steps'])) || Number(v['max-steps']) < 1 || Number(v['max-steps']) > 100)) throw new Error('--max-steps must be 1–100.');
+  if (v['timeout-seconds'] !== undefined) timeBudget({}, v['timeout-seconds']);
   const port = Number(v.port ?? 3215), n = action === 'smoke' ? 1 : Number(v.n);
   if (!Number.isInteger(n) || n < 1 || n > 20) throw new Error('n must be 1–20.');
   if (!Number.isInteger(port) || port < 1024 || port + sites.length - 1 > 65535) throw new Error('Invalid port range.');
@@ -129,7 +129,7 @@ export async function main(args = process.argv.slice(2)) {
   if (existsSync(reportFile)) throw new Error(`Refusing to overwrite ${reportFile}`);
   const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   const report = { formatVersion: 2, kind: action === 'smoke' ? 'deepdeck-webmcp-discovery' : 'deepdeck-webmcp-agent', startedAt: new Date().toISOString(),
-    provenance: { corpusSha256: corpusDigest(), taskSetSha256: createHash('sha256').update(JSON.stringify(tasks)).digest('hex'), deepdeck: git(root, 'rev-parse', 'HEAD'), deepdeckDirty: Boolean(git(root, 'status', '--porcelain', '--untracked-files=no')), provider: v.provider ?? 'configured-default', model: v.model ?? 'configured-default', effort: v.effort ?? 'provider-default', interface: 'DeepDeck default tools', toolPolicy: 'default-tools; native-WebMCP-disabled-in-off', seed: 1, n, webmcp, arms, maxSteps: v['max-steps'] ? Number(v['max-steps']) : 'task-webmcp-budget-shared-by-both-arms', sites, taskIds: tasks.map(task => task.id),
+    provenance: { corpusSha256: corpusDigest(), taskSetSha256: createHash('sha256').update(JSON.stringify(tasks)).digest('hex'), deepdeck: git(root, 'rev-parse', 'HEAD'), deepdeckDirty: Boolean(git(root, 'status', '--porcelain', '--untracked-files=no')), provider: v.provider ?? 'configured-default', model: v.model ?? 'configured-default', effort: v.effort ?? 'provider-default', interface: 'DeepDeck default tools', toolPolicy: 'default-tools; native-WebMCP-disabled-in-off', seed: 1, n, webmcp, arms, budgetMode: 'time-only', timeoutSeconds: v['timeout-seconds'] ? Number(v['timeout-seconds']) : 'task-timeout-or-600-seconds', sites, taskIds: tasks.map(task => task.id),
       isolation: 'One frozen settings snapshot per command. Identical patched site build; only native WebMCP browser feature differs. Fresh Electron profile and Harness home per attempt; capsule reset before each attempt.', cost: 'Unavailable; raw Harness token usage retained. Startup/reset excluded from agentMs.',
       comparison: 'DeepDeck-owned corpus and runner. Imported starting cases are credited in benchmarks/webmcp/NOTICE.md; local edits define this task set.' }, rows: [], errors: [] };
   const settingsSnapshot = await mkdtemp(join(tmpdir(), 'deepdeck-benchmark-settings-'));
@@ -172,11 +172,11 @@ export async function main(args = process.argv.slice(2)) {
             for (const arm of armOrder(webmcp, repeat)) {
             if (controller.signal.aborted) break;
             console.log(`${action}: ${task.id} ${repeat + 1}/${n} [WebMCP ${arm}]`);
-            const row = { site, taskId: task.id, repeat, arm, pass: false, maxSteps: v['max-steps'] ? Number(v['max-steps']) : stepBudget(task, 'webmcp', 12) };
+            const row = { site, taskId: task.id, repeat, arm, pass: false, timeoutMs: timeBudget(task, v['timeout-seconds']) };
             try {
               const resetStarted = performance.now(); await capsule.reset(); row.resetMs = performance.now() - resetStarted;
               const started = performance.now();
-              row.result = await runDesktopAttempt({ url: startUrl(task, capsule), prompt: task.prompt, maxSteps: row.maxSteps, webmcp: arm, today: report.startedAt.slice(0, 10), inspect: action === 'smoke', provider: v.provider, model: v.model, reasoningEffort: v.effort,
+              row.result = await runDesktopAttempt({ url: startUrl(task, capsule), prompt: task.prompt, timeoutMs: row.timeoutMs, webmcp: arm, today: report.startedAt.slice(0, 10), inspect: action === 'smoke', provider: v.provider, model: v.model, reasoningEffort: v.effort,
                 settingsFrom: settingsSnapshot, logFile: join(output, `${task.id}-${repeat}-${arm}.desktop.log`), signal: controller.signal });
               row.wallMs = performance.now() - started;
               row.verdict = action === 'smoke' ? { pass: arm === 'on' ? row.result.tools.length > 0 : row.result.tools.length === 0, detail: `Native WebMCP ${arm} and visible session checked; task not scored.` }
