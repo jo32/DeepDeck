@@ -273,12 +273,14 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             <a href="#webmcp">{content.nav.webmcp}</a>
             <a href={locale === 'zh' ? '/zh/webmcp' : '/webmcp'}>{locale === 'zh' ? '工具目录' : 'Directory'}</a>
             <a href={locale === 'zh' ? '/zh/benchmarks' : '/benchmarks'}>Bench</a>
+            <a href={locale === 'zh' ? '/zh/blog' : '/blog'}>{locale === 'zh' ? '博客' : 'Blog'}</a>
             <a href="#showcase">{content.nav.apps}</a>
             <a href="#install">{content.nav.install}</a>
             <a href="#vibe">{content.nav.vibe}</a>
             <a href="#updates">{content.nav.changelog}</a>
           </nav>
           <div className="nav-actions">
+            <a className="mobile-blog-link" href={locale === 'zh' ? '/zh/blog' : '/blog'}>{locale === 'zh' ? '博客' : 'Blog'}</a>
             <a
               className="language-link"
               href={locale === "en" ? localePath.zh : localePath.en}
@@ -635,6 +637,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
           <a href="#webmcp">{content.nav.webmcp}</a>
           <a href={locale === 'zh' ? '/zh/webmcp/experiments' : '/webmcp/experiments'}>{locale === 'zh' ? '实验报告' : 'Experiments'}</a>
           <a href={locale === 'zh' ? '/zh/benchmarks' : '/benchmarks'}>Bench</a>
+            <a href={locale === 'zh' ? '/zh/blog' : '/blog'}>{locale === 'zh' ? '博客' : 'Blog'}</a>
           <a href="#updates">{content.nav.changelog}</a>
           <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>
           <a href={`${githubUrl}/blob/main/LICENSE`} target="_blank" rel="noreferrer">MIT License</a>

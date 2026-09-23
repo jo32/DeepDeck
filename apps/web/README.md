@@ -147,3 +147,14 @@ Official source URLs and currencies accompany the data and UI. Two MiMo OFF usag
 records remain null in total-token and full-cost fields; recorded cost subtotals
 are shown as lower bounds. Cache reads are excluded from uncached input, and
 reasoning is already included in output.
+
+
+## Blog
+
+The bilingual blog lives at `/blog` and `/zh/blog`. Articles use matching slugs across locales, are statically generated, and are included in the sitemap. Unknown slugs return 404.
+
+- Add editorial content under `lib/blog-posts/` using `BlogPost` from `lib/blog-types.ts`, then register it in `lib/blog.ts`.
+- Both translations supply the title, description, introduction and sections. Section IDs should match across translations and remain stable for links.
+- `app/_components/blog-page.tsx` renders the index, table of contents, article and source links. Keep new experimental figures backed by published, sanitized data.
+- The first article uses `public/research/benchmarks/webmcp-reference-retest-2026-09-23.json`, copied unchanged from the committed benchmark evidence. No raw session logs or credentials are included.
+- Validate with `pnpm --filter @deepdeck/web check` and `pnpm --filter @deepdeck/web build`; check both locales, narrow screens, language switching, source links, and unknown article URLs.
