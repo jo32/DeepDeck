@@ -82,19 +82,36 @@ another tab; the interface shows its target. Different sites have separate Agent
 Browser discovers actual registered WebMCP tools through Chromium's WebMCP domain
 and observes additions/removals. API presence alone is not site support. Existing
 site tools and generated WebMCP appear together with source and version details.
-The Agent calls `browser_context` to inspect this directory, then
-`browser_webmcp_call` with `{ toolRef, input }` to invoke a tool and wait for its
-real result. Discovery returns session-local `toolRef` handles on full tool
-definitions and in `targets[].tools`. The Host retains each handle's exact
-tab/frame/document/version identity; the model does not transcribe those IDs.
-Handles expire when the observed tool/schema/document changes, the bound tab
-switches, or the Agent reattaches. They never redirect an old action to a new page.
-Legacy explicit identity arguments remain supported with strict validation:
-catalog `digest` is a schema cache key, **not** a tool `revision`; omit `revision`
-for native site tools that do not declare one. Pre-dispatch identity errors
-include a specific code, `execution: not_dispatched`, and recovery instructions.
-Failures after native dispatch conservatively report `execution: unknown` and
-require inspection before continuing; the Host never automatically replays them.
+Each live page tool is registered directly in the Agent's Cordis tool scope with
+its business input schema. The model calls a `webmcp__<name>__<binding>` function
+with business parameters; it does not pass a tool reference, page/frame IDs,
+revision, or an extra `input` envelope. The old `browser_webmcp_call` entry point
+is no longer exposed. Business fields that happen to use these names retain
+their normal meaning.
+
+The Host owns each callable's exact tab/frame/document/schema/version binding.
+Tool names are deterministic hashes of the business name, description and canonical
+input schema. Native tab/document/revision identifiers stay in host state. Distinct
+frames with identical capabilities are disambiguated. Stable declarations are retained
+across loading and navigation, so ordinary page changes do not rewrite the tool prefix.
+Current callable names are carried by a Cordis dynamic context contribution, appended
+to conversation history when availability changes, rather than rewriting stable rules.
+The retained catalog is pruned to current capabilities when its union would exceed
+128 declarations (a larger live inventory is still exposed).
+
+Execution bindings are staged during system-prompt assembly and committed only by
+the real `agent/pre-step` event for the matching signal. A prompt preview or an in-turn
+`browser_context`/`browser_list_tools` observation cannot retarget a pending call.
+The native dispatch still validates the captured tab, document, frame, revision and
+schema, rejects unavailable targets without dispatch, and never replays unknown
+outcomes. Stable names are not permission to carry an old request into a new page.
+A new model step may bind the same capability name to the new page. Navigation
+invalidates execution bindings immediately while retaining cacheable declarations.
+Disposal removes both bindings and registrations.
+
+Pre-dispatch identity errors report `execution: not_dispatched`. Failures after
+native dispatch conservatively report `execution: unknown` and require checking
+the actual page/business state; the Host never automatically replays them.
 Context returns full schemas on first discovery or a catalog change. Later reads
 return compact tab metadata and fresh grouped targets (tool names with current
 frame/document/revision identities). `browser_list_tools` rereads all schemas or
@@ -154,7 +171,8 @@ with a reload only when needed.
 
 The suite includes snapshots, JavaScript evaluation, interaction, console and
 network details, screenshots, performance and memory snapshots.
-WebMCP discovery and execution use `browser_context` and `browser_webmcp_call`;
+WebMCP execution uses the registered `webmcp__` tools; `browser_context`
+and `browser_list_tools` inspect and refresh their inventory;
 the upstream name-only WebMCP tools are excluded and rejected if called directly.
 Both screenshot paths become normal Harness image attachments.
 Browser owns native tab creation/closure through `browser_open_tab` and

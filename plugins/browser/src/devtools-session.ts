@@ -37,10 +37,10 @@ export class BrowserDevToolsSession {
       tools: available.filter(tool => !names || names.includes(tool.name)),
       ...(names ? { missing: names.filter(name => !available.some(tool => tool.name === name)) } : {}),
       tabControls: 'Use browser_open_tab and browser_close_tab for native Browser tabs; browser_select_tab binds another same-site tab.',
-      webmcp: 'Use browser_context to discover WebMCP toolRef handles, then browser_webmcp_call with toolRef and input. The host binds frame, document and revision identities; catalog digest is not a tool revision.' }
+      webmcp: 'Call the registered webmcp__ tools directly with business parameters. browser_context refreshes their callable names; the host binds frame, document and revision identities.' }
   }
   async call(target: BrowserTarget, workspace: string, name: string, args: Record<string, unknown>, signal: AbortSignal) {
-    if (BROWSER_MANAGED.has(name)) throw new Error('Use browser_context/browser_webmcp_call for WebMCP, and browser_open_tab/browser_close_tab for tabs.')
+    if (BROWSER_MANAGED.has(name)) throw new Error('Use browser_context and registered webmcp__ tools for WebMCP, and browser_open_tab/browser_close_tab for tabs.')
     if (this.busy) throw new Error('Wait for the current DevTools operation to finish.')
     this.busy = true
     try { return await this.perform(target, workspace, name, args, signal) }
@@ -63,7 +63,7 @@ export class BrowserDevToolsSession {
       timing.connectionMs = performance.now() - started
       // Reject unsupported plans before the first action can change the page.
       for (const step of steps) {
-        if (BROWSER_MANAGED.has(step.name) || !connection.tools.some(tool => tool.name === step.name)) throw new Error('Discover the available DevTools tools before calling one. Use browser_webmcp_call for WebMCP and native Browser tools for tabs.')
+        if (BROWSER_MANAGED.has(step.name) || !connection.tools.some(tool => tool.name === step.name)) throw new Error('Discover the available DevTools tools before calling one. Use registered webmcp__ tools for WebMCP and native Browser tools for tabs.')
       }
       for (const [index, step] of steps.entries()) {
         const stepStarted = performance.now()

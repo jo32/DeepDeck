@@ -34,7 +34,7 @@ describe('official DevTools MCP lifecycle', () => {
   it('rejects both guessed and previously discovered alternate WebMCP entry points', async () => {
     const f = fixture()
     for (const name of ['list_webmcp_tools', 'execute_webmcp_tool']) {
-      await expect(f.session.call(target, '/site', name, { toolName: 'deepdeck_saved' }, signal())).rejects.toThrow('browser_webmcp_call')
+      await expect(f.session.call(target, '/site', name, { toolName: 'deepdeck_saved' }, signal())).rejects.toThrow('registered webmcp__ tools')
     }
     expect(f.connect).not.toHaveBeenCalled()
     expect(f.call).not.toHaveBeenCalled()

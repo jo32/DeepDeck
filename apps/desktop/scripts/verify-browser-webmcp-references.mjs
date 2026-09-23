@@ -47,23 +47,27 @@ try {
   const context = { agents: { get: id => id === agent.session.id ? agent : undefined, list: () => [] }, workspaceRegistry: { create: async path => ({ id: 'workspace', path, title: 'test' }) }, logger: { warn: console.error }, systemPrompt: { assemble: async () => ({}) }, on: () => () => {}, attachments: { saveImages: async () => [] } };
   runtime = new BrowserRuntime(context, native, sites, new WebMCPStore(join(temporary, 'webmcp')));
   const invoke = async (name, args = {}) => JSON.parse(await tools.get(name).execute(args, { agent, signal: new AbortController().signal }));
-  const callRef = toolRef => invoke('browser_webmcp_call', { toolRef, input: {} });
+  const callTool = tool => invoke(tool.callName, {});
   await runtime.bind(site.id, agent.session.id, first.id, 'use');
   const discovered = await invoke('browser_context');
   const title = discovered.tools.find(tool => tool.name === 'site_title');
   assert.equal(title.revision, undefined);
-  assert.match(JSON.stringify(await callRef(title.toolRef)), /DevTools integration/);
-  await assert.rejects(invoke('browser_webmcp_call', { name: title.name, frameId: title.frameId, documentId: title.documentId, revision: discovered.catalog.digest, input: {} }), /revision_mismatch/);
-  assert.match(JSON.stringify(await callRef(title.toolRef)), /DevTools integration/);
+  assert.match(JSON.stringify(await callTool(title)), /DevTools integration/);
+  assert(!tools.has('browser_webmcp_call'));
+  assert.deepEqual(tools.get(title.callName).parameters, { type: 'object', ...title.inputSchema, properties: title.inputSchema.properties ?? {} });
+  const oldCall = tools.get(title.callName);
+  assert(!JSON.stringify(discovered).includes('toolRef'));
+  assert.match(JSON.stringify(await callTool(title)), /DevTools integration/);
   await invoke('browser_navigate', { url: `${origin}/next` });
   await readyTab(first.id);
-  await assert.rejects(callRef(title.toolRef), /stale_tool_reference/);
+  assert(tools.has(title.callName));
+  await assert.rejects(oldCall.execute({}, { agent, signal: new AbortController().signal }), /stale_webmcp_tool/);
   const afterNavigation = await invoke('browser_context');
   assert.equal(afterNavigation.catalog.changed, false);
   const fresh = afterNavigation.targets.flatMap(target => target.tools).find(tool => tool.name === 'site_title');
-  assert.notEqual(fresh.toolRef, title.toolRef);
-  assert.match(JSON.stringify(await callRef(fresh.toolRef)), /DevTools integration/);
-  console.log('PASS native site tool: digest confusion rejected, reference call succeeds, navigation expires old handle without resending unchanged schemas.');
+  assert.equal(fresh.callName, title.callName);
+  assert.match(JSON.stringify(await callTool(fresh)), /DevTools integration/);
+  console.log('PASS native site tool: business-schema call succeeds without identity arguments, navigation rejects old request targets while retaining the same callable schema.');
 
   await invoke('browser_set_mode', { mode: 'builder' });
   async function install(version) {
@@ -74,11 +78,14 @@ try {
   }
   const original = await install(1);
   assert(original.revision);
-  assert.deepEqual(await callRef(original.toolRef), { version: 1 });
+  assert.deepEqual(await callTool(original), { version: 1 });
+  const oldVersionCall = tools.get(original.callName);
   const replacement = await install(2);
-  await assert.rejects(callRef(original.toolRef), /stale_tool_reference/);
-  assert.deepEqual(await callRef(replacement.toolRef), { version: 2 });
-  console.log('PASS generated tool: native revision supplied by host, same-name version replacement rejects stale handle.');
+  assert(tools.has(original.callName));
+  assert.equal(replacement.callName, original.callName);
+  assert.deepEqual(await oldVersionCall.execute({}, { agent, signal: new AbortController().signal }).then(JSON.parse), { version: 2 });
+  assert.deepEqual(await callTool(replacement), { version: 2 });
+  console.log('PASS generated tool: native revision supplied by host, same-schema revision refresh keeps the callable name and updates the next request target.');
 } finally {
   runtime?.dispose();
   native?.dispose();

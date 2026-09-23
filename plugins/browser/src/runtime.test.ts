@@ -163,89 +163,187 @@ describe('BrowserRuntime', () => {
     return JSON.parse(await tool.execute(args, { agent, signal: new AbortController().signal }))
   }
 
+  const directNames = () => [...tools.keys()].filter(name => name.startsWith('webmcp__'))
+  const directName = () => directNames()[0]!
   const discover = async () => await exec('browser_context') as {
     catalog: { digest: string; changed: boolean }
-    targets: Array<{ tools: Array<{ name: string; toolRef: string }> }>
-    tools?: Array<typeof GENERATED_TOOL & { toolRef: string }>
+    targets: Array<{ tools: Array<{ name: string; callName: string }> }>
+    tools?: Array<typeof GENERATED_TOOL & { callName: string }>
   }
 
-  it.each(['site', 'deepdeck'] as const)('calls %s tools by reference without copying identity fields', async source => {
+  it.each(['site', 'deepdeck'] as const)('registers %s tools before discovery with only their business schema', async source => {
     const { revision: _revision, ...siteTool } = GENERATED_TOOL
-    snapshot.tabs[0]!.tools = [source === 'site' ? { ...siteTool, source } : GENERATED_TOOL]
+    const inputSchema = { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer', enum: [5, 10] } }, required: ['query'], additionalProperties: false }
+    snapshot.tabs[0]!.tools = [{ ...(source === 'site' ? { ...siteTool, source } : GENERATED_TOOL), inputSchema }]
     await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
-    const first = await discover()
-    const toolRef = first.tools![0]!.toolRef
-    expect(first.targets[0]!.tools[0]!.toolRef).toBe(toolRef)
-    expect((await discover()).targets[0]!.tools[0]!.toolRef).toBe(toolRef)
-    expect(await exec('browser_webmcp_call', { toolRef, input: {} })).toEqual({ articles: [{ title: 'Actual result' }] })
+    const name = directName()
+    expect(name).toMatch(/^webmcp__deepdeck_articles__/)
+    expect(name.length).toBeLessThanOrEqual(64)
+    expect(tools.has('browser_webmcp_call')).toBe(false)
+    expect(tools.get(name)!.parameters).toEqual(inputSchema)
+    expect(await exec(name, { query: 'one', limit: 5 })).toEqual({ articles: [{ title: 'Actual result' }] })
     const command = request.mock.calls.find(([c]) => c.action === 'webmcp.call')![0]
-    expect(command).toMatchObject({ tabId: 'tab-1', documentId: 'document-1', frameId: 'frame-1', name: GENERATED_TOOL.name })
+    expect(command).toMatchObject({ tabId: 'tab-1', documentId: 'document-1', frameId: 'frame-1', name: GENERATED_TOOL.name, input: { query: 'one', limit: 5 } })
     if (source === 'site') expect(command).not.toHaveProperty('revision')
     else expect(command.revision).toBe(REVISION)
+    const first = await discover()
+    expect(first.tools![0]!.callName).toBe(name)
+    expect(first.targets[0]!.tools[0]!.callName).toBe(name)
+    expect((await discover()).targets[0]!.tools[0]!.callName).toBe(name)
+    expect(JSON.stringify(first)).not.toContain('toolRef')
   })
 
-  it('rejects catalog digest as revision before dispatch with actionable recovery', async () => {
-    const { revision: _revision, ...siteTool } = GENERATED_TOOL
-    snapshot.tabs[0]!.tools = [{ ...siteTool, source: 'site' }]
+  it.each(['document', 'frame', 'revision', 'schema', 'removed', 'loading'] as const)('rejects captured calls after %s changes without dispatch or silent rebinding', async change => {
     await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
-    const catalog = await discover()
-    await expect(exec('browser_webmcp_call', { ...siteTool, revision: catalog.catalog.digest, input: {} })).rejects.toThrow('This tool has no revision: omit revision.')
-    expect(request.mock.calls.some(([c]) => c.action === 'webmcp.call')).toBe(false)
-    expect(await exec('browser_webmcp_call', { toolRef: catalog.tools![0]!.toolRef, input: {} })).toEqual({ articles: [{ title: 'Actual result' }] })
-  })
-
-  it.each(['document', 'frame', 'revision', 'schema', 'removed'] as const)('rejects old references after %s changes', async change => {
-    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
-    const old = (await discover()).tools![0]!.toolRef
+    const oldName = directName(), old = tools.get(oldName)!
     const tab = snapshot.tabs[0]!
     if (change === 'document') { tab.documentId = 'document-2'; tab.tools = [{ ...GENERATED_TOOL, documentId: tab.documentId }] }
     if (change === 'frame') tab.tools = [{ ...GENERATED_TOOL, frameId: 'frame-2' }]
     if (change === 'revision') tab.tools = [{ ...GENERATED_TOOL, revision: PREVIOUS_REVISION }]
-    if (change === 'schema') tab.tools = [{ ...GENERATED_TOOL, inputSchema: { type: 'object', required: ['query'] } }]
+    if (change === 'schema') tab.tools = [{ ...GENERATED_TOOL, inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } }]
     if (change === 'removed') tab.tools = []
-    await expect(exec('browser_webmcp_call', { toolRef: old, input: {} })).rejects.toThrow('stale_tool_reference')
+    if (change === 'loading') tab.loading = true
+    await expect(old.execute({}, { agent, signal: new AbortController().signal })).rejects.toThrow('stale_webmcp_tool')
     expect(request.mock.calls.some(([c]) => c.action === 'webmcp.call')).toBe(false)
-    const current = await discover()
-    if (change === 'removed') expect(current.targets).toEqual([])
-    else {
-      const fresh = current.targets[0]!.tools[0]!.toolRef
-      expect(fresh).not.toBe(old)
-      if (change === 'document' || change === 'frame') expect(current.catalog.changed).toBe(false)
-      await exec('browser_webmcp_call', { toolRef: fresh, input: {} })
+    const refreshed = await discover()
+    expect(tools.has(oldName)).toBe(true) // Declaration retained for cache; execution still checked.
+    if (change === 'removed' || change === 'loading' || change === 'schema') {
+      await expect(old.execute({}, { agent, signal: new AbortController().signal })).rejects.toThrow('stale_webmcp_tool')
+    }
+    if (change !== 'removed' && change !== 'loading') {
+      const current = refreshed.targets[0]!.tools[0]!.callName
+      expect(current === oldName).toBe(change !== 'schema')
+      await exec(current, { query: 'one' })
     }
   })
 
-  it('does not resolve another session reference or a conflicting explicit identity', async () => {
+  it.each(['closed', 'off-site'] as const)('rejects a %s target before dispatch and withdraws its tools on refresh', async change => {
     await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
-    const toolRef = (await discover()).tools![0]!.toolRef
-    await expect(exec('browser_webmcp_call', { toolRef: 'w_other_session_1', input: {} })).rejects.toThrow('stale_tool_reference')
-    await expect(exec('browser_webmcp_call', { toolRef, revision: PREVIOUS_REVISION, input: {} })).rejects.toThrow('conflicting_tool_identity')
+    const name = directName()
+    if (change === 'closed') snapshot.tabs = []
+    else snapshot.tabs[0]!.origin = 'https://different.example'
+    await expect(exec(name)).rejects.toThrow('"execution":"not_dispatched"')
+    expect(request.mock.calls.some(([command]) => command.action === 'webmcp.call')).toBe(false)
+    await discover()
+    expect(directNames()).toEqual([name])
+    await expect(exec(name)).rejects.toThrow('not_dispatched')
+  })
+
+  it('rejects another agent and revokes captured definitions on disposal', async () => {
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    const definition = tools.get(directName())!
+    await expect(definition.execute({}, { agent: { ...agent }, signal: new AbortController().signal })).rejects.toThrow('no longer bound')
+    runtime.dispose()
+    expect(directNames()).toEqual([])
+    await expect(definition.execute({}, { agent, signal: new AbortController().signal })).rejects.toThrow('no longer bound')
     expect(request.mock.calls.some(([c]) => c.action === 'webmcp.call')).toBe(false)
   })
 
-  it('keeps same-name tools in different frames distinct and revokes references when switching tabs back', async () => {
+  it('keeps same-name tools in different frames distinct and revokes tools when switching tabs back', async () => {
     snapshot.tabs[0]!.tools.push({ ...GENERATED_TOOL, frameId: 'frame-2' })
     snapshot.tabs.push({ ...snapshot.tabs[0]!, id: 'tab-2' })
     await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
     const first = await discover()
-    expect(first.tools![0]!.toolRef).not.toBe(first.tools![1]!.toolRef)
-    await exec('browser_webmcp_call', { toolRef: first.tools![1]!.toolRef, input: {} })
+    const oldName = first.tools![0]!.callName, old = tools.get(oldName)!
+    expect(oldName).not.toBe(first.tools![1]!.callName)
+    await exec(first.tools![1]!.callName)
     expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ action: 'webmcp.call', frameId: 'frame-2' }), expect.any(AbortSignal))
     await exec('browser_select_tab', { tabId: 'tab-2' })
     await exec('browser_select_tab', { tabId: 'tab-1' })
     request.mockClear()
-    await expect(exec('browser_webmcp_call', { toolRef: first.tools![0]!.toolRef, input: {} })).rejects.toThrow('stale_tool_reference')
+    agentStatus = 'running'
+    await discover()
+    expect(tools.has(oldName)).toBe(true)
+    await expect(old.execute({}, { agent, signal: new AbortController().signal })).rejects.toThrow('stale_webmcp_tool')
     expect(request.mock.calls.some(([c]) => c.action === 'webmcp.call')).toBe(false)
+  })
+
+  it('passes identity-like business fields unchanged and honors cancellation before dispatch', async () => {
+    const fields = ['input', 'revision', 'frameId', 'documentId', 'toolRef']
+    snapshot.tabs[0]!.tools[0]!.inputSchema = { type: 'object', properties: Object.fromEntries(fields.map(name => [name, { type: 'string' }])) }
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    const args = Object.fromEntries(fields.map(name => [name, `business-${name}`]))
+    await exec(directName(), args)
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ action: 'webmcp.call', revision: REVISION, input: args }), expect.any(AbortSignal))
+    request.mockClear()
+    const controller = new AbortController()
+    controller.abort()
+    await expect(tools.get(directName())!.execute(args, { agent, signal: controller.signal })).rejects.toThrow()
+    expect(request).not.toHaveBeenCalled()
   })
 
   it('never replays a dispatched action whose outcome became unknown', async () => {
     await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
-    const toolRef = (await discover()).tools![0]!.toolRef
     let actions = 0
     call = async () => { actions++; throw new Error('Page route changed while the operation was running; its result is unknown.') }
-    await expect(exec('browser_webmcp_call', { toolRef, input: {} })).rejects.toThrow('"execution":"unknown"')
+    await expect(exec(directName())).rejects.toThrow('"execution":"unknown"')
     expect(actions).toBe(1)
     expect(request.mock.calls.filter(([c]) => c.action === 'webmcp.call')).toHaveLength(1)
+  })
+
+  it('refreshes the next model request after an external page change, reassembling only once', async () => {
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    const oldName = directName()
+    const onAssemble = listeners.get('system-prompt/assemble') as (assembly: unknown, value: { agent: BrowserAgent }, next: () => Promise<unknown>) => Promise<unknown>
+    // Match Harness: collect tools before entering its assembly waterfall.
+    context.systemPrompt.assemble = vi.fn(async ctx => {
+      const assembly = { tools: [...tools.values()].map(({ name, parameters }) => ({ name, parameters })) }
+      return onAssemble(assembly, ctx as { agent: BrowserAgent }, async () => assembly)
+    })
+    snapshot.tabs[0]!.documentId = 'document-2'
+    snapshot.tabs[0]!.tools = [{ ...GENERATED_TOOL, documentId: 'document-2', name: 'search', inputSchema: { type: 'object', properties: { query: { type: 'string' } } } }]
+    const assembled = await context.systemPrompt.assemble({ agent }) as { tools: Array<{ name: string; parameters: unknown }> }
+    expect(context.systemPrompt.assemble).toHaveBeenCalledTimes(2)
+    expect(assembled.tools.some(tool => tool.name === oldName)).toBe(true)
+    expect(assembled.tools.find(tool => tool.name.startsWith('webmcp__search__'))?.parameters).toEqual(snapshot.tabs[0]!.tools[0]!.inputSchema)
+    const stableName = directName()
+    await context.systemPrompt.assemble({ agent })
+    expect(context.systemPrompt.assemble).toHaveBeenCalledTimes(3)
+    expect(directName()).toBe(stableName)
+    snapshot.tabs = []
+    const closed = await context.systemPrompt.assemble({ agent }) as { tools: Array<{ name: string }> }
+    expect(closed.tools.some(tool => tool.name.startsWith('webmcp__'))).toBe(true)
+    await expect(exec(oldName)).rejects.toThrow('not_dispatched')
+  })
+
+  it('freezes each real model step while preserving schemas through discovery, loading and navigation', async () => {
+    await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
+    agentStatus = 'running'
+    const signal = new AbortController().signal
+    const assemble = listeners.get('system-prompt/assemble') as (assembly: unknown, value: { agent: BrowserAgent; signal: AbortSignal }, next: () => Promise<unknown>) => Promise<unknown>
+    const preStep = listeners.get('agent/pre-step') as (value: { agent: BrowserAgent; signal: AbortSignal }, next: () => Promise<unknown>) => Promise<unknown>
+    const modelStep = async () => {
+      await assemble({}, { agent, signal }, async () => ({}))
+      await preStep({ agent, signal }, async () => ({ kind: 'enter' }))
+    }
+    const schemas = () => [...tools.values()].map(({ name, description, parameters }) => ({ name, description, parameters }))
+    await modelStep()
+    const original = schemas(), name = directName()
+    await exec(name)
+    const tab = snapshot.tabs[0]!
+    tab.documentId = 'document-2'; tab.tools = [{ ...GENERATED_TOOL, documentId: 'document-2', frameId: 'frame-new' }]
+    await discover() // Observing the new page must not authorize the old model reply.
+    expect(schemas()).toEqual(original)
+    request.mockClear()
+    await expect(exec(name)).rejects.toThrow('not_dispatched')
+    expect(request.mock.calls.some(([c]) => c.action === 'webmcp.call')).toBe(false)
+    await modelStep()
+    await exec(name)
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ documentId: 'document-2', frameId: 'frame-new' }), expect.any(AbortSignal))
+    // A separate prompt preview can observe another document, but cannot commit it.
+    tab.documentId = 'document-3'; tab.tools = [{ ...tab.tools[0]!, documentId: 'document-3' }]
+    await assemble({}, { agent, signal: new AbortController().signal }, async () => ({}))
+    await expect(exec(name)).rejects.toThrow('not_dispatched')
+    tab.loading = true
+    await modelStep()
+    expect(schemas()).toEqual(original)
+    await expect(exec(name)).rejects.toThrow('not_dispatched')
+    tab.loading = false
+    await discover()
+    await expect(exec(name)).rejects.toThrow('not_dispatched')
+    await modelStep()
+    await exec(name)
+    expect(schemas()).toEqual(original)
   })
 
   it('exposes schemas once, keeps fresh targets after navigation, and reads source only on demand', async () => {
@@ -264,8 +362,7 @@ describe('BrowserRuntime', () => {
     const second = await exec('browser_context')
     expect(second).not.toHaveProperty('tools')
     expect(second).toMatchObject({ catalog: { changed: false }, targets: [{ documentId: 'document-2', frameId: 'frame-2', revision: REVISION }] })
-    await expect(exec('browser_webmcp_call', { ...GENERATED_TOOL, input: {} })).rejects.toThrow('page changed')
-    expect(await exec('browser_webmcp_call', { ...snapshot.tabs[0]!.tools[0], input: {} })).toEqual({ articles: [{ title: 'Actual result' }] })
+    expect(await exec(directName())).toEqual({ articles: [{ title: 'Actual result' }] })
     expect(await exec('webmcp_read_source')).toMatchObject(working)
     expect(await exec('browser_list_tools', { names: [GENERATED_TOOL.name, 'missing'] })).toMatchObject({ tools: snapshot.tabs[0]!.tools, missing: ['missing'] })
     expect(await exec('browser_list_tools')).toMatchObject({ tools: snapshot.tabs[0]!.tools })
@@ -300,7 +397,7 @@ describe('BrowserRuntime', () => {
     snapshot.tabs[0]!.tools.push({ ...GENERATED_TOOL, frameId: 'child-frame' })
     await runtime.bind(site.id, agent.session.id, 'tab-1', 'use')
     const first = await exec('browser_context')
-    expect(first).toMatchObject({ tools: snapshot.tabs[0]!.tools, targets: [{ frameId: 'frame-1' }, { frameId: 'child-frame' }] })
+    expect(first).toMatchObject({ tools: expect.arrayContaining(snapshot.tabs[0]!.tools.map(tool => expect.objectContaining(tool))), targets: expect.arrayContaining([expect.objectContaining({ frameId: 'frame-1' }), expect.objectContaining({ frameId: 'child-frame' })]) })
     expect(JSON.stringify(first)).not.toContain('deepdeck_other')
     expect(JSON.stringify(first)).not.toContain('unrelated')
     for (const [name, args] of [['browser_open_tab', { url: '/next' }], ['browser_close_tab', { tabId: 'tab-2' }]] as const) {
@@ -478,7 +575,7 @@ describe('BrowserRuntime', () => {
     expect(sites.get(site.id).mode).toBe('builder')
     await exec('browser_set_mode', { mode: 'use' })
     expect(tools.has('webmcp_apply')).toBe(false)
-    expect(tools.has('browser_webmcp_call')).toBe(true)
+    expect(directNames()).toHaveLength(1)
     expect(tools.get('mcp__chrome_devtools__call_tool')).toBe(devtools)
     expect(tools.has('mcp__chrome_devtools__list_tools')).toBe(true)
     expect([...skills]).toEqual([expect.objectContaining({ name: 'deepdeck-webmcp-github' })])
@@ -643,7 +740,8 @@ describe('BrowserRuntime', () => {
     await expect(exec('webmcp_apply')).rejects.toThrow('target tab is closed')
     expect(request.mock.calls.some(([command]) => command.action === 'page.evaluate' || command.action === 'webmcp.install')).toBe(false)
     await exec('browser_select_tab', { tabId: 'tab-1' })
-    expect(await exec('browser_webmcp_call', { name: GENERATED_TOOL.name, frameId: 'frame-1', documentId: 'document-1', revision: REVISION, input: {} })).toEqual({ articles: [{ title: 'Actual result' }] })
+    await discover()
+    expect(await exec(directName())).toEqual({ articles: [{ title: 'Actual result' }] })
     expect(agent.session.events).toHaveLength(0)
   })
 
@@ -674,7 +772,7 @@ describe('BrowserRuntime', () => {
     let complete!: (value: unknown) => void
     call = () => new Promise(resolve => { complete = resolve })
     const completed = vi.fn()
-    const result = exec('browser_webmcp_call', { name: GENERATED_TOOL.name, frameId: 'frame-1', documentId: 'document-1', revision: REVISION, input: {} }).then(value => { completed(); return value })
+    const result = exec(directName()).then(value => { completed(); return value })
     await vi.waitFor(() => expect(request.mock.calls.some(([command]) => command.action === 'webmcp.call')).toBe(true))
     expect(completed).not.toHaveBeenCalled()
     complete({ articles: [{ title: 'Actual result' }] })
@@ -682,7 +780,7 @@ describe('BrowserRuntime', () => {
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ action: 'webmcp.call', tabId: 'tab-1', documentId: 'document-1', revision: REVISION }), expect.any(AbortSignal))
     const dispatched = request.mock.calls.filter(([command]) => command.action === 'webmcp.call').length
     snapshot.tabs[0]!.documentId = 'document-2'
-    await expect(exec('browser_webmcp_call', { name: GENERATED_TOOL.name, frameId: 'frame-1', documentId: 'document-1', input: {} })).rejects.toThrow('page changed')
+    await expect(exec(directName())).rejects.toThrow('stale_webmcp_tool')
     expect(request.mock.calls.filter(([command]) => command.action === 'webmcp.call')).toHaveLength(dispatched)
   })
 
