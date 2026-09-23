@@ -1,0 +1,126 @@
+{
+  "examples": [
+    {
+      "model": "mimo",
+      "taskId": "react-auth-boundary",
+      "groups": {
+        "shortRef": {
+          "meanSteps": 26.666666666666668,
+          "meanCostUSD": 0.009899911466666668,
+          "meanUsage": {
+            "input_tokens": 43064.666666666664,
+            "output_tokens": 6441.666666666667,
+            "cached_input_tokens": 738282.6666666666,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.9448840933737536
+        },
+        "direct": {
+          "meanSteps": 11.333333333333334,
+          "meanCostUSD": 0.009952299466666668,
+          "meanUsage": {
+            "input_tokens": 63961,
+            "output_tokens": 2016.3333333333333,
+            "cached_input_tokens": 154709.33333333334,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.7075003315493186
+        }
+      }
+    },
+    {
+      "model": "mimo",
+      "taskId": "lh-7",
+      "groups": {
+        "shortRef": {
+          "meanSteps": 9.666666666666666,
+          "meanCostUSD": 0.0041612592000000006,
+          "meanUsage": {
+            "input_tokens": 23978.666666666668,
+            "output_tokens": 925,
+            "cached_input_tokens": 194730.66666666666,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.8903628560280921
+        },
+        "direct": {
+          "meanSteps": 7.666666666666667,
+          "meanCostUSD": 0.006417053066666668,
+          "meanUsage": {
+            "input_tokens": 42478.333333333336,
+            "output_tokens": 846.6666666666666,
+            "cached_input_tokens": 83221.33333333333,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.662064868907104
+        }
+      }
+    },
+    {
+      "model": "luna",
+      "taskId": "directory-filter",
+      "groups": {
+        "shortRef": {
+          "meanSteps": 4,
+          "meanCostUSD": 0.003382706666666667,
+          "meanUsage": {
+            "input_tokens": 12408.333333333334,
+            "output_tokens": 230.33333333333334,
+            "cached_input_tokens": 31232,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.7156682274043125
+        },
+        "direct": {
+          "meanSteps": 5,
+          "meanCostUSD": 0.0066589200000000005,
+          "meanUsage": {
+            "input_tokens": 29075.666666666668,
+            "output_tokens": 236.66666666666666,
+            "cached_input_tokens": 27989.333333333332,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.4904816145331347
+        }
+      }
+    },
+    {
+      "model": "mimo",
+      "taskId": "ea-5",
+      "groups": {
+        "shortRef": {
+          "meanSteps": 3.6666666666666665,
+          "meanCostUSD": 0.002766945066666667,
+          "meanUsage": {
+            "input_tokens": 18160.666666666668,
+            "output_tokens": 267,
+            "cached_input_tokens": 53461.333333333336,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.7464373144192195
+        },
+        "direct": {
+          "meanSteps": 2,
+          "meanCostUSD": 0.0016084338666666669,
+          "meanUsage": {
+            "input_tokens": 10911,
+            "output_tokens": 102.66666666666667,
+            "cached_input_tokens": 18624,
+            "cache_creation_tokens": 0
+          },
+          "cacheHit": 0.6305738953783646
+        }
+      }
+    }
+  ],
+  "breakEven": {
+    "mimo": {
+      "breakEvenCacheHit": 0.7068870268710084,
+      "assumption": "Hold direct-run total input/output, rates and task outcomes fixed; theoretical arithmetic threshold, not measured optimized result."
+    },
+    "luna": {
+      "breakEvenCacheHit": 0.6268544315829446,
+      "assumption": "Hold direct-run total input/output, rates and task outcomes fixed; theoretical arithmetic threshold, not measured optimized result."
+    }
+  }
+}
