@@ -1985,3 +1985,11 @@ main {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Keep the blog reachable when the main navigation collapses on mobile. */
+.mobile-blog-link { display: none; }
+@media (max-width: 900px) {
+  .nav-shell { grid-template-columns: 1fr auto; }
+  .nav-links { display: none; }
+  .mobile-blog-link { display: inline-flex; align-items: center; min-height: 34px; padding: 0 6px; font-size: 12px; }
+}

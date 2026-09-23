@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#dce3d5" stroke-width="1"/></pattern></defs>
+  <rect width="1200" height="630" fill="#edf1e5"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#263c30">
+    <text x="65" y="73" font-size="18" letter-spacing="3">DEEPDECK / ENGINEERING NOTES</text>
+    <text x="62" y="178" font-size="66" font-weight="bold" letter-spacing="-2">Same model.</text>
+    <text x="62" y="253" font-size="66" font-weight="bold" letter-spacing="-2">A better tool interface.</text>
+    <g transform="translate(65 328)">
+      <rect width="244" height="124" rx="8" fill="#fcfbf8" stroke="#b6c7b2"/>
+      <text x="24" y="35" font-size="14" fill="#63755f">01 / MEASURE</text><text x="24" y="81" font-size="25">Benchmark</text>
+      <path d="M258 62h20m-7-6 7 6-7 6" fill="none" stroke="#55794f" stroke-width="2"/>
+      <rect x="292" width="244" height="124" rx="8" fill="#fcfbf8" stroke="#b6c7b2"/>
+      <text x="316" y="35" font-size="14" fill="#63755f">02 / UNDERSTAND</text><text x="316" y="81" font-size="25">Read the traces</text>
+      <path d="M550 62h20m-7-6 7 6-7 6" fill="none" stroke="#55794f" stroke-width="2"/>
+      <rect x="584" width="244" height="124" rx="8" fill="#244b34"/>
+      <text x="608" y="35" font-size="14" fill="#b9d1b9">03 / CHANGE</text><text x="608" y="81" font-size="25" fill="#fcfbf8">Simplify the call</text>
+      <path d="M843 62h20m-7-6 7 6-7 6" fill="none" stroke="#55794f" stroke-width="2"/>
+      <circle cx="956" cy="62" r="60" fill="#d7e4c9" stroke="#a7be9f"/>
+      <text x="956" y="69" text-anchor="middle" font-size="23">Retest</text>
+      <path d="M956 130v35H122v-26m-6 7 6-7 6 7" fill="none" stroke="#839c7b" stroke-width="2" stroke-dasharray="5 5"/>
+    </g>
+    <text x="65" y="577" font-size="16" fill="#63755f">A real iteration. Including the regressions.</text>
+    <text x="1135" y="577" text-anchor="end" font-size="16" fill="#63755f">2026.09</text>
+  </g>
+</svg>
