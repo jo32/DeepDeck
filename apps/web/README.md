@@ -124,3 +124,26 @@ web check detects stale output. Add a public label when adding a task or site;
 raw prompts, test credentials and expected answers are not published. Calibration
 tasks, the template and excluded tasks are counted separately from active tasks.
 Corpus coverage is not presented as successful end-to-end evaluation coverage.
+
+## Luna and MiMo results (September 23)
+
+The shared model comparison now reads `public/research/benchmarks/models-full-2026-09-23.json`.
+Regenerate it with `node scripts/publish-luna-mimo-benchmark.mjs` when the local
+Luna and MiMo comparison reports in `docs/benchmarks/` and the raw Luna report
+(`.deepdeck/benchmarks/luna-full-20260922/report.json`) are available. The latter
+verifies that individual requests do not cross the long-context pricing threshold. The export
+whitelists numeric metrics, public labels and audit categories; it excludes raw
+answers, transcripts, credentials and local session paths. The original three-model
+file remains unchanged.
+
+The five-model overview uses 43 common eligible tasks; the separate Luna/MiMo
+comparison uses 45. Per-model site charts exclude known incomplete or unverified
+steps and incomplete usage. Raw scorer passes remain unchanged.
+Rates verified September 23: Luna uses official Standard USD API-equivalent rates
+(input/cache-read/cache-write/output: 0.20/0.02/0.25/1.20 per million tokens),
+not the ChatGPT subscription bill. MiMo uses official overseas USD real-time API-equivalent rates
+(input/cache-read/output: 0.14/0.0028/0.28 per million tokens), before credits or discounts. This is not an FX conversion of the domestic bill.
+Official source URLs and currencies accompany the data and UI. Two MiMo OFF usage
+records remain null in total-token and full-cost fields; recorded cost subtotals
+are shown as lower bounds. Cache reads are excluded from uncached input, and
+reasoning is already included in output.

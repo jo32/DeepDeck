@@ -6,3 +6,5 @@
 .costDetails{margin-top:8px;font-size:10px;white-space:normal;min-width:170px}.costDetails summary{cursor:pointer;color:var(--green);padding:4px 0}.costDetails dl{margin:8px 0}.costDetails dl>div{padding:7px 0;border-top:1px solid var(--line)}.costDetails dt{color:var(--muted)}.costDetails dd{margin:4px 0 0;line-height:1.7}.costDetails p{line-height:1.6}.crossTable td>a{display:block;white-space:normal;font-size:10px;color:var(--green)}
 
 .taskToolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.costToggle{border:1px solid var(--line);border-radius:5px;background:var(--paper);color:var(--green);font:inherit;font-size:12px;padding:10px 14px;cursor:pointer}.costToggle:focus-visible{outline:2px solid var(--green);outline-offset:3px}.taskScroll td,.taskScroll tbody th{vertical-align:top}
+
+.auditNote{display:block;white-space:normal;max-width:210px;font-size:10px;line-height:1.6;margin-top:6px;color:#8a5428}
