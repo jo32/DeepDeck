@@ -37,7 +37,7 @@ export class BrowserDevToolsSession {
       tools: available.filter(tool => !names || names.includes(tool.name)),
       ...(names ? { missing: names.filter(name => !available.some(tool => tool.name === name)) } : {}),
       tabControls: 'Use browser_open_tab and browser_close_tab for native Browser tabs; browser_select_tab binds another same-site tab.',
-      webmcp: 'Use browser_context and browser_webmcp_call for WebMCP discovery and execution with explicit frame, document and revision identities.' }
+      webmcp: 'Use browser_context to discover WebMCP toolRef handles, then browser_webmcp_call with toolRef and input. The host binds frame, document and revision identities; catalog digest is not a tool revision.' }
   }
   async call(target: BrowserTarget, workspace: string, name: string, args: Record<string, unknown>, signal: AbortSignal) {
     if (BROWSER_MANAGED.has(name)) throw new Error('Use browser_context/browser_webmcp_call for WebMCP, and browser_open_tab/browser_close_tab for tabs.')
