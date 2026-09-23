@@ -83,7 +83,18 @@ Browser discovers actual registered WebMCP tools through Chromium's WebMCP domai
 and observes additions/removals. API presence alone is not site support. Existing
 site tools and generated WebMCP appear together with source and version details.
 The Agent calls `browser_context` to inspect this directory, then
-`browser_webmcp_call` to invoke a tool and wait for its real result.
+`browser_webmcp_call` with `{ toolRef, input }` to invoke a tool and wait for its
+real result. Discovery returns session-local `toolRef` handles on full tool
+definitions and in `targets[].tools`. The Host retains each handle's exact
+tab/frame/document/version identity; the model does not transcribe those IDs.
+Handles expire when the observed tool/schema/document changes, the bound tab
+switches, or the Agent reattaches. They never redirect an old action to a new page.
+Legacy explicit identity arguments remain supported with strict validation:
+catalog `digest` is a schema cache key, **not** a tool `revision`; omit `revision`
+for native site tools that do not declare one. Pre-dispatch identity errors
+include a specific code, `execution: not_dispatched`, and recovery instructions.
+Failures after native dispatch conservatively report `execution: unknown` and
+require inspection before continuing; the Host never automatically replays them.
 Context returns full schemas on first discovery or a catalog change. Later reads
 return compact tab metadata and fresh grouped targets (tool names with current
 frame/document/revision identities). `browser_list_tools` rereads all schemas or
@@ -286,6 +297,7 @@ pnpm --filter @deepdeck/dsh-browser check
 pnpm --filter @deepdeck/dsh-browser test
 node apps/desktop/scripts/verify-browser-native.mjs
 node apps/desktop/scripts/verify-browser-devtools.mjs
+node apps/desktop/scripts/verify-browser-webmcp-references.mjs
 node apps/desktop/scripts/verify-browser-composer.mjs
 node apps/desktop/scripts/verify-browser-links.mjs
 pnpm check
