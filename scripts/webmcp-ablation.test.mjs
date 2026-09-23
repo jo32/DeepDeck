@@ -54,3 +54,19 @@ test('validates query/URL/budgets and optional oracle', () => {
   assert.equal(scoreAblationAnswer('wrong', 'Aurora').pass, false);
   assert.equal(scoreAblationAnswer('anything').pass, null);
 });
+
+test('counts both historical WebMCP dispatch and directly registered tools in diagnostics', async t => {
+  const { options } = await fixture(t);
+  const out = await runWebsiteAblation({ ...options, n: '1' }, { runAttempt: async args => {
+    const value = result(args);
+    if (!args.inspect && args.webmcp === 'on') value.transcript = [
+      { type: 'tool/call', data: { name: 'browser_webmcp_call' } },
+      { type: 'tool/call', data: { name: 'webmcp__query_order__binding_1' } },
+      { type: 'tool/call', data: { name: 'webmcp_read_source' } },
+      { type: 'tool/call', data: { name: 'browser_context' } },
+    ];
+    return value;
+  } });
+  assert.equal(out.report.rows.find(row => row.arm === 'on').diagnostics.webmcpCalls, 2);
+  assert.equal(out.report.rows.find(row => row.arm === 'off').diagnostics.webmcpCalls, 0);
+});

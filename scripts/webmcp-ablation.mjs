@@ -31,7 +31,7 @@ export function scoreAblationAnswer(answer, expected) {
 export function toolDiagnostics(result) {
   const events = result?.transcript ?? [];
   return {
-    webmcpCalls: events.filter(event => event.type === 'tool/call' && event.data.name === 'browser_webmcp_call').length,
+    webmcpCalls: events.filter(event => event.type === 'tool/call' && (event.data.name === 'browser_webmcp_call' || event.data.name?.startsWith('webmcp__'))).length,
     toolErrors: events.filter(event => event.type === 'tool/result' && event.data.message?.content?.some(part => part.isError)).length,
   };
 }

@@ -60,7 +60,7 @@ try {
     assert.equal(catalog.version, '1.8.0');
     assert(catalog.tools.some(tool => tool.name === 'get_network_request'));
     assert(!catalog.tools.some(tool => ['list_webmcp_tools', 'execute_webmcp_tool'].includes(tool.name)));
-    assert.match(catalog.webmcp, /browser_webmcp_call/);
+    assert.match(catalog.webmcp, /registered webmcp__ tools/);
     assert(!JSON.stringify(catalog).includes('wsEndpoint'));
     const pages = text(await mcp('list_pages'));
     assert.match(pages, /DevTools integration/); assert(!pages.includes('Trusted Harness'));
@@ -106,7 +106,7 @@ try {
       const context = await invoke('browser_list_tools', { names: [`deepdeck_${name}`] });
       const tool = context.tools.find(tool => tool.name === `deepdeck_${name}`);
       assert(tool, `Discovered ${name}`);
-      return invoke('browser_webmcp_call', { name: tool.name, frameId: tool.frameId, documentId: tool.documentId, revision: tool.revision, input });
+      return invoke(tool.callName, input);
     };
     const draft = await pageTool('read_reply_draft');
     assert.equal(draft.text, '原有草稿');
@@ -174,13 +174,13 @@ try {
     const available = JSON.stringify(await invoke('browser_context'));
     assert.match(available, /site_title/); assert.match(available, /deepdeck_articles/);
     const originalTool = (await invoke('browser_list_tools', { names: ['deepdeck_articles'] })).tools.find(tool => tool.name === 'deepdeck_articles');
-    const callTool = tool => invoke('browser_webmcp_call', { name: tool.name, frameId: tool.frameId, documentId: tool.documentId, revision: tool.revision, input: {} });
+    const callTool = tool => invoke(tool.callName, {});
     assert.deepEqual(await callTool(originalTool), { articles: ['one', 'two', 'three'] });
     // A same-name replacement must never execute through a stale name-only path.
     await writeSource({ source: `__deepdeckWebMCP.registerTool({name:'articles',description:'Replacement',inputSchema:{type:'object'},execute:()=>({version:'replacement'})})` });
     await invoke('webmcp_apply');
     await assert.rejects(callTool(originalTool), /stale/);
-    await assert.rejects(mcp('execute_webmcp_tool', { pageId, toolName: 'deepdeck_articles' }), /browser_webmcp_call/);
+    await assert.rejects(mcp('execute_webmcp_tool', { pageId, toolName: 'deepdeck_articles' }), /registered webmcp__ tools/);
     await runtime.activate(site, originalTool.revision);
 
     // Fault injection: delay registration completion after the actual tool is
@@ -213,7 +213,7 @@ try {
       return (await invoke('browser_list_tools', { names: ['deepdeck_articles'] })).tools.find(tool => tool.name === 'deepdeck_articles');
     }, 'saved WebMCP after DevTools navigation');
     const generated = refreshed;
-    assert.deepEqual(await invoke('browser_webmcp_call', { name: generated.name, frameId: generated.frameId, documentId: generated.documentId, revision: generated.revision, input: {} }), { articles: ['one', 'two', 'three'] });
+    assert.deepEqual(await invoke(generated.callName, {}), { articles: ['one', 'two', 'three'] });
     await mcp('performance_start_trace', { pageId, reload: false, autoStop: false });
     await mcp('performance_stop_trace', { pageId });
     await invoke('browser_set_mode', { mode: 'use' });

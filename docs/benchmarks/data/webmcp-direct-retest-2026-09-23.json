@@ -1,0 +1,3097 @@
+{
+  "manifest": {
+    "taskIds": [
+      "react-auth-boundary",
+      "directory-filter",
+      "ea-5",
+      "lh-7",
+      "hev-1",
+      "hev-9"
+    ],
+    "n": 3,
+    "webmcp": "on",
+    "purpose": "Historical comparison of direct scoped WebMCP tools against short references and legacy identity calls; all attempts retained.",
+    "sourceHashes": {
+      "plugins/browser/src/runtime.ts": "95913e5246a0ce4b84e07fa31534b43b948b6e3ef187c207b3dfa2584b2a7367",
+      "plugins/browser/src/webmcp-bindings.ts": "bf2f7af24efba256dea7d886bb714f54b558442a59f959f1f06e3eb432ec34cc",
+      "plugins/browser/src/devtools-session.ts": "a3c83304015e0c65ba392ec27ed0d7fcfc206b34e87847faccbf1f9283d0e92a",
+      "plugins/browser/src/builder-skill.ts": "3d3e18f3cde4a25bc808be9b29d8527ea608db8b9f369c6b88d40b25c743500e",
+      "plugins/browser/lib/index.js": "d4b67fce08faf12f211e93e72f6a9a2382c24932a479f1c24b6051adeb0a9fdd",
+      "apps/desktop/dist/main/index.js": "c259238b6d7024d06c33f7e73b0781a1b2ccd892018c83d82565f4faf7126bba"
+    },
+    "baseCommit": "9f8e152bddc4eeb01247f09bd4e9a2b2df53693b",
+    "branch": "codex/webmcp-direct-tools",
+    "pricing": "Frozen historical USD rates, actual uncached/cached/write/output usage; Luna is API-equivalent estimate.",
+    "comparison": "Same six tasks, n=3 new vs n=3 reference implementation and n=1 original. Not concurrent randomized A/B. New callable schemas/name sets intentionally differ.",
+    "evaluator": "Proactively refresh expired Hi.Events private evaluator auth, same fixture and predicates.",
+    "noSelectiveExclusion": "Model/tool/task failures remain in formal results. Any infrastructure replacement must retain raw results and document entire affected group.",
+    "historicalToolSetDifference": {
+      "removed": [
+        "jev_browser_run",
+        "jev_evaluate"
+      ],
+      "callsInSelectedOriginalAndShortRefAttempts": 0,
+      "reason": "Current main excludes unrelated Jev work; historic benchmark headers included these tools. No runtime changed during this experiment. Schema/prompt size and behavior may differ despite zero historical Jev calls."
+    }
+  },
+  "note": "Six selected error-heavy tasks; original n=1, short references n=3, direct tools n=3. Historical comparison, not randomized concurrent A/B. All direct attempts retained. Errors = isError envelopes. Rates frozen from the prior published report; actual separate uncached/cached/write/output usage. Luna cost is API equivalent.",
+  "models": {
+    "mimo": {
+      "pricing": {
+        "status": "estimated",
+        "currency": "USD",
+        "rates": {
+          "input": 0.14,
+          "cached": 0.0028,
+          "write": null,
+          "output": 0.28
+        },
+        "source": "https://mimo.mi.com/models/zh-CN/mimo-v2.6-flash",
+        "label": "Xiaomi MiMo V2.6 Flash",
+        "checkedAt": "2026-09-23",
+        "basis": "Official overseas USD real-time API-equivalent tariff, not a currency conversion or domestic bill"
+      },
+      "complete": true,
+      "runErrors": [],
+      "attempts": {
+        "original": [
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 237.88410791700002,
+            "steps": 25,
+            "toolCalls": 29,
+            "webmcpCalls": 9,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 8,
+            "allToolErrors": 8,
+            "errors": {
+              "Error: The page changed. Rediscover its tools before calling.": 2,
+              "Error: Missing frameId.": 1,
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 3,
+              "Error: Page route changed while the operation was running; its result is unknown.": 2
+            },
+            "usage": {
+              "input_tokens": 34075,
+              "output_tokens": 5907,
+              "cached_input_tokens": 649344,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9501403970331525,
+            "costUSD": 0.0082426232,
+            "recordedSubtotalUSD": 0.0082426232,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 119.107322834,
+            "steps": 19,
+            "toolCalls": 26,
+            "webmcpCalls": 9,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 6,
+            "allToolErrors": 6,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 5,
+              "Error: The page changed. Rediscover its tools before calling.": 1
+            },
+            "usage": {
+              "input_tokens": 32353,
+              "output_tokens": 4911,
+              "cached_input_tokens": 478976,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9367276254622757,
+            "costUSD": 0.0072456328,
+            "recordedSubtotalUSD": 0.0072456328,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 150.46218216600002,
+            "steps": 18,
+            "toolCalls": 19,
+            "webmcpCalls": 6,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 6,
+            "allToolErrors": 7,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 6
+            },
+            "usage": {
+              "input_tokens": 27249,
+              "output_tokens": 3776,
+              "cached_input_tokens": 371584,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9316781710640795,
+            "costUSD": 0.005912575200000001,
+            "recordedSubtotalUSD": 0.005912575200000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 63.28082675000001,
+            "steps": 16,
+            "toolCalls": 16,
+            "webmcpCalls": 8,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 4,
+            "allToolErrors": 4,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 2,
+              "Error: The page changed. Rediscover its tools before calling.": 2
+            },
+            "usage": {
+              "input_tokens": 27463,
+              "output_tokens": 2196,
+              "cached_input_tokens": 347392,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9267370049752571,
+            "costUSD": 0.0054323976000000005,
+            "recordedSubtotalUSD": 0.0054323976000000005,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 41.772297542000004,
+            "steps": 11,
+            "toolCalls": 11,
+            "webmcpCalls": 5,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 4,
+            "allToolErrors": 4,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 4
+            },
+            "usage": {
+              "input_tokens": 17737,
+              "output_tokens": 1374,
+              "cached_input_tokens": 184320,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9122178395205314,
+            "costUSD": 0.0033839960000000002,
+            "recordedSubtotalUSD": 0.0033839960000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 589.6569016249999,
+            "steps": 19,
+            "toolCalls": 20,
+            "webmcpCalls": 3,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 2,
+            "allToolErrors": 2,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 2
+            },
+            "usage": {
+              "input_tokens": 94585,
+              "output_tokens": 37776,
+              "cached_input_tokens": 862976,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9012230030253947,
+            "costUSD": 0.026235512800000003,
+            "recordedSubtotalUSD": 0.026235512800000003,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          }
+        ],
+        "shortRef": [
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 153.45045975,
+            "steps": 25,
+            "toolCalls": 33,
+            "webmcpCalls": 3,
+            "toolRefCalls": 3,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 3,
+            "allToolErrors": 5,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1,
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 2
+            },
+            "usage": {
+              "input_tokens": 40830,
+              "output_tokens": 4407,
+              "cached_input_tokens": 720896,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9463980486421627,
+            "costUSD": 0.008968668800000001,
+            "recordedSubtotalUSD": 0.008968668800000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 301.585511833,
+            "steps": 32,
+            "toolCalls": 41,
+            "webmcpCalls": 3,
+            "toolRefCalls": 3,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 3,
+            "allToolErrors": 5,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1,
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 2
+            },
+            "usage": {
+              "input_tokens": 48715,
+              "output_tokens": 8957,
+              "cached_input_tokens": 854208,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9460474481212684,
+            "costUSD": 0.0117198424,
+            "recordedSubtotalUSD": 0.0117198424,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 154.560761417,
+            "steps": 23,
+            "toolCalls": 41,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 2,
+            "allToolErrors": 4,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1,
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 39649,
+              "output_tokens": 5961,
+              "cached_input_tokens": 639744,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9416405526698096,
+            "costUSD": 0.009011223200000001,
+            "recordedSubtotalUSD": 0.009011223200000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 25.547596917000003,
+            "steps": 7,
+            "toolCalls": 6,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 18092,
+              "output_tokens": 555,
+              "cached_input_tokens": 104704,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8526662106257533,
+            "costUSD": 0.0029814512,
+            "recordedSubtotalUSD": 0.0029814512,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 35.951277583,
+            "steps": 8,
+            "toolCalls": 8,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 1,
+            "errors": {},
+            "usage": {
+              "input_tokens": 21864,
+              "output_tokens": 974,
+              "cached_input_tokens": 148480,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8716479594232847,
+            "costUSD": 0.0037494240000000003,
+            "recordedSubtotalUSD": 0.0037494240000000003,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 33.447876416999996,
+            "steps": 8,
+            "toolCalls": 8,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 1,
+            "errors": {},
+            "usage": {
+              "input_tokens": 18895,
+              "output_tokens": 705,
+              "cached_input_tokens": 142208,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8827147849512423,
+            "costUSD": 0.0032408824,
+            "recordedSubtotalUSD": 0.0032408824,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 11.190571041000002,
+            "steps": 3,
+            "toolCalls": 3,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 17790,
+              "output_tokens": 176,
+              "cached_input_tokens": 38976,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.6866081809533876,
+            "costUSD": 0.0026490128000000003,
+            "recordedSubtotalUSD": 0.0026490128000000003,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 18.295905833000003,
+            "steps": 4,
+            "toolCalls": 4,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 18401,
+              "output_tokens": 387,
+              "cached_input_tokens": 60672,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7672909842803486,
+            "costUSD": 0.0028543816000000002,
+            "recordedSubtotalUSD": 0.0028543816000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 12.528988958000001,
+            "steps": 4,
+            "toolCalls": 4,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 18291,
+              "output_tokens": 238,
+              "cached_input_tokens": 60736,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7685474584635631,
+            "costUSD": 0.0027974408000000003,
+            "recordedSubtotalUSD": 0.0027974408000000003,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 44.768053292,
+            "steps": 10,
+            "toolCalls": 12,
+            "webmcpCalls": 5,
+            "toolRefCalls": 5,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 24922,
+              "output_tokens": 1017,
+              "cached_input_tokens": 208000,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8930028078069053,
+            "costUSD": 0.00435624,
+            "recordedSubtotalUSD": 0.00435624,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 42.657918375,
+            "steps": 10,
+            "toolCalls": 11,
+            "webmcpCalls": 6,
+            "toolRefCalls": 6,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 22749,
+              "output_tokens": 873,
+              "cached_input_tokens": 199936,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8978422435278532,
+            "costUSD": 0.0039891208,
+            "recordedSubtotalUSD": 0.0039891208,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 33.873116249999995,
+            "steps": 9,
+            "toolCalls": 9,
+            "webmcpCalls": 4,
+            "toolRefCalls": 4,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 24265,
+              "output_tokens": 885,
+              "cached_input_tokens": 176256,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8789902304496786,
+            "costUSD": 0.004138416800000001,
+            "recordedSubtotalUSD": 0.004138416800000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 11.572053250000002,
+            "steps": 3,
+            "toolCalls": 4,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 14129,
+              "output_tokens": 305,
+              "cached_input_tokens": 35072,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7128310400195118,
+            "costUSD": 0.0021616616000000003,
+            "recordedSubtotalUSD": 0.0021616616000000003,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 19.514056917,
+            "steps": 3,
+            "toolCalls": 4,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12526,
+              "output_tokens": 356,
+              "cached_input_tokens": 33536,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7280621770656941,
+            "costUSD": 0.0019472208000000002,
+            "recordedSubtotalUSD": 0.0019472208000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 15.33401375,
+            "steps": 3,
+            "toolCalls": 4,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12440,
+              "output_tokens": 352,
+              "cached_input_tokens": 33408,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7286686442156691,
+            "costUSD": 0.0019337024,
+            "recordedSubtotalUSD": 0.0019337024,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 40.764033209000004,
+            "steps": 9,
+            "toolCalls": 10,
+            "webmcpCalls": 4,
+            "toolRefCalls": 4,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 22456,
+              "output_tokens": 916,
+              "cached_input_tokens": 175616,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8866270851003676,
+            "costUSD": 0.0038920448,
+            "recordedSubtotalUSD": 0.0038920448,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 44.661431167,
+            "steps": 11,
+            "toolCalls": 12,
+            "webmcpCalls": 4,
+            "toolRefCalls": 4,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 24838,
+              "output_tokens": 1422,
+              "cached_input_tokens": 228992,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.9021471063310089,
+            "costUSD": 0.0045166576000000005,
+            "recordedSubtotalUSD": 0.0045166576000000005,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 35.808176374999995,
+            "steps": 9,
+            "toolCalls": 9,
+            "webmcpCalls": 4,
+            "toolRefCalls": 4,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 23190,
+              "output_tokens": 1237,
+              "cached_input_tokens": 176064,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8836158872594778,
+            "costUSD": 0.0040859392,
+            "recordedSubtotalUSD": 0.0040859392,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          }
+        ],
+        "direct": [
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 87.02271829200001,
+            "steps": 12,
+            "toolCalls": 12,
+            "contextCalls": 2,
+            "webmcpCalls": 2,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 52150,
+              "output_tokens": 2145,
+              "cached_input_tokens": 147712,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.008315193600000001,
+            "recordedSubtotalUSD": 0.008315193600000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 71.7583695,
+            "steps": 9,
+            "toolCalls": 10,
+            "contextCalls": 1,
+            "webmcpCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 2,
+            "errors": {},
+            "usage": {
+              "input_tokens": 60966,
+              "output_tokens": 1530,
+              "cached_input_tokens": 118976,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.009296772800000002,
+            "recordedSubtotalUSD": 0.009296772800000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 81.00086175,
+            "steps": 13,
+            "toolCalls": 19,
+            "contextCalls": 3,
+            "webmcpCalls": 3,
+            "webmcpErrors": 2,
+            "allToolErrors": 3,
+            "errors": {
+              "Error: unknown tool \"webmcp__search_discussions__5982a51d_2\"": 1,
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 78767,
+              "output_tokens": 2374,
+              "cached_input_tokens": 197440,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.012244932000000002,
+            "recordedSubtotalUSD": 0.012244932000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 10.811762042,
+            "steps": 3,
+            "toolCalls": 2,
+            "contextCalls": 0,
+            "webmcpCalls": 2,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 10019,
+              "output_tokens": 239,
+              "cached_input_tokens": 31488,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0015577464,
+            "recordedSubtotalUSD": 0.0015577464,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 24.78935875,
+            "steps": 4,
+            "toolCalls": 3,
+            "contextCalls": 0,
+            "webmcpCalls": 3,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: unknown tool \"webmcp__search_bookmarks__36a69dca_1\"": 1
+            },
+            "usage": {
+              "input_tokens": 16088,
+              "output_tokens": 591,
+              "cached_input_tokens": 40640,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0025315920000000005,
+            "recordedSubtotalUSD": 0.0025315920000000005,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 16.013038249999997,
+            "steps": 3,
+            "toolCalls": 3,
+            "contextCalls": 0,
+            "webmcpCalls": 3,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 15875,
+              "output_tokens": 291,
+              "cached_input_tokens": 26432,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0023779896000000003,
+            "recordedSubtotalUSD": 0.0023779896000000003,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 4.918353999999999,
+            "steps": 2,
+            "toolCalls": 1,
+            "contextCalls": 0,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 10903,
+              "output_tokens": 105,
+              "cached_input_tokens": 18624,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0016079672000000001,
+            "recordedSubtotalUSD": 0.0016079672000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 6.639131958,
+            "steps": 2,
+            "toolCalls": 1,
+            "contextCalls": 0,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 10918,
+              "output_tokens": 111,
+              "cached_input_tokens": 18624,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0016117472000000002,
+            "recordedSubtotalUSD": 0.0016117472000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 7.533499916999999,
+            "steps": 2,
+            "toolCalls": 1,
+            "contextCalls": 0,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 10912,
+              "output_tokens": 92,
+              "cached_input_tokens": 18624,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0016055872,
+            "recordedSubtotalUSD": 0.0016055872,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 31.135410375,
+            "steps": 6,
+            "toolCalls": 10,
+            "contextCalls": 2,
+            "webmcpCalls": 8,
+            "webmcpErrors": 3,
+            "allToolErrors": 3,
+            "errors": {
+              "Error: unknown tool \"webmcp__enroll_in_course__a6b9200a_6\"": 1,
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1,
+              "Error: unknown tool \"webmcp__my_learning__a6b9200a_c\"": 1
+            },
+            "usage": {
+              "input_tokens": 41528,
+              "output_tokens": 886,
+              "cached_input_tokens": 54720,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.006215216000000001,
+            "recordedSubtotalUSD": 0.006215216000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 34.427532959000004,
+            "steps": 7,
+            "toolCalls": 9,
+            "contextCalls": 2,
+            "webmcpCalls": 7,
+            "webmcpErrors": 3,
+            "allToolErrors": 3,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 3
+            },
+            "usage": {
+              "input_tokens": 47725,
+              "output_tokens": 762,
+              "cached_input_tokens": 66560,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.007081228000000001,
+            "recordedSubtotalUSD": 0.007081228000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 56.678421541999995,
+            "steps": 10,
+            "toolCalls": 10,
+            "contextCalls": 3,
+            "webmcpCalls": 7,
+            "webmcpErrors": 3,
+            "allToolErrors": 3,
+            "errors": {
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1,
+              "Error: unknown tool \"webmcp__enroll_in_course__b93730c2_6\"": 1,
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 38182,
+              "output_tokens": 892,
+              "cached_input_tokens": 128384,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0059547152,
+            "recordedSubtotalUSD": 0.0059547152,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 7.2897911670000015,
+            "steps": 2,
+            "toolCalls": 2,
+            "contextCalls": 0,
+            "webmcpCalls": 2,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 10918,
+              "output_tokens": 167,
+              "cached_input_tokens": 18496,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0016270688000000002,
+            "recordedSubtotalUSD": 0.0016270688000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 8.359374790999999,
+            "steps": 2,
+            "toolCalls": 2,
+            "contextCalls": 0,
+            "webmcpCalls": 2,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 10917,
+              "output_tokens": 175,
+              "cached_input_tokens": 18496,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0016291688000000001,
+            "recordedSubtotalUSD": 0.0016291688000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 9.381388208000002,
+            "steps": 2,
+            "toolCalls": 2,
+            "contextCalls": 0,
+            "webmcpCalls": 2,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 10929,
+              "output_tokens": 169,
+              "cached_input_tokens": 18496,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0016291688000000001,
+            "recordedSubtotalUSD": 0.0016291688000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 46.527527541999994,
+            "steps": 8,
+            "toolCalls": 7,
+            "contextCalls": 2,
+            "webmcpCalls": 4,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 36048,
+              "output_tokens": 789,
+              "cached_input_tokens": 90752,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0055217456,
+            "recordedSubtotalUSD": 0.0055217456,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 42.970895958,
+            "steps": 9,
+            "toolCalls": 8,
+            "contextCalls": 3,
+            "webmcpCalls": 4,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 47446,
+              "output_tokens": 1064,
+              "cached_input_tokens": 99136,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0072179408,
+            "recordedSubtotalUSD": 0.0072179408,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 35.582361,
+            "steps": 8,
+            "toolCalls": 7,
+            "contextCalls": 2,
+            "webmcpCalls": 4,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 36111,
+              "output_tokens": 767,
+              "cached_input_tokens": 90816,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.005524584800000001,
+            "recordedSubtotalUSD": 0.005524584800000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          }
+        ]
+      },
+      "summary": {
+        "original": {
+          "attempts": 6,
+          "expected": 6,
+          "passes": 6,
+          "webmcpCalls": 40,
+          "webmcpErrors": 30,
+          "allToolErrors": 31,
+          "errorCategories": {
+            "other": 28,
+            "route_changed": 2
+          },
+          "usage": {
+            "input": 233462,
+            "cached": 2894592,
+            "write": 0,
+            "output": 55940
+          },
+          "allUsageComplete": true,
+          "cacheHitFraction": 0.9253650991958579,
+          "totalCostUSD": 0.056452737600000004,
+          "meanSixTaskSuite": {
+            "seconds": 1202.163638834,
+            "steps": 108.0,
+            "toolCalls": 121.0,
+            "costUSD": 0.056452737600000004
+          }
+        },
+        "shortRef": {
+          "attempts": 18,
+          "expected": 18,
+          "passes": 18,
+          "webmcpCalls": 51,
+          "webmcpErrors": 14,
+          "allToolErrors": 22,
+          "errorCategories": {
+            "stale_tool": 9,
+            "route_changed": 5
+          },
+          "usage": {
+            "input": 424042,
+            "cached": 4037504,
+            "write": 0,
+            "output": 29723
+          },
+          "allUsageComplete": true,
+          "cacheHitFraction": 0.904956264039416,
+          "totalCostUSD": 0.0789933312,
+          "meanSixTaskSuite": {
+            "seconds": 345.17060077800005,
+            "steps": 60.333333333333336,
+            "toolCalls": 74.33333333333333,
+            "costUSD": 0.0263311104
+          }
+        },
+        "direct": {
+          "attempts": 18,
+          "expected": 18,
+          "passes": 18,
+          "webmcpCalls": 56,
+          "webmcpErrors": 17,
+          "allToolErrors": 20,
+          "errorCategories": {
+            "route_changed": 3,
+            "unknown_tool": 5,
+            "stale_tool": 9
+          },
+          "usage": {
+            "input": 546402,
+            "cached": 1204416,
+            "write": 0,
+            "output": 13149
+          },
+          "allUsageComplete": true,
+          "cacheHitFraction": 0.6879161626165599,
+          "totalCostUSD": 0.08355036480000001,
+          "meanSixTaskSuite": {
+            "seconds": 194.279932667,
+            "steps": 34.666666666666664,
+            "toolCalls": 36.333333333333336,
+            "costUSD": 0.027850121600000003
+          }
+        }
+      },
+      "configurationAudit": {
+        "headersChecked": 55,
+        "directCallsChecked": 56,
+        "callsAbsentFromLatestSchema": [
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 2,
+            "name": "webmcp__search_discussions__5982a51d_2"
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 1,
+            "name": "webmcp__search_bookmarks__36a69dca_1"
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 0,
+            "name": "webmcp__my_learning__a6b9200a_c"
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 2,
+            "name": "webmcp__enroll_in_course__b93730c2_6"
+          }
+        ],
+        "headersWithDirectTools": 44,
+        "corpusAndModelMatch": true,
+        "legacyWrapperAbsent": true,
+        "coreToolSetMatchExceptDocumentedJevRemoval": true,
+        "removedHistoricalUnusedTools": [
+          "jev_browser_run",
+          "jev_evaluate"
+        ]
+      }
+    },
+    "luna": {
+      "pricing": {
+        "status": "estimated",
+        "currency": "USD",
+        "rates": {
+          "input": 0.2,
+          "cached": 0.02,
+          "write": 0.25,
+          "output": 1.2
+        },
+        "source": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+        "label": "OpenAI GPT-5.6 Luna",
+        "checkedAt": "2026-09-23",
+        "basis": "Standard API equivalent, not the ChatGPT subscription bill",
+        "maxObservedInputTokens": 84709
+      },
+      "complete": true,
+      "runErrors": [],
+      "attempts": {
+        "original": [
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 24.534797625,
+            "steps": 7,
+            "toolCalls": 6,
+            "webmcpCalls": 1,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: Page route changed while the operation was running; its result is unknown.": 1
+            },
+            "usage": {
+              "input_tokens": 16771,
+              "output_tokens": 471,
+              "cached_input_tokens": 61440,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7855672475738706,
+            "costUSD": 0.0051482,
+            "recordedSubtotalUSD": 0.0051482,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 16.152698917000002,
+            "steps": 4,
+            "toolCalls": 3,
+            "webmcpCalls": 2,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 23462,
+              "output_tokens": 293,
+              "cached_input_tokens": 19456,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.4533296052938161,
+            "costUSD": 0.0054331200000000005,
+            "recordedSubtotalUSD": 0.0054331200000000005,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 19.185515499999998,
+            "steps": 6,
+            "toolCalls": 5,
+            "webmcpCalls": 2,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 1
+            },
+            "usage": {
+              "input_tokens": 16760,
+              "output_tokens": 328,
+              "cached_input_tokens": 54784,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7657385664765739,
+            "costUSD": 0.00484128,
+            "recordedSubtotalUSD": 0.00484128,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 40.30154662499999,
+            "steps": 10,
+            "toolCalls": 9,
+            "webmcpCalls": 5,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: The page changed. Rediscover its tools before calling.": 1
+            },
+            "usage": {
+              "input_tokens": 20660,
+              "output_tokens": 757,
+              "cached_input_tokens": 111104,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8432045171670562,
+            "costUSD": 0.00726248,
+            "recordedSubtotalUSD": 0.00726248,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 21.298236000000003,
+            "steps": 6,
+            "toolCalls": 5,
+            "webmcpCalls": 2,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 1
+            },
+            "usage": {
+              "input_tokens": 17592,
+              "output_tokens": 442,
+              "cached_input_tokens": 53760,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.753447695930037,
+            "costUSD": 0.005124,
+            "recordedSubtotalUSD": 0.005124,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 62.454515542,
+            "steps": 13,
+            "toolCalls": 12,
+            "webmcpCalls": 6,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 3,
+            "allToolErrors": 3,
+            "errors": {
+              "Error: This WebMCP tool is stale or unavailable. Discover the tools again.": 2,
+              "Error: The page changed. Rediscover its tools before calling.": 1
+            },
+            "usage": {
+              "input_tokens": 41714,
+              "output_tokens": 1051,
+              "cached_input_tokens": 137728,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7675349137882993,
+            "costUSD": 0.012358560000000001,
+            "recordedSubtotalUSD": 0.012358560000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          }
+        ],
+        "shortRef": [
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 32.099328125,
+            "steps": 8,
+            "toolCalls": 7,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 17433,
+              "output_tokens": 421,
+              "cached_input_tokens": 74240,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8098349568575262,
+            "costUSD": 0.0054766,
+            "recordedSubtotalUSD": 0.0054766,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 53.822626916,
+            "steps": 11,
+            "toolCalls": 10,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 2,
+            "allToolErrors": 2,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1,
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 31975,
+              "output_tokens": 774,
+              "cached_input_tokens": 103936,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7647357461868428,
+            "costUSD": 0.00940252,
+            "recordedSubtotalUSD": 0.00940252,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 80.673281875,
+            "steps": 16,
+            "toolCalls": 15,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 40273,
+              "output_tokens": 1257,
+              "cached_input_tokens": 164864,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8036775423253728,
+            "costUSD": 0.01286028,
+            "recordedSubtotalUSD": 0.01286028,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 15.125863624999997,
+            "steps": 4,
+            "toolCalls": 3,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12313,
+              "output_tokens": 221,
+              "cached_input_tokens": 31232,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.717235044207142,
+            "costUSD": 0.0033524400000000004,
+            "recordedSubtotalUSD": 0.0033524400000000004,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 19.898302917000002,
+            "steps": 4,
+            "toolCalls": 3,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12409,
+              "output_tokens": 241,
+              "cached_input_tokens": 31232,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7156572947457666,
+            "costUSD": 0.00339564,
+            "recordedSubtotalUSD": 0.00339564,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 19.691228667,
+            "steps": 4,
+            "toolCalls": 3,
+            "webmcpCalls": 2,
+            "toolRefCalls": 2,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12503,
+              "output_tokens": 229,
+              "cached_input_tokens": 31232,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.714119126557677,
+            "costUSD": 0.0034000400000000004,
+            "recordedSubtotalUSD": 0.0034000400000000004,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 9.248925958,
+            "steps": 3,
+            "toolCalls": 2,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12980,
+              "output_tokens": 102,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.6235935506321773,
+            "costUSD": 0.00314848,
+            "recordedSubtotalUSD": 0.00314848,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 9.156654040999998,
+            "steps": 3,
+            "toolCalls": 2,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12910,
+              "output_tokens": 90,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.6248619747777068,
+            "costUSD": 0.00312008,
+            "recordedSubtotalUSD": 0.00312008,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 18.705178333999996,
+            "steps": 4,
+            "toolCalls": 3,
+            "webmcpCalls": 0,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12827,
+              "output_tokens": 191,
+              "cached_input_tokens": 31232,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7088676547356954,
+            "costUSD": 0.00341924,
+            "recordedSubtotalUSD": 0.00341924,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 53.670011833000004,
+            "steps": 12,
+            "toolCalls": 11,
+            "webmcpCalls": 6,
+            "toolRefCalls": 6,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 40794,
+              "output_tokens": 626,
+              "cached_input_tokens": 130048,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7612179674787231,
+            "costUSD": 0.01151096,
+            "recordedSubtotalUSD": 0.01151096,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 53.029371166000004,
+            "steps": 11,
+            "toolCalls": 10,
+            "webmcpCalls": 0,
+            "toolRefCalls": 0,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 42013,
+              "output_tokens": 631,
+              "cached_input_tokens": 121344,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7428148166286109,
+            "costUSD": 0.01158668,
+            "recordedSubtotalUSD": 0.01158668,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 45.80440466699999,
+            "steps": 10,
+            "toolCalls": 9,
+            "webmcpCalls": 5,
+            "toolRefCalls": 5,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 21876,
+              "output_tokens": 495,
+              "cached_input_tokens": 113152,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.8379891578043073,
+            "costUSD": 0.00723224,
+            "recordedSubtotalUSD": 0.00723224,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 16.163154291,
+            "steps": 3,
+            "toolCalls": 2,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12481,
+              "output_tokens": 121,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.6327497425334706,
+            "costUSD": 0.00307148,
+            "recordedSubtotalUSD": 0.00307148,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 9.336742166000002,
+            "steps": 3,
+            "toolCalls": 2,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12489,
+              "output_tokens": 129,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.6326008295825611,
+            "costUSD": 0.00308268,
+            "recordedSubtotalUSD": 0.00308268,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 12.390926624999999,
+            "steps": 3,
+            "toolCalls": 2,
+            "webmcpCalls": 1,
+            "toolRefCalls": 1,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 12442,
+              "output_tokens": 135,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.6334766982855122,
+            "costUSD": 0.00308048,
+            "recordedSubtotalUSD": 0.00308048,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 35.238041542000005,
+            "steps": 9,
+            "toolCalls": 8,
+            "webmcpCalls": 4,
+            "toolRefCalls": 4,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 32103,
+              "output_tokens": 480,
+              "cached_input_tokens": 85504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.7270315542442202,
+            "costUSD": 0.00870668,
+            "recordedSubtotalUSD": 0.00870668,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 32.233066458,
+            "steps": 9,
+            "toolCalls": 8,
+            "webmcpCalls": 4,
+            "toolRefCalls": 4,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_tool_reference\",\"execution\":\"not_dispatched\",\"message\":\"The tool reference is unknown or the page changed, tool changed, or bound tab changed.\",\"recovery\":\"Call browser_context and use the current toolRef. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 21047,
+              "output_tokens": 537,
+              "cached_input_tokens": 97280,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.822128508286359,
+            "costUSD": 0.006799400000000001,
+            "recordedSubtotalUSD": 0.006799400000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 27.477425624999995,
+            "steps": 8,
+            "toolCalls": 7,
+            "webmcpCalls": 3,
+            "toolRefCalls": 3,
+            "unseenToolRefCalls": 0,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 19233,
+              "output_tokens": 441,
+              "cached_input_tokens": 85504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "cacheHitFraction": 0.816368618539771,
+            "costUSD": 0.00608588,
+            "recordedSubtotalUSD": 0.00608588,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          }
+        ],
+        "direct": [
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 30.446522583,
+            "steps": 6,
+            "toolCalls": 5,
+            "contextCalls": 1,
+            "webmcpCalls": 1,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 45997,
+              "output_tokens": 339,
+              "cached_input_tokens": 20480,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0100158,
+            "recordedSubtotalUSD": 0.0100158,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 36.120590375,
+            "steps": 7,
+            "toolCalls": 6,
+            "contextCalls": 2,
+            "webmcpCalls": 1,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 24761,
+              "output_tokens": 396,
+              "cached_input_tokens": 54784,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0065230800000000005,
+            "recordedSubtotalUSD": 0.0065230800000000005,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "react-auth-boundary",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 25.705415499999994,
+            "steps": 7,
+            "toolCalls": 6,
+            "contextCalls": 2,
+            "webmcpCalls": 1,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"webmcp_execution_error\",\"execution\":\"unknown\",\"message\":\"Error: Page route changed while the operation was running; its result is unknown.\",\"recovery\":\"Inspect current page/business state before continuing. Do not automatically repeat this action.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 24664,
+              "output_tokens": 378,
+              "cached_input_tokens": 54784,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.00648208,
+            "recordedSubtotalUSD": 0.00648208,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 18.869070500000003,
+            "steps": 4,
+            "toolCalls": 3,
+            "contextCalls": 1,
+            "webmcpCalls": 2,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 23953,
+              "output_tokens": 228,
+              "cached_input_tokens": 20480,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.005473800000000001,
+            "recordedSubtotalUSD": 0.005473800000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 12.716151334000001,
+            "steps": 4,
+            "toolCalls": 3,
+            "contextCalls": 1,
+            "webmcpCalls": 2,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 13202,
+              "output_tokens": 197,
+              "cached_input_tokens": 31232,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.00350144,
+            "recordedSubtotalUSD": 0.00350144,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "directory-filter",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 31.719499625000005,
+            "steps": 7,
+            "toolCalls": 6,
+            "contextCalls": 3,
+            "webmcpCalls": 2,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 50072,
+              "output_tokens": 285,
+              "cached_input_tokens": 32256,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.01100152,
+            "recordedSubtotalUSD": 0.01100152,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 10.891407916999999,
+            "steps": 3,
+            "toolCalls": 2,
+            "contextCalls": 1,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 15206,
+              "output_tokens": 65,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0035492800000000006,
+            "recordedSubtotalUSD": 0.0035492800000000006,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 9.597314417000002,
+            "steps": 3,
+            "toolCalls": 2,
+            "contextCalls": 1,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 15105,
+              "output_tokens": 74,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.00353988,
+            "recordedSubtotalUSD": 0.00353988,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "ea-5",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 9.613856875,
+            "steps": 3,
+            "toolCalls": 2,
+            "contextCalls": 1,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 15099,
+              "output_tokens": 82,
+              "cached_input_tokens": 21504,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.00354828,
+            "recordedSubtotalUSD": 0.00354828,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 30.821414667000003,
+            "steps": 9,
+            "toolCalls": 8,
+            "contextCalls": 3,
+            "webmcpCalls": 5,
+            "webmcpErrors": 2,
+            "allToolErrors": 2,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 2
+            },
+            "usage": {
+              "input_tokens": 59196,
+              "output_tokens": 497,
+              "cached_input_tokens": 62976,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.013695120000000002,
+            "recordedSubtotalUSD": 0.013695120000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 41.11539745799999,
+            "steps": 10,
+            "toolCalls": 9,
+            "contextCalls": 4,
+            "webmcpCalls": 5,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 74015,
+              "output_tokens": 414,
+              "cached_input_tokens": 61952,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.01653884,
+            "recordedSubtotalUSD": 0.01653884,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "lh-7",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 33.073881500000006,
+            "steps": 7,
+            "toolCalls": 6,
+            "contextCalls": 2,
+            "webmcpCalls": 4,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 40086,
+              "output_tokens": 381,
+              "cached_input_tokens": 47104,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.00941648,
+            "recordedSubtotalUSD": 0.00941648,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 7.557889416,
+            "steps": 2,
+            "toolCalls": 1,
+            "contextCalls": 0,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 11823,
+              "output_tokens": 67,
+              "cached_input_tokens": 9728,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.00263956,
+            "recordedSubtotalUSD": 0.00263956,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 6.912223833000001,
+            "steps": 2,
+            "toolCalls": 1,
+            "contextCalls": 0,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 11880,
+              "output_tokens": 92,
+              "cached_input_tokens": 9728,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.00268096,
+            "recordedSubtotalUSD": 0.00268096,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-1",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 6.001790208999999,
+            "steps": 2,
+            "toolCalls": 1,
+            "contextCalls": 0,
+            "webmcpCalls": 1,
+            "webmcpErrors": 0,
+            "allToolErrors": 0,
+            "errors": {},
+            "usage": {
+              "input_tokens": 11862,
+              "output_tokens": 93,
+              "cached_input_tokens": 9728,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.0026785600000000004,
+            "recordedSubtotalUSD": 0.0026785600000000004,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 0,
+            "pass": true,
+            "seconds": 39.893105667,
+            "steps": 9,
+            "toolCalls": 8,
+            "contextCalls": 2,
+            "webmcpCalls": 5,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 53612,
+              "output_tokens": 589,
+              "cached_input_tokens": 54784,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.012524880000000002,
+            "recordedSubtotalUSD": 0.012524880000000002,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 1,
+            "pass": true,
+            "seconds": 21.525576125,
+            "steps": 6,
+            "toolCalls": 5,
+            "contextCalls": 1,
+            "webmcpCalls": 4,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 25623,
+              "output_tokens": 311,
+              "cached_input_tokens": 40960,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.006317,
+            "recordedSubtotalUSD": 0.006317,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          },
+          {
+            "taskId": "hev-9",
+            "repeat": 2,
+            "pass": true,
+            "seconds": 26.142818874999996,
+            "steps": 7,
+            "toolCalls": 6,
+            "contextCalls": 2,
+            "webmcpCalls": 4,
+            "webmcpErrors": 1,
+            "allToolErrors": 1,
+            "errors": {
+              "Error: {\"code\":\"stale_webmcp_tool\",\"execution\":\"not_dispatched\",\"message\":\"The bound page or tool changed.\",\"recovery\":\"Use the current registered WebMCP tools, or call browser_context to refresh them. No action was dispatched.\"}": 1
+            },
+            "usage": {
+              "input_tokens": 30693,
+              "output_tokens": 320,
+              "cached_input_tokens": 58880,
+              "cache_creation_tokens": 0
+            },
+            "usageComplete": true,
+            "costUSD": 0.007700200000000001,
+            "recordedSubtotalUSD": 0.007700200000000001,
+            "failure": null,
+            "verdict": {
+              "pass": true,
+              "detail": "predicate passed"
+            },
+            "timedOut": false
+          }
+        ]
+      },
+      "summary": {
+        "original": {
+          "attempts": 6,
+          "expected": 6,
+          "passes": 6,
+          "webmcpCalls": 18,
+          "webmcpErrors": 7,
+          "allToolErrors": 7,
+          "errorCategories": {
+            "route_changed": 1,
+            "other": 6
+          },
+          "usage": {
+            "input": 136959,
+            "cached": 438272,
+            "write": 0,
+            "output": 3342
+          },
+          "allUsageComplete": true,
+          "cacheHitFraction": 0.7619060864244104,
+          "totalCostUSD": 0.040167640000000004,
+          "meanSixTaskSuite": {
+            "seconds": 183.92731020899998,
+            "steps": 46.0,
+            "toolCalls": 40.0,
+            "costUSD": 0.040167640000000004
+          }
+        },
+        "shortRef": {
+          "attempts": 18,
+          "expected": 18,
+          "passes": 18,
+          "webmcpCalls": 37,
+          "webmcpErrors": 8,
+          "allToolErrors": 8,
+          "errorCategories": {
+            "route_changed": 3,
+            "stale_tool": 5
+          },
+          "usage": {
+            "input": 380101,
+            "cached": 1208320,
+            "write": 0,
+            "output": 7121
+          },
+          "allUsageComplete": true,
+          "cacheHitFraction": 0.7607051279226351,
+          "totalCostUSD": 0.1087318,
+          "meanSixTaskSuite": {
+            "seconds": 181.25484494366665,
+            "steps": 41.666666666666664,
+            "toolCalls": 35.666666666666664,
+            "costUSD": 0.03624393333333333
+          }
+        },
+        "direct": {
+          "attempts": 18,
+          "expected": 18,
+          "passes": 18,
+          "webmcpCalls": 42,
+          "webmcpErrors": 10,
+          "allToolErrors": 10,
+          "errorCategories": {
+            "route_changed": 3,
+            "stale_tool": 7
+          },
+          "usage": {
+            "input": 546849,
+            "cached": 634368,
+            "write": 0,
+            "output": 4808
+          },
+          "allUsageComplete": true,
+          "cacheHitFraction": 0.5370461143041456,
+          "totalCostUSD": 0.12782676,
+          "meanSixTaskSuite": {
+            "seconds": 132.90797562533334,
+            "steps": 32.666666666666664,
+            "toolCalls": 26.666666666666668,
+            "costUSD": 0.04260892
+          }
+        }
+      },
+      "configurationAudit": {
+        "headersChecked": 37,
+        "directCallsChecked": 42,
+        "callsAbsentFromLatestSchema": [],
+        "headersWithDirectTools": 35,
+        "corpusAndModelMatch": true,
+        "legacyWrapperAbsent": true,
+        "coreToolSetMatchExceptDocumentedJevRemoval": true,
+        "removedHistoricalUnusedTools": [
+          "jev_browser_run",
+          "jev_evaluate"
+        ]
+      }
+    }
+  },
+  "sourceUnchanged": {
+    "plugins/browser/src/runtime.ts": true,
+    "plugins/browser/src/webmcp-bindings.ts": true,
+    "plugins/browser/src/devtools-session.ts": true,
+    "plugins/browser/src/builder-skill.ts": true,
+    "plugins/browser/lib/index.js": true,
+    "apps/desktop/dist/main/index.js": true
+  },
+  "validation": {
+    "attempts": 36,
+    "taskPasses": 36,
+    "completionTraceAudits": 12,
+    "allCompletionTraceAuditsPass": true,
+    "allUsageComplete": true,
+    "noExcludedOrReplacementAttempts": true,
+    "evaluatorCredentialRefreshes": 0,
+    "models": {
+      "mimo": {
+        "complete": true,
+        "runErrors": [],
+        "allFiveCapsulesStopped": true,
+        "configurationAudit": {
+          "headersChecked": 55,
+          "directCallsChecked": 56,
+          "callsAbsentFromLatestSchema": [
+            {
+              "taskId": "react-auth-boundary",
+              "repeat": 2,
+              "name": "webmcp__search_discussions__5982a51d_2"
+            },
+            {
+              "taskId": "directory-filter",
+              "repeat": 1,
+              "name": "webmcp__search_bookmarks__36a69dca_1"
+            },
+            {
+              "taskId": "lh-7",
+              "repeat": 0,
+              "name": "webmcp__my_learning__a6b9200a_c"
+            },
+            {
+              "taskId": "lh-7",
+              "repeat": 2,
+              "name": "webmcp__enroll_in_course__b93730c2_6"
+            }
+          ],
+          "headersWithDirectTools": 44,
+          "corpusAndModelMatch": true,
+          "legacyWrapperAbsent": true,
+          "coreToolSetMatchExceptDocumentedJevRemoval": true,
+          "removedHistoricalUnusedTools": [
+            "jev_browser_run",
+            "jev_evaluate"
+          ]
+        },
+        "startedAt": "2026-09-23T10:58:47.026Z",
+        "finishedAt": "2026-09-23T11:26:55.808Z"
+      },
+      "luna": {
+        "complete": true,
+        "runErrors": [],
+        "allFiveCapsulesStopped": true,
+        "configurationAudit": {
+          "headersChecked": 37,
+          "directCallsChecked": 42,
+          "callsAbsentFromLatestSchema": [],
+          "headersWithDirectTools": 35,
+          "corpusAndModelMatch": true,
+          "legacyWrapperAbsent": true,
+          "coreToolSetMatchExceptDocumentedJevRemoval": true,
+          "removedHistoricalUnusedTools": [
+            "jev_browser_run",
+            "jev_evaluate"
+          ]
+        },
+        "startedAt": "2026-09-23T10:58:48.166Z",
+        "finishedAt": "2026-09-23T11:25:58.227Z"
+      }
+    },
+    "totalEstimatedUSD": 0.21137712480000004,
+    "providedApiKeyAbsentFromArtifacts": true,
+    "privateSettingsAndKeyRemoved": true
+  },
+  "completionAudit": [
+    {
+      "model": "mimo",
+      "taskId": "lh-7",
+      "repeat": 0,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "signedInStep": 1,
+        "enrolledStep": 3,
+        "lessonObservedStep": 5
+      },
+      "note": null
+    },
+    {
+      "model": "mimo",
+      "taskId": "lh-7",
+      "repeat": 1,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "signedInStep": 1,
+        "enrolledStep": 4,
+        "lessonObservedStep": 6
+      },
+      "note": null
+    },
+    {
+      "model": "mimo",
+      "taskId": "lh-7",
+      "repeat": 2,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "signedInStep": 1,
+        "enrolledStep": 6,
+        "lessonObservedStep": 9
+      },
+      "note": null
+    },
+    {
+      "model": "mimo",
+      "taskId": "hev-9",
+      "repeat": 0,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "registeredStep": 2,
+        "matchingOrderLookupStep": 7
+      },
+      "note": null
+    },
+    {
+      "model": "mimo",
+      "taskId": "hev-9",
+      "repeat": 1,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "registeredStep": 2,
+        "matchingOrderLookupStep": 7
+      },
+      "note": null
+    },
+    {
+      "model": "mimo",
+      "taskId": "hev-9",
+      "repeat": 2,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "registeredStep": 2,
+        "matchingOrderLookupStep": 7
+      },
+      "note": null
+    },
+    {
+      "model": "luna",
+      "taskId": "lh-7",
+      "repeat": 0,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "signedInStep": 2,
+        "enrolledStep": 7,
+        "lessonObservedStep": 7
+      },
+      "note": null
+    },
+    {
+      "model": "luna",
+      "taskId": "lh-7",
+      "repeat": 1,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "signedInStep": 5,
+        "enrolledStep": 7,
+        "lessonObservedStep": 9
+      },
+      "note": null
+    },
+    {
+      "model": "luna",
+      "taskId": "lh-7",
+      "repeat": 2,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "signedInStep": 1,
+        "enrolledStep": 3,
+        "lessonObservedStep": 6
+      },
+      "note": null
+    },
+    {
+      "model": "luna",
+      "taskId": "hev-9",
+      "repeat": 0,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "registeredStep": 2,
+        "matchingOrderLookupStep": 8
+      },
+      "note": null
+    },
+    {
+      "model": "luna",
+      "taskId": "hev-9",
+      "repeat": 1,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "registeredStep": 2,
+        "matchingOrderLookupStep": 5
+      },
+      "note": null
+    },
+    {
+      "model": "luna",
+      "taskId": "hev-9",
+      "repeat": 2,
+      "rawScorePass": true,
+      "traceVerified": true,
+      "evidence": {
+        "registeredStep": 3,
+        "matchingOrderLookupStep": 6
+      },
+      "note": null
+    }
+  ]
+}
