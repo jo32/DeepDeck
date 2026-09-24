@@ -95,3 +95,8 @@
   .footer p { flex-basis: 65%; }
 }
 @media (prefers-reduced-motion: reduce) { .cover { transition: none; } }
+
+.prose .codeLabel { font-size: 13px; line-height: 1.7; margin: 20px 0 8px; }
+.toolJson { max-width: 100%; overflow-x: auto; padding: 16px; margin: 0; border: 1px solid #cbd2c4; border-radius: 5px; background: #fafbf7; color: #253b2c; font-size: 12px; line-height: 1.8; tab-size: 2; }
+.toolJson code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.toolJson:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
