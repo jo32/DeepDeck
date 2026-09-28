@@ -52,7 +52,8 @@ describe('Browser session coordination', () => {
     const ctx = {
       remote: { fileReferences: { list: models } },
       get: () => ({ generation: { getSnapshot: () => generation } }),
-      sessions: {
+      uiWorkspace: { openSession: open },
+      sessions: { retain: () => ({ ready: Promise.resolve(binding), release: vi.fn() }),
         create,
         list: { getSnapshot: () => ({ byId: { 'session-a': { cwd: '/site-a', running } } }) },
         open,
@@ -114,7 +115,8 @@ describe('Browser session coordination', () => {
       remote: { fileReferences: { list: async () => ({ ok: true }) } },
       get: () => ({ generation: { getSnapshot: () => generation } }),
       workspaces: { list: { getSnapshot: () => ({ items: [{ path: '/site-a', workspaceId: 'wa' }] }) } },
-      sessions: { create, list: { getSnapshot: () => ({ byId: { 'session-a': { cwd: '/site-a', running: false } } }) }, open, binding: () => binding },
+      uiWorkspace: { openSession: open },
+      sessions: { retain: () => ({ ready: Promise.resolve(binding), release: vi.fn() }), create, list: { getSnapshot: () => ({ byId: { 'session-a': { cwd: '/site-a', running: false } } }) }, open, binding: () => binding },
     } as unknown as ClientContext)
     const results = await Promise.allSettled([
       client.prepareAgent('tab-a', 'use', 'auto', abort.signal),

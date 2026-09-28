@@ -91,7 +91,7 @@ export function BrowserFrame({ browser, character, t, renderConversation, render
   const site = state?.sites.find(item => item.origin === active?.origin)
   const sessionId = site?.sessionId
   const session = useSessions(snapshot => sessionId === undefined ? undefined : snapshot.byId[sessionId as keyof typeof snapshot.byId])
-  const currentSession = useSessions(snapshot => snapshot.current)
+  const currentSession = useSessions(snapshot => Object.values(snapshot.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id)
   const running = session?.running === true
   const blank = active === undefined || active.url === 'about:blank' || active.origin === 'null' || active.origin === ''
   // A new tab gets the entire start page. A user's explicit panel action still

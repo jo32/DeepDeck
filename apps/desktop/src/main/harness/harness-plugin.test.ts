@@ -12,6 +12,9 @@ import {
 } from "./harness-process.js";
 
 describe("Harness plugin resolution", () => {
+  it("uses profile bundle defaults without a command-line override", () => {
+    expect(resolveHarnessWebArguments("/runtime/bin.js")).toEqual(["/runtime/bin.js", "web", "--no-open", "--port", "0"]);
+  });
   it("places launcher patches before pass-through Web arguments", () => {
     expect(resolveHarnessWebArguments("/runtime/bin.js", "/runtime/cordis.patch.yml")).toEqual([
       "/runtime/bin.js",

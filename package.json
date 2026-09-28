@@ -49,7 +49,7 @@
     "test:webmcp-benchmark": "node --test scripts/published-model-benchmark.test.mjs scripts/webmcp-benchmark.test.mjs scripts/webmcp-comparison.test.mjs scripts/webmcp-model-config.test.mjs scripts/webmcp-ablation.test.mjs && pnpm --filter @deepdeck/webmcp-bench test"
   },
   "dependencies": {
-    "dsh-codex-connect": "0.1.0-alpha.4.34"
+    "dsh-codex-connect": "0.1.0-alpha.4.47"
   },
   "devDependencies": {
     "pnpm": "12.0.0"

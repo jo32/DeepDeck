@@ -43,7 +43,7 @@ async function render() {
   const prepareAgent = vi.fn(async (_tabId, mode) => {
     const origin = state.native.tabs[0].origin
     state.sites = [{ id: 'site', origin, workspaceId: 'workspace', workspacePath: '/tmp/site', title: 'Site', mode, enabled: true, revisions: [], sessionId: 'session' }]
-    sessions.byId.session = { running: false }
+    sessions.byId.session = { id: 'session', retainedBy: { mainView: 1 }, running: false }
     sessions.current = 'session'
     return { siteId: 'site', sessionId: 'session', tabId: 'blank' }
   })

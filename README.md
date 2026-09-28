@@ -95,7 +95,7 @@ See the [Browser guide](plugins/browser/README.md) for details and the [website 
 
 ## Architecture
 
-DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, plugin-composed interface, branding, packaging, and automatic-update layer. [dsh-codex-connect](https://github.com/franksong2702/dsh-codex-connect) remains a separate pinned checkout and is preloaded as an ordinary Cordis bundle.
+DeepDeck is a native-feeling desktop client built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). The upstream project is pinned to **0.1.7-rc.2** (`477b4f4205`) as a shallow Git submodule at `vendor/deepseek-harness`; this repository owns the desktop lifecycle, plugin-composed interface, branding, packaging, and automatic-update layer. [dsh-codex-connect](https://github.com/franksong2702/dsh-codex-connect) remains a separate pinned checkout and is preloaded as an ordinary Cordis bundle.
 
 DeepDeck reuses the official `web` profile and its complete plugin-composed UI. The desktop host starts the Harness process on an OS-assigned loopback port, waits for it to become ready, then opens the local UI in the application window. Closing the app shuts the Harness process down cleanly.
 
@@ -115,6 +115,8 @@ pnpm start
 `pnpm bootstrap` installs and builds the pinned Harness and Codex Connect sources, then builds the desktop app. Later `pnpm start` runs reuse the existing desktop artifacts while source, build configuration, and dependencies are unchanged; relevant changes or missing artifacts trigger a rebuild automatically. After a pull updates the Harness submodule, startup installs its pinned dependencies and rebuilds the engine before compiling desktop plugins. `pnpm check` and desktop builds perform the same engine readiness check. Use `pnpm start:rebuild` to force a desktop rebuild.
 
 The desktop uses the standard Harness home (`$DSH_HOME`, or `~/.dsh` when unset), so profiles, model settings, credentials, patches, and installed plugins remain compatible with the upstream CLI. Set `DSH_HOME` before launch if an isolated desktop profile is desired.
+
+On first launch, DeepDeck adds its desktop bundle to the web profile and keeps its local plugin links available. Bundle defaults are applied before the user patch, so settings remain writable under Harness 0.1.7. An existing profile manifest is backed up as `package.json.deepdeck-before-bundle`.
 
 ## Branding
 

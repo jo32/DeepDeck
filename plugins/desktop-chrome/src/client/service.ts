@@ -1,11 +1,15 @@
-import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ILayout, MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { BoundActions, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ILayout, MainPanelId, PanelInfo } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { createLayoutStore } from './stores.ts'
 
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
 /** Cordis layout service backed by the custom root entry's store. */
 export class DesktopLayoutController implements ILayout {
+  panelInfo: HostObservable<PanelInfo> = {
+    getSnapshot: () => { throw new Error('desktop layout: panel source is not mounted') },
+    subscribe: () => () => {},
+  }
   private navigation = new AbortController()
   constructor(private readonly hasPanel: (id: MainPanelId) => boolean = () => false) {}
   selectPanel(id: MainPanelId | null): void {

@@ -9,8 +9,8 @@ import { zstdDecompressSync } from "node:zlib";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
-const expectedPackageVersion = "0.1.0-alpha.4.34";
-const expectedDshVersion = "0.1.5-rc.2";
+const expectedPackageVersion = "0.1.0-alpha.4.47";
+const expectedDshVersion = "0.1.7-rc.2";
 const expectedReactRange = "^18.2.0 || ^19.1.1";
 const expectedPiAiVersion = "0.85.1";
 const staleDshVersions = ["0.1.0-rc.7", "0.1.0-rc.8"];
@@ -65,11 +65,11 @@ for (const [name, version] of dshPeers) {
 if (manifest.peerDependencies?.react !== expectedReactRange) {
   fail(`React peer is ${manifest.peerDependencies?.react ?? "missing"}, expected ${expectedReactRange}`);
 }
-if (manifest.peerDependencies?.["@earendil-works/pi-ai"] !== "^0.84.2 || 0.85.1") {
-  fail("pi-ai peer contract drifted");
+if (manifest.dependencies?.["@earendil-works/pi-ai"] !== expectedPiAiVersion) {
+  fail("pi-ai dependency contract drifted");
 }
 if (!compatibility.dshPluginApi?.versions?.includes(expectedDshVersion)) {
-  fail("compatibility.json does not declare Harness 0.1.5-rc.2");
+  fail("compatibility.json does not declare Harness 0.1.7-rc.2");
 }
 
 const textFiles = await collectTextFiles(packageRoot);
@@ -107,10 +107,10 @@ if (!clientBundle.includes('"dsh-codex-connect: manual update store"')
 
 const plugin = await import(pathToFileURL(join(packageRoot, manifest.main ?? "lib/index.js")).href);
 if (!plugin.SUPPORTED_DSH_PLUGIN_API_VERSIONS?.includes(expectedDshVersion)) {
-  fail("compiled doctor contract does not report Harness 0.1.5-rc.2");
+  fail("compiled doctor contract does not report Harness 0.1.7-rc.2");
 }
 if (!plugin.COMPATIBILITY_CONTRACT?.dshPluginApi?.versions?.includes(expectedDshVersion)) {
-  fail("compiled compatibility contract does not report Harness 0.1.5-rc.2");
+  fail("compiled compatibility contract does not report Harness 0.1.7-rc.2");
 }
 
 const expectedSearchUrl = "https://chatgpt.com/backend-api/codex/responses";
@@ -244,6 +244,7 @@ const report = plugin.evaluateCompatibility({
   packageVersions: {
     "@deepseek-ai/dsh-llm": expectedDshVersion,
     "@deepseek-ai/dsh-llm-pi-ai": expectedDshVersion,
+    "@deepseek-ai/dsh-compaction": expectedDshVersion,
     "@earendil-works/pi-ai": expectedPiAiVersion,
   },
 });
@@ -251,7 +252,7 @@ if (report.status !== "compatible") fail(`compiled compatibility evaluation retu
 
 const installedReport = await plugin.detectCompatibility();
 if (installedReport.status !== "compatible") {
-  fail(`installed 0.1.5-rc.2 dependency detection returned ${installedReport.status}`);
+  fail(`installed 0.1.7-rc.2 dependency detection returned ${installedReport.status}`);
 }
 
 // Exercise the installed, patched plugin through Cordis and the real pi-ai
@@ -316,7 +317,7 @@ try {
     for await (const chunk of ctx.llm.stream({
       provider: "openai-codex", model: "gpt-6-astra", reasoningEffort,
       system: "Verify the installed plugin.",
-      messages: [createUserMessage({ content: [{ type: "text", text: "Reply briefly." }] })],
+      messages: [createUserMessage({ source: { kind: "user" }, content: [{ type: "text", text: "Reply briefly." }] })],
     })) {
       if (chunk.type === "finish" && chunk.reason.kind === "error") {
         throw Object.assign(new Error(chunk.reason.failure.message), { code: chunk.reason.failure.code });

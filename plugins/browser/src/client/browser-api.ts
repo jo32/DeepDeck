@@ -1,3 +1,5 @@
+import type { SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
@@ -82,6 +84,7 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
       let site = await browserRequest<BrowserSite>({ action: 'site.resolve', tabId }, signal)
       const siteId = site.id
       const priorPreparation = preparations.get(siteId)
+      let reference: SessionReference | undefined
       let release!: () => void
       const lock = new Promise<void>(resolve => { release = resolve })
       preparations.set(siteId, lock)
@@ -106,7 +109,7 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
             // Keep a running task on its original target, including when the
             // user selects another tab of the same site.
             if (site.boundTabId === undefined) throw new Error('The running site task has no saved target. Finish its turn before reconnecting.')
-            ctx.sessions.open(sessionId)
+            ctx.uiWorkspace.openSession(sessionId)
             return { siteId: site.id, sessionId, tabId: site.boundTabId }
           }
         } else {
@@ -124,6 +127,8 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
         // cancellation. A cancelled selection must not orphan a new session.
         const bindingSignal = site.sessionId === undefined ? undefined : signal
         bindingSignal?.throwIfAborted()
+        reference = ctx.sessions.retain(sessionId, { source: 'workspaceOperation', signal: bindingSignal })
+        await reference.ready
         const prior = confirmed.get(sessionId)
         const localBinding = ctx.sessions.binding(sessionId)
         const generation = connection.generation.getSnapshot()
@@ -156,9 +161,10 @@ export function createBrowserClient(ctx: ClientContext): BrowserClientService {
           if (renamed !== undefined && !renamed.ok) throw new Error(renamed.error.message)
         }
         signal?.throwIfAborted()
-        ctx.sessions.open(sessionId)
+        ctx.uiWorkspace.openSession(sessionId)
         return { siteId: site.id, sessionId, tabId }
       } finally {
+        reference?.release()
         release()
         if (preparations.get(siteId) === lock) preparations.delete(siteId)
       }

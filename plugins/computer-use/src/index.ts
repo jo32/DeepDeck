@@ -2,9 +2,9 @@ import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context, Volatile } from '@deepseek-ai/cordis'
 import type { Loader } from '@deepseek-ai/cordis-plugin-loader'
-import type { SettingsNamespace, SettingsScope } from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
 import {
@@ -35,6 +35,7 @@ export interface ComputerUseHostContext extends Context {
 export const ComputerUseSettingsSchema: z<ComputerUseSettings> = z.object({
   enabled: z.boolean().default(true),
 })
+export const Config = ComputerUseSettingsSchema.volatile()
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -232,19 +233,15 @@ export function resolveComputerUseRuntime(
 /** Register the default-on preference and gate the native MCP loader entry. */
 export async function apply(
   ctx: ComputerUseHostContext,
+  config: Volatile<ComputerUseSettings> = { get: () => ({ enabled: true }) },
   permissionOnboarding?: Pick<ComputerUsePermissionOnboarding, 'sync' | 'dispose'>,
 ): Promise<void> {
-  const scope: SettingsScope<ComputerUseSettings> = ctx.settings.register(
-    COMPUTER_USE_SETTINGS_NAMESPACE as SettingsNamespace,
-    ComputerUseSettingsSchema,
-    { base: { enabled: true }, applies: 'live' },
-  )
   const mcpEntryId = resolveSiblingLoaderEntryId(
     ctx.loader.locate(),
     `${COMPUTER_USE_RUNTIME_GROUP_ID}:${COMPUTER_USE_MCP_ENTRY_ID}`,
   )
   const gate = new ComputerUseLoaderGate(ctx.loader, mcpEntryId)
-  const runtime = resolveComputerUseRuntime(scope.get().enabled)
+  const runtime = resolveComputerUseRuntime(config.get().enabled)
   const onboarding = permissionOnboarding ?? new ComputerUsePermissionOnboarding(
     spawn,
     process.platform,
@@ -269,8 +266,8 @@ export async function apply(
   ctx.provide('deepdeckComputerUse', runtime)
 
   ctx.effect(
-    () => scope.watch((next) => {
-      return syncPreference(next.enabled)
+    () => ctx.on('settings/document-updated', () => {
+      void syncPreference(config.get().enabled).catch(error => ctx.root.logger?.('computer-use').error(error))
     }),
     'computer-use: gate MCP loader entry from settings',
   )

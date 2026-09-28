@@ -20,7 +20,7 @@ export function installNativeWorkspaceSidebar(ctx: ClientContext, store: Sidebar
     } }),
   }, BlankWorkspaceButton))
   ctx.effect(() => {
-    const syncSession = () => store.setSession(ctx.sessions.list.getSnapshot().current)
+    const syncSession = () => store.setSession(Object.values(ctx.sessions.list.getSnapshot().byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id)
     syncSession()
     const unsubscribe = ctx.sessions.list.subscribe(syncSession)
     const records = createNativeTabRecords()

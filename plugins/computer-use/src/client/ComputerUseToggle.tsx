@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ComputerUseSettings } from '../contracts.ts'
@@ -10,7 +10,7 @@ import css from './computer-use.module.css'
 
 export interface ComputerUseInjected {
   hooks: {
-    computerUse: SettingsScope<ComputerUseSettings>
+    computerUse: ConfigForm<ComputerUseSettings>
   }
   setEnabled: (enabled: boolean) => Promise<void>
 }
@@ -21,7 +21,7 @@ type ComputerUseToggleProps =
   & InjectFace<ComputerUseInjected>
 
 function labelOf(
-  state: SettingsScopeSnapshot<ComputerUseSettings>,
+  state: ConfigFormSnapshot<ComputerUseSettings>,
   t: (key: ComputerUseLocaleKey) => string,
 ): string {
   if (state.status === 'loading') return t('loading')

@@ -5,6 +5,13 @@ import { createBetterSidebarService } from '../../../plugins/browser/node_module
 import { installNativeWorkspaceSidebar } from '../../../plugins/browser/src/client/NativeWorkspaceSidebar.js'
 
 it('routes workspace tools and file resources into the native sidebar without opening another workbench', () => {
+  const storage = new Map<string, string>()
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+    clear: () => storage.clear(),
+  })
   localStorage.clear()
   const store = createSidebarStore()
   const service = createBetterSidebarService(store)
@@ -14,14 +21,14 @@ it('routes workspace tools and file resources into the native sidebar without op
   const cleanups: Array<() => void> = []
   const definitions = new Map<string, { kind: string; patterns?: readonly string[] }>()
   const slots = new Set<string>()
-  const native = { openTab: vi.fn(), openResource: vi.fn(), openTabIn: vi.fn(), openResourceIn: vi.fn() }
+  const native = { mounted: { getSnapshot: () => current, subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener) } }, openTab: vi.fn(), openResource: vi.fn(), openTabIn: vi.fn(), openResourceIn: vi.fn() }
   const registry = { register: (definition: { id: string; kind: string }) => {
     definitions.set(definition.id, definition)
     return () => definitions.delete(definition.id)
   } }
   const context = {
     locale: { bind: () => () => 'Open workspace sidebar' },
-    sessions: { list: { getSnapshot: () => ({ current }), subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener) } } },
+    sessions: { list: { getSnapshot: () => ({ byId: { [current]: { id: current, retainedBy: { mainView: 1 } } } }), subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener) } } },
     get: (name: string) => name === 'sidebarRight' ? native : registry,
     inject: (_deps: string[], setup: (ctx: unknown) => () => void) => ({ dispose: setup(context) }),
     effect: (setup: () => () => void) => cleanups.push(setup()),
@@ -58,6 +65,7 @@ it('routes workspace tools and file resources into the native sidebar without op
     expect(definitions.size).toBe(0)
     expect(slots.size).toBe(0)
     localStorage.clear()
+    vi.unstubAllGlobals()
   }
 })
 

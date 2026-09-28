@@ -8,9 +8,9 @@ import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { ComposerChainProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import {
-  Button, IconCheckOutline14, IconChevronDownOutline14, IconChevronLeftOutline14,
-  IconChevronRightOutline14, IconChevronUpOutline14, IconCloseOutline16,
-  IconEditOutline16, MarkdownText,
+  Button, IconCheckOutlineRegular, IconChevronDownOutlineRegular, IconChevronLeftOutlineRegular,
+  IconChevronRightOutlineRegular, IconChevronUpOutlineRegular, IconCloseOutlineRegular,
+  IconEditOutlineRegular, MarkdownText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PendingQuestion, QuestionAnswer, QuestionComposerProps, QuestionWait } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import questionCss from '../../../../vendor/deepseek-harness/packages/client/ui-user-questions/src/client/QuestionComposer.module.css'
@@ -72,7 +72,7 @@ function AnswerField(props: AnswerFieldProps) {
 }
 
 /** Desktop layout over Harness's question carrier; drafts stay scoped to its key. */
-export function DesktopQuestionComposer(props: Omit<QuestionComposerProps, 'useStore' | 'actions'>) {
+export function DesktopQuestionComposer(props: Pick<QuestionComposerProps, 'matched' | 't'>) {
   const question = props.matched
   return <QuestionFlow key={question.key} pending={question} t={props.t} />
 }
@@ -244,14 +244,14 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
               disabled={busy !== null}
               onClick={() => { setMinimized(current => !current) }}
             >
-              {minimized ? <IconChevronUpOutline14 /> : <IconChevronDownOutline14 />}
+              {minimized ? <IconChevronUpOutlineRegular /> : <IconChevronDownOutlineRegular />}
             </button>
             <button
               type="button" className={css.iconButton} aria-label={t('nav.cancel')}
               title={t('nav.cancel')}
               disabled={busy !== null} onClick={cancelFlow}
             >
-              <IconCloseOutline16 />
+              <IconCloseOutlineRegular />
             </button>
           </div>
         </div>
@@ -284,7 +284,7 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
                       {question.multiSelect === true
                         ? (
                           <span className={clsx(css.checkbox, selected && css.checkboxChecked)} aria-hidden="true">
-                            {selected && <IconCheckOutline14 size={12} />}
+                            {selected && <IconCheckOutlineRegular size={12} />}
                           </span>
                         )
                         : <span className={css.number}>{optionIndex + 1}</span>}
@@ -312,12 +312,12 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
                             className={clsx(css.checkbox, draft.custom !== '' && css.checkboxChecked)}
                             aria-hidden="true"
                           >
-                            {draft.custom !== '' && <IconCheckOutline14 size={12} />}
+                            {draft.custom !== '' && <IconCheckOutlineRegular size={12} />}
                           </span>
                         )
                         : (
                           <span className={css.number} aria-hidden="true">
-                            <IconEditOutline16 size={12} />
+                            <IconEditOutlineRegular size={12} />
                           </span>
                         )}
                       <AnswerField
@@ -352,7 +352,7 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
                   disabled={index === 0 || busy !== null}
                   onClick={() => { setIndex(index - 1); setError(null) }}
                 >
-                  <IconChevronLeftOutline14 />
+                  <IconChevronLeftOutlineRegular />
                 </button>
                 <span className={css.progress}>{index + 1} / {questions.length}</span>
                 <button
@@ -360,7 +360,7 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
                   disabled={index === questions.length - 1 || busy !== null}
                   onClick={() => { setIndex(index + 1); setError(null) }}
                 >
-                  <IconChevronRightOutline14 />
+                  <IconChevronRightOutlineRegular />
                 </button>
               </div>
               <div className={css.feedback} role="status" hidden={error === null}>

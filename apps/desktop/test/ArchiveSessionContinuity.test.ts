@@ -32,7 +32,8 @@ function source<T>(initial: T): ObservableSnapshot<T> & { set: (next: T) => void
 }
 
 function fixture(current: SessionId | undefined = sessionId("current")) {
-  const sessions = source({ current });
+  const selection = (id: SessionId | undefined) => ({ byId: id === undefined ? {} : { [id]: { id, retainedBy: { mainView: 1 } } } });
+  const sessions = source(selection(current));
   const workspaces = source({
     archivedSessionIds: [] as SessionId[],
     items: [{
@@ -54,7 +55,7 @@ describe("archived Session continuity", () => {
     const { runtime, sessions, workspaces, startSession } = fixture();
     installArchiveSessionContinuity(runtime);
 
-    sessions.set({ current: undefined });
+    sessions.set({ byId: {} });
     workspaces.set({
       ...workspaces.getSnapshot(),
       archivedSessionIds: [sessionId("current")],
@@ -83,7 +84,7 @@ describe("archived Session continuity", () => {
     const { runtime, sessions, workspaces, startSession } = fixture();
     installArchiveSessionContinuity(runtime);
 
-    sessions.set({ current: undefined });
+    sessions.set({ byId: {} });
     workspaces.set({ ...workspaces.getSnapshot() });
 
     expect(startSession).not.toHaveBeenCalled();
@@ -93,7 +94,7 @@ describe("archived Session continuity", () => {
     const { runtime, sessions, workspaces, startSession } = fixture(sessionId("loose"));
     installArchiveSessionContinuity(runtime);
 
-    sessions.set({ current: undefined });
+    sessions.set({ byId: {} });
     workspaces.set({
       ...workspaces.getSnapshot(),
       archivedSessionIds: [sessionId("loose")],
@@ -106,9 +107,9 @@ describe("archived Session continuity", () => {
     const { runtime, sessions, workspaces, startSession } = fixture();
     const dispose = installArchiveSessionContinuity(runtime);
 
-    sessions.set({ current: sessionId("other") });
+    sessions.set({ byId: { other: { id: sessionId("other"), retainedBy: { mainView: 1 } } } });
     workspaces.set({ ...workspaces.getSnapshot() });
-    sessions.set({ current: undefined });
+    sessions.set({ byId: {} });
     workspaces.set({
       ...workspaces.getSnapshot(),
       archivedSessionIds: [sessionId("other")],
@@ -116,9 +117,9 @@ describe("archived Session continuity", () => {
     expect(startSession).toHaveBeenCalledWith(workspaceId("workspace"));
 
     dispose();
-    sessions.set({ current: sessionId("current") });
+    sessions.set({ byId: { current: { id: sessionId("current"), retainedBy: { mainView: 1 } } } });
     workspaces.set({ ...workspaces.getSnapshot(), archivedSessionIds: [] });
-    sessions.set({ current: undefined });
+    sessions.set({ byId: {} });
     workspaces.set({
       ...workspaces.getSnapshot(),
       archivedSessionIds: [sessionId("current")],

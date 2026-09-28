@@ -12,7 +12,7 @@ import { homedir } from "node:os";
 import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { HarnessRuntimeStatus } from "../../shared/runtime.js";
 import { parseReadinessUrl } from "./readiness.js";
-import { migratePresetBundles } from "./preset-profile.js";
+import { ensureDesktopBundle, migratePresetBundles } from "./preset-profile.js";
 import { isBrowserNativeRequest } from "../windows/browser-policy.js";
 import type { BrowserNativeCommand, BrowserNativeEvent, BrowserNativeResult, BrowserSnapshot } from "../../../../../plugins/browser/src/native-contract.js";
 import {
@@ -68,11 +68,11 @@ export interface HarnessProcessOptions {
   onBrowserRequest?: (command: BrowserNativeCommand, baseUrl: string) => Promise<unknown>;
 }
 
-export function resolveHarnessWebArguments(cliPath: string, patchPath: string): string[] {
+export function resolveHarnessWebArguments(cliPath: string, patchPath?: string): string[] {
   // The launcher stops parsing its own flags at the first Web-app argument.
   // Keep --patch before --no-open/--port so it is composed by the launcher
   // instead of being forwarded to the Web app as an unknown option.
-  return [cliPath, "web", "--patch", patchPath, "--no-open", "--port", "0"];
+  return [cliPath, "web", ...(patchPath === undefined ? [] : ["--patch", patchPath]), "--no-open", "--port", "0"];
 }
 
 export interface OwnedPluginLink {
@@ -252,6 +252,14 @@ export class HarnessProcess {
         ],
       );
       this.preparePluginLinks(environment);
+      if (!environment.DEEPDECK_HARNESS_PATCH?.trim()) {
+        ensureDesktopBundle(dshHome);
+        // The persistent bundle must remain resolvable after this process exits.
+        const profileModules = join(dshHome, "profiles", "web", "node_modules");
+        for (const link of this.ownedPluginLinks.keys()) {
+          if (!relative(profileModules, link).startsWith("..")) this.ownedPluginLinks.delete(link);
+        }
+      }
     } catch (error) {
       const message = `${this.options.displayName} 无法准备插件配置：${errorMessage(error)}`;
       this.publish({ state: "error", message });
@@ -262,7 +270,7 @@ export class HarnessProcess {
     try {
       child = spawn(
         this.options.nodeBinary,
-        resolveHarnessWebArguments(cliPath, this.options.patchPath),
+        resolveHarnessWebArguments(cliPath, environment.DEEPDECK_HARNESS_PATCH?.trim() ? this.options.patchPath : undefined),
         {
           cwd: this.options.workspaceRoot,
           env: environment,

@@ -1,3 +1,4 @@
+import type { SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionHistoryRecord as HistoryEntry } from '@deepseek-ai/dsh-api-session-controller/types'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -386,15 +387,6 @@ async function prepareCreatorSession(
   return sessionId
 }
 
-async function waitForSessionBinding(ctx: ClientContext, sessionId: SessionId): Promise<NonNullable<ReturnType<ClientContext['sessions']['binding']>>> {
-  const startedAt = Date.now()
-  while (Date.now() - startedAt < 5_000) {
-    const binding = ctx.sessions.binding(sessionId)
-    if (binding !== undefined) return binding
-    await delay(25)
-  }
-  throw new Error('Creator session was validated by the Host but did not become available in the Client')
-}
 
 export async function openCreatorSession(
   ctx: ClientContext,
@@ -405,7 +397,7 @@ export async function openCreatorSession(
   const known = ctx.workspaces.list.getSnapshot().items.find(item => item.path === workspace.path)
   const workspaceView = known ?? await ctx.workspaces.create({ path: workspace.path })
   const sessionId = await prepareCreatorSession(ctx, connection, workspace, workspaceView)
-  ctx.sessions.open(sessionId)
+  ctx.uiWorkspace.openSession(sessionId)
 }
 
 export function appUpdatePrompt(context: AppUpdateContext): string {
@@ -451,15 +443,17 @@ export async function dispatchAppUpdateTask(
   const known = ctx.workspaces.list.getSnapshot().items.find(item => item.path === workspace.path)
   const workspaceView = known ?? await ctx.workspaces.create({ path: workspace.path })
   const sessionId = await prepareCreatorSession(ctx, connection, workspace, workspaceView)
-  const binding = await waitForSessionBinding(ctx, sessionId)
-  const renamed = await binding.session.rename(`Update ${updateContext.title}`)
-  if (!renamed.ok) throw new Error(renamed.error.message)
-  const prompted = await binding.session.prompt(
-    [{ type: 'text', text: appUpdatePrompt(updateContext) }],
-    'queue',
-  )
-  if (!prompted.ok) throw new Error(prompted.error.message)
-  ctx.sessions.open(sessionId)
+  await ctx.sessions.using(sessionId, { source: 'workspaceOperation' }, async reference => {
+    const binding = reference.binding
+    const renamed = await binding.session.rename(`Update ${updateContext.title}`)
+    if (!renamed.ok) throw new Error(renamed.error.message)
+    const prompted = await binding.session.prompt(
+      [{ type: 'text', text: appUpdatePrompt(updateContext) }],
+      'queue',
+    )
+    if (!prompted.ok) throw new Error(prompted.error.message)
+    ctx.uiWorkspace.openSession(sessionId)
+  })
 }
 
 async function requestMainWindowFocus(): Promise<void> {
@@ -525,7 +519,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
     if (message.type === 'open-session') {
       const sessionId = message.sessionId as SessionId
       if (this.ctx.sessions.list.getSnapshot().byId[sessionId] !== undefined) {
-        this.ctx.sessions.open(sessionId)
+        this.ctx.uiWorkspace.openSession(sessionId)
         void requestMainWindowFocus()
       }
       return true
@@ -559,6 +553,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
     let createdRetainedAction = false
     let promptAccepted = false
     let turnBaseline: number | undefined
+    let reference: SessionReference | undefined
     try {
       this.emit(message, action, { status: 'preparing' })
       const definition = this.definitions.get(message.appId)
@@ -581,8 +576,8 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
         }
       }
 
-      const binding = this.ctx.sessions.binding(sessionId)
-      if (binding === undefined) throw new Error('app Session is not available')
+      reference = this.ctx.sessions.retain(sessionId, { source: 'workspaceOperation' })
+      const binding = await reference.ready
       if (message.sessionId === undefined && action.sessionTitle !== undefined) {
         const renamed = await binding.session.rename(action.sessionTitle)
         if (!renamed.ok) throw new Error(renamed.error.message)
@@ -603,7 +598,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
       promptAccepted = true
       this.emit(message, action, { status: 'running', sessionId })
       if (message.openSession === true) {
-        this.ctx.sessions.open(sessionId)
+        this.ctx.uiWorkspace.openSession(sessionId)
         void requestMainWindowFocus()
         if (retainedAction === undefined) return
       }
@@ -617,6 +612,8 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
       if (!promptAccepted && createdRetainedAction && sessionId !== undefined && retainedAction !== undefined) {
         this.releaseRetainedAction(sessionId, retainedAction)
       }
+    } finally {
+      reference?.release()
     }
   }
 
@@ -720,7 +717,7 @@ export class DefaultAppConversationClientRegistry implements AppConversationClie
       await delay(POLL_INTERVAL_MS)
       if (retainedAction !== undefined) await this.drainAgentActionEffects(retainedAction)
       const summary = this.ctx.sessions.list.getSnapshot().byId[sessionId]
-      if (this.ctx.uiSession.pendingInteractions.getSnapshot().has(sessionId)) {
+      if (this.ctx.uiSession.sessionStatus.getSnapshot().get(sessionId)?.pendingInteraction !== undefined) {
         this.emit(message, action, {
           status: 'attention',
           sessionId,

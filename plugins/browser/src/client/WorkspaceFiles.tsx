@@ -26,7 +26,7 @@ import { installNativeWorkspaceSidebar } from './NativeWorkspaceSidebar.js'
 /** Compose the pinned plugin's public modules; DeepDeck owns the Cordis mount. */
 export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: boolean } = {}) {
   const store = createSidebarStore()
-  store.setPrefs({ ...store.getPrefs(), editorExplorer: !options.desktop, browserInterceptLinks: false })
+  store.setPrefs({ ...store.getPrefs(), editorExplorer: !options.desktop })
   const service = createBetterSidebarService(store)
   const context = ctx as unknown as Context
   const t = ctx.locale.bind(BROWSER_LOCALE)
@@ -56,7 +56,7 @@ export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: bo
   ctx.effect(() => {
     const disposers = builtinViewers().map(viewer => service.registerFileViewer(viewer))
     if (options.desktop) {
-      for (const descriptor of builtinTabs(context).filter(tab => tab.id !== 'browser')) disposers.push(service.registerTab(descriptor))
+      for (const descriptor of builtinTabs().filter(tab => tab.id !== 'browser')) disposers.push(service.registerTab(descriptor))
     } else {
       disposers.push(service.registerTab({ id: 'editor', title: () => t('filesTitle'), order: 10,
         component: props => <EditorHost {...props} expanded={props.expanded ?? []} revealed={[]} onToggleDir={props.onToggleDir ?? (() => {})} onReferenceFile={path => { appendToDraft(context, props.scope.sessionId, `@${path}`) }} /> }))

@@ -29,7 +29,7 @@ describe('Store settings navigation icon', () => {
   })
 
   it('replaces the stock hard-coded shell through Cordis composition', () => {
-    expect(chromePatch).toMatch(/id: ui-settings-general[\s\S]*?disabled: true/)
+    expect(chromePatch).toMatch(/id: ui-settings-general\s+name: [^\n]+\s+disabled: true/)
     expect(chromeClient).toContain('installDesktopSettingsShell(ctx)')
   })
 })

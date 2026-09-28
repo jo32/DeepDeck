@@ -33,7 +33,7 @@ it('opens the site conversation and appends an excerpt once without replacing or
       character: { Icon: () => null, Character: () => null, DockedComposer: ({ children }: any) => children },
       browser: { request, prepareAgent: async () => ({ siteId: 'site', sessionId: 'session', tabId: 'tab' }) },
       t: (key: keyof typeof en) => en[key],
-      useSessions: (select: any) => select({ current: 'session', byId: { session: { running: false } } }),
+      useSessions: (select: any) => select({ current: 'session', byId: { session: { id: 'session', retainedBy: { mainView: 1 }, running: false } } }),
       renderResources: () => null, resourcesOpen: false, renderConversation: () => createElement(Composer),
     } as unknown as ComponentProps<typeof BrowserFrame>)))
     expect(draft).toBe('My existing question\n\nhttps://example.com/article\n> First line\n> Second line\n\n')

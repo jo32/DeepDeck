@@ -58,19 +58,19 @@ function CloseIcon() {
   )
 }
 
-export function RestartConfirmation({ useSessions, useSessionPendingInteraction, t }: RestartConfirmationProps) {
+export function RestartConfirmation({ useSessions, useSessionStatus, t }: RestartConfirmationProps) {
   const [api] = useState(desktopRestartBridge)
   const [request, setRequest] = useState<RestartRequestSnapshot | undefined>()
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const sessions = useSessions(state => state)
-  const pending = useSessionPendingInteraction(state => state)
+  const pending = useSessionStatus(state => state)
   const restartSessions = useMemo<RestartSessionSnapshot[]>(() => (
     Object.values(sessions.byId)
       .filter(summary => summary.running === true && summary.origin !== 'subagent')
       .map(summary => ({
         sessionId: summary.id,
-        continuation: !pending.has(summary.id),
+        continuation: pending.get(summary.id)?.pendingInteraction === undefined,
       }))
   ), [sessions, pending])
 

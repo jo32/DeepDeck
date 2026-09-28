@@ -9,9 +9,7 @@
   name: '@deepseek-ai/dsh-client-ui-sidebar'
   disabled: true
 
-# DeepDeck owns the Settings shell so sections can contribute product-specific
-# navigation semantics such as the Store storefront glyph. Feature-owned
-# settings sections remain ordinary Cordis slot contributions.
+# DeepDeck owns the settings shell and its welcome acknowledgement config.
 - id: ui-settings-general
   name: '@deepseek-ai/dsh-client-ui-settings-general'
   disabled: true
@@ -58,7 +56,7 @@
     # The management plugin remains loaded so Settings can re-enable the
     # feature. Its live preference controls the nested MCP loader entry, which
     # fully disposes the native process and unregisters its tools.
-    - id: deepdeck-computer-use
+    - id: computer-use
       name: '@deepdeck/dsh-computer-use'
 
     # The group waits for the management service before constructing its child,

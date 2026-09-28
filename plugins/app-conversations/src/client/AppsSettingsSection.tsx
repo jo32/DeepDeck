@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   Button,
-  IconPlusOutline16,
+  IconPlusOutlineRegular,
   Input,
   Modal,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -365,7 +365,7 @@ export function AppsSettingsSection({ close, renderSlot, t, openCreator, dispatc
         {activeTab === 'apps' ? (
           <Button
             variant="primary"
-            icon={<IconPlusOutline16 size={16} />}
+            icon={<IconPlusOutlineRegular size={16} />}
             onClick={openCreate}
           >{t('newApp')}</Button>
         ) : null}

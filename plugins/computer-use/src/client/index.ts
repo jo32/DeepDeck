@@ -24,7 +24,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-export const inject = ['slots', 'locale', 'settingsScope']
+export const inject = ['slots', 'locale', 'configForms']
 
 /** Register one shared durable toggle in Settings and in the composer toolbar. */
 export function apply(ctx: ClientContext): void {
@@ -32,12 +32,10 @@ export function apply(ctx: ClientContext): void {
     () => ctx.locale.register(LOCALE_NAMESPACE, { zh, en }),
     'computer-use: dictionaries',
   )
-  const scope = ctx.settingsScope.bind<ComputerUseSettings>({
-    namespace: COMPUTER_USE_SETTINGS_NAMESPACE,
-  })
+  const scope = ctx.configForms.get<ComputerUseSettings>(COMPUTER_USE_SETTINGS_NAMESPACE)
   const injected = (): ComputerUseInjected => ({
     hooks: { computerUse: scope },
-    setEnabled: enabled => scope.set('enabled', enabled),
+    setEnabled: async enabled => { if (!await scope.set('enabled', enabled)) throw new Error('Computer Use preference was not saved') },
   })
 
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({

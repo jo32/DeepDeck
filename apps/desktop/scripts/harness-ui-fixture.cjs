@@ -54,7 +54,9 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   // Dismiss the upstream beta notice only in this throwaway profile.
   await until(() => evaluate(`Array.from(document.querySelectorAll('button')).some(e => ['继续','Continue'].includes(e.textContent.trim()))`), 'beta notice');
   await click('button', ['继续', 'Continue']);
-  await delay(500);
+  await until(() => evaluate(`!Array.from(document.querySelectorAll('[role=dialog]')).some(e => /Internal Testing Notice|内部测试/.test(e.textContent))`), 'saved welcome acknowledgement');
+  await new Promise(resolve => { contents.once('did-finish-load', resolve); contents.reload(); });
+  await until(() => evaluate(`!!document.querySelector('[data-deepdeck-desktop-frame][data-layout-motion-ready]')`), 'reloaded desktop shell');
   await click('button', ['新建会话', 'New Session']);
   await delay(500);
   assert((await evaluate('document.body.innerText')).includes('DeepDeck'));
@@ -139,16 +141,20 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   }
   const expectRightWorkbench = async () => {
     await delay(300);
-    const geometry = await evaluate(`(() => {
+    const geometry = await until(async () => {
+      const value = await evaluate(`(() => {
       const panel = document.querySelector('[data-sidebar-right-open]');
       const frame = document.querySelector('[data-deepdeck-desktop-frame]');
-      const conversation = document.querySelector('[data-slot="main.conversation"]').firstElementChild;
+      const conversation = document.querySelector('[data-slot="main.conversation"]')?.firstElementChild;
+      if (!panel || !frame || !conversation) return null;
       const bounds = element => element.getBoundingClientRect().toJSON();
       return { panel: bounds(panel), frame: bounds(frame), conversation: bounds(conversation),
         mode: panel.getAttribute('data-sidebar-right-panel'),
         panels: document.querySelectorAll('[data-sidebar-right-open]').length,
         duplicate: !!document.querySelector('[data-deepdeck-workbench]') };
     })()`);
+      return value && (value.mode === 'fullscreen' || Math.abs(value.panel.left - value.conversation.right) < 2) ? value : undefined;
+    }, 'settled workspace sidebar columns');
     assert.equal(geometry.panels, 1, 'There must be exactly one workspace sidebar');
     assert.equal(geometry.duplicate, false, 'The duplicate workbench must not mount');
     assert(geometry.mode === 'fullscreen' || Math.abs(geometry.panel.left - geometry.conversation.right) < 2,
@@ -203,8 +209,9 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   await click('button', ['收起侧栏']);
   await click('[data-sidebar-right-expand], [data-deepdeck-workspace-open]');
   await expectRightWorkbench();
-  window.setBounds(originalBounds);
-  await delay(500);
+  window.setSize(1600, 820);
+  await until(() => evaluate('innerWidth === 1600'), 'restored wide viewport');
+  await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   await click('button', ['打开侧栏']);
   await delay(400);
   await expectRightWorkbench();
@@ -219,6 +226,14 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   const screenshot = await contents.capturePage();
   assert(!screenshot.isEmpty(), 'Harness view stayed hidden behind splash');
   writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT, screenshot.toPNG());
+  console.log('PASS desktop Harness UI: welcome persistence, sessions, settings, sidebar geometry and hit targets, files, resizing, tab retention and fullscreen.');
+  if (process.env.DEEPDECK_UI_TEST_SCOPE === 'desktop') {
+    assert.deepEqual(errors, []);
+    if (workspaceFixture) rmSync(workspaceFixture, { force: true });
+    clearTimeout(deadline);
+    app.quit();
+    return;
+  }
   // Use an isolated local site to cover both first connection and the saved
   // Session restore that requires remote.fileReferences after a shell reload.
   const siteServer = createServer((_request, response) => {
@@ -271,8 +286,11 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   console.error(error);
   if (workspaceFixture) rmSync(workspaceFixture, { force: true });
   if (harnessContents && !harnessContents.isDestroyed()) {
-    const screenshot = await harnessContents.capturePage();
-    writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT, screenshot.toPNG());
+    console.error('Renderer state:', await harnessContents.executeJavaScript('document.body.innerText').catch(() => '(unavailable)'));
+    try {
+      const screenshot = await harnessContents.capturePage();
+      writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT, screenshot.toPNG());
+    } catch (captureError) { console.error('Failure screenshot unavailable:', captureError.message); }
   }
   app.exit(1);
 });

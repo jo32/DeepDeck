@@ -1,5 +1,5 @@
-import { spawnSync } from 'node:child_process'
-import { readFileSync, rmSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { existsSync, globSync, lstatSync, readFileSync, rmdirSync, rmSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
@@ -49,7 +49,25 @@ const buildEnvironment = clientBuildProcessEnvironment(process.env, clientEnviro
 
 // Upstream upgrades can remove packages while leaving their ignored lib/ trees.
 // Clean generated artifacts before rebuilding so discovery cannot load retired modules.
-runPnpm(['run', 'clean'], buildEnvironment)
+// 0.1.7's upstream cleaner rejects its own desktop-keyboard-test-types
+// output. Clean only ignored build artifacts, never tracked upstream sources.
+const generatedPaths = globSync([
+  'lib', 'apps/*/lib', 'apps/web/dist', 'packages/*/*/lib', 'vendor/*/lib',
+  'native/system/packages/*/lib', '.typecheck', '.dsh-build',
+  '*.tsbuildinfo', 'apps/*/*.tsbuildinfo', 'packages/*/*/*.tsbuildinfo',
+  'vendor/*/*.tsbuildinfo', 'native/system/*.tsbuildinfo',
+], { cwd: harnessRoot })
+for (const path of generatedPaths) {
+  execFileSync('git', ['clean', '-fdX', '--', path], { cwd: harnessRoot, stdio: 'inherit' })
+}
+for (const path of globSync('packages/*/*', { cwd: harnessRoot })) {
+  if (!lstatSync(resolve(harnessRoot, path)).isDirectory()) continue
+  if (existsSync(resolve(harnessRoot, path, 'package.json'))) continue
+  execFileSync('git', ['clean', '-fdX', '--', path], { cwd: harnessRoot, stdio: 'inherit' })
+  // Remove only an empty retired package directory. Unknown user files must
+  // prevent the build rather than being deleted or discovered as a package.
+  if (existsSync(resolve(harnessRoot, path))) rmdirSync(resolve(harnessRoot, path))
+}
 rmSync(resolve(harnessRoot, CLIENT_BUILD_RECORD_PATH), { force: true })
 runPnpm(['run', 'build:native-system'], buildEnvironment)
 // build:lib shells out to bare pnpm, which can resolve the parent's pnpm 12

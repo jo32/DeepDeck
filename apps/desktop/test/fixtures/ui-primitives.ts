@@ -19,7 +19,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return createElement("input", props);
 }
 
-export function IconPlusOutline16() {
+export function IconPlusOutlineRegular() {
   return createElement("svg", { "aria-hidden": true });
 }
 

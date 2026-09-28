@@ -37,7 +37,7 @@ import { installDesktopQuestions } from './DesktopQuestionComposer.tsx'
 import { RestartConfirmation } from './RestartConfirmation.tsx'
 import { installRestartContinuity, type RestartContinuityRuntime } from './restart-continuity.ts'
 
-export const inject = ['remote', 'slots', 'theme', 'workspaces', 'sessions', 'locale', 'connection', 'settingsScope']
+export const inject = ['remote', 'slots', 'theme', 'workspaces', 'sessions', 'locale', 'connection', 'configForms']
 
 function chatStoreFromHeader(entries: readonly StoredEntry[]): ConversationStore {
   const entry = entries.find(candidate => candidate.store !== undefined)
@@ -93,7 +93,8 @@ export function apply(ctx: ClientContext): void {
     const handle = createLayoutStore()
     const instance = handle.create()
     const store = { ...handle, create: () => instance }
-    const disposePanelInfo = ctx.slots.provideRoot({ hooks: { panelInfo: { getSnapshot: () => instance.getSnapshot().panelInfo, subscribe: listener => instance.subscribe(listener) } } })
+    layout.panelInfo = { getSnapshot: () => instance.getSnapshot().panelInfo, subscribe: listener => instance.subscribe(listener) }
+    const disposePanelInfo = ctx.slots.provideRoot({ hooks: { panelInfo: layout.panelInfo } })
     layout.attachPanels(instance.actions)
     const retainMainPanel = () => {
       const selected = instance.getSnapshot().panelInfo.activePanelId

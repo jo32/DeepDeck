@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 import { chromium, type Browser, type Page } from '../../../vendor/deepseek-harness/apps/web/node_modules/playwright/index.mjs'
 import {
-  launchWebScaffold, fixtureUserPrompts, type WebScaffold,
+  launchWebScaffold, fixtureUserPrompts, WELCOME_NOTICE_VERSION, type WebScaffold,
 } from '../../../vendor/deepseek-harness/apps/web/tests/scaffold.ts'
 import { connectFreshWorkspace, newEnglishPage, probeFreePort } from '../../../vendor/deepseek-harness/apps/web/tests/support.ts'
 
@@ -39,9 +39,12 @@ beforeAll(async () => {
 - insert:
     - id: deepdeck-desktop-chrome
       name: '@deepdeck/dsh-client-ui-desktop-chrome'
+      config:
+        welcomeNoticeVersion: '${WELCOME_NOTICE_VERSION}'
 `)
   scaffold = await launchWebScaffold({
     extraOverlayPath: overlay,
+    welcomeNoticePending: true,
     // This product test submits custom answers and additional questions; keep
     // replay consumption checks without comparing its transcript to the stock UI golden.
     compareReplaySession: false,
@@ -177,7 +180,7 @@ it('keeps ordinary question actions reachable in a narrow desktop conversation',
   await expectActionsInsideCard()
   await composer.getByRole('textbox').fill('A long answer\n'.repeat(20))
   await composer.getByRole('button', { name: 'Next', exact: true }).click()
-  await composer.getByRole('button', { name: 'Skip this question' }).click()
+  await composer.getByRole('button', { name: 'Skip', exact: true }).click()
   expect(await free).toEqual({ answers: [
     { id: 'free', selected: [], custom: 'A long answer\n'.repeat(20).trim() },
     { id: 'more', selected: [] },
@@ -191,8 +194,12 @@ it('keeps ordinary question actions reachable in a narrow desktop conversation',
   const review = page.locator('[data-plan-review-key]')
   await review.waitFor()
   expect(await composer.count()).toBe(0)
-  await review.getByRole('button', { name: 'Refuse', exact: true }).click()
-  expect(await plan).toEqual({ answers: [{ id: 'review', selected: ['Decline'] }] })
+  // Narrow windows open the plan document in the fullscreen sidebar.
+  await page.locator('[data-plan-preview]').waitFor()
+  await page.locator('[data-sidebar-right-toggle]').click()
+  await page.locator('[data-sidebar-right-open]').waitFor({ state: 'detached' })
+  await review.getByRole('button', { name: 'Approve', exact: true }).click()
+  expect(await plan).toEqual({ answers: [{ id: 'review', selected: ['Proceed'] }] })
   await review.waitFor({ state: 'detached' })
   expect(pageErrors).toEqual([])
 })

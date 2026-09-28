@@ -5,7 +5,7 @@ import { ComputerUseToggle, type ComputerUseInjected } from './ComputerUseToggle
 
 describe('computer-use client plugin', () => {
   it('registers one shared preference in Settings and the composer slot', async () => {
-    const set = vi.fn(async () => {})
+    const set = vi.fn(async () => true)
     const scope = {
       getSnapshot: () => ({
         status: 'ready',
@@ -28,7 +28,7 @@ describe('computer-use client plugin', () => {
     const ctx = {
       effect: (setup: () => unknown) => { setup() },
       locale: { register: vi.fn(() => () => {}) },
-      settingsScope: { bind: vi.fn(() => scope) },
+      configForms: { get: vi.fn(() => scope) },
       slots: {
         inject: (name: string, register: () => unknown) => { register(); return () => {} },
         register: (options: Record<string, unknown>, component: unknown) => {
@@ -40,7 +40,7 @@ describe('computer-use client plugin', () => {
 
     apply(ctx as never)
 
-    expect(inject).toEqual(['slots', 'locale', 'settingsScope'])
+    expect(inject).toEqual(['slots', 'locale', 'configForms'])
     expect(entries).toHaveLength(2)
     expect(entries[0]).toMatchObject({
       name: 'settings.general.item',

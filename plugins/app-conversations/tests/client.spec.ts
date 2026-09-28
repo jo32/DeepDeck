@@ -13,6 +13,16 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+const referenceMethods = {
+  retain(this: { binding: (id: string) => unknown }, id: string) {
+    const binding = this.binding(id)
+    return { binding, ready: Promise.resolve(binding), release: vi.fn() }
+  },
+  async using(this: { binding: (id: string) => unknown }, id: string, _options: unknown, run: (reference: { binding: unknown }) => Promise<unknown>) {
+    return run({ binding: this.binding(id) })
+  },
+}
+
 describe('app conversation Client registry', () => {
   it('opens an App source Workspace with the cordis Creator preset', async () => {
     const open = vi.fn()
@@ -51,11 +61,13 @@ describe('app conversation Client registry', () => {
 
     await openCreatorSession({
       remote: { session: { create } },
+      uiWorkspace: { openSession: open },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-creator', path: '/plugins/reader', sessionIds: [] })),
       },
       sessions: {
+        ...referenceMethods,
         list: { getSnapshot: () => ({
           byId: {
             'session-creator': {
@@ -107,6 +119,7 @@ describe('app conversation Client registry', () => {
 
     await expect(openCreatorSession({
       remote: { session: { create } },
+      uiWorkspace: { openSession: open },
       workspaces: {
         list: { getSnapshot: () => ({
           items: [{
@@ -117,6 +130,7 @@ describe('app conversation Client registry', () => {
         }) },
       },
       sessions: {
+        ...referenceMethods,
         list: { getSnapshot: () => ({
           archivedSessionIds: [],
           byId: {
@@ -178,6 +192,7 @@ describe('app conversation Client registry', () => {
 
     await openCreatorSession({
       remote: { session: { create } },
+      uiWorkspace: { openSession: open },
       workspaces: {
         list: { getSnapshot: () => ({
           items: [{
@@ -188,6 +203,7 @@ describe('app conversation Client registry', () => {
         }) },
       },
       sessions: {
+        ...referenceMethods,
         list: { getSnapshot: () => ({
           archivedSessionIds: [],
           byId: {
@@ -263,6 +279,7 @@ describe('app conversation Client registry', () => {
 
     await openCreatorSession({
       remote: { session: { create } },
+      uiWorkspace: { openSession: open },
       workspaces: {
         list: { getSnapshot: () => ({
           items: [{
@@ -273,6 +290,7 @@ describe('app conversation Client registry', () => {
         }) },
       },
       sessions: {
+        ...referenceMethods,
         list: { getSnapshot: () => ({
           archivedSessionIds: [],
           byId: {
@@ -351,11 +369,13 @@ describe('app conversation Client registry', () => {
 
     await dispatchAppUpdateTask({
       remote: { session: { create } },
+      uiWorkspace: { openSession: open },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-update', path: '/plugins/reader', sessionIds: [] })),
       },
       sessions: {
+        ...referenceMethods,
         list: { getSnapshot: () => ({
           byId: {
             'session-update': {
@@ -403,14 +423,15 @@ describe('app conversation Client registry', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const registry = new DefaultAppConversationClientRegistry({
-      uiWorkspace: { connectWorkspace: vi.fn(async () => 'session-1') },
-      uiSession: { pendingInteractions: { getSnapshot: () => new Map() } },
+      uiWorkspace: { openSession: open, connectWorkspace: vi.fn(async () => 'session-1') },
+      uiSession: { sessionStatus: { getSnapshot: () => new Map() } },
       remote: { session: { follow: async function* () { const result = await history(); yield { type: 'snapshot', records: result.value.events } } } },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-1', path: '/tmp/deepdeck-reader' })),
       },
       sessions: {
+        ...referenceMethods,
         list: { getSnapshot: () => ({ byId: {} }) },
         binding: () => ({
           session: {
@@ -534,14 +555,15 @@ describe('app conversation Client registry', () => {
       },
     }
     const registry = new DefaultAppConversationClientRegistry({
-      uiWorkspace: { connectWorkspace: vi.fn(async () => 'session-1') },
-      uiSession: { pendingInteractions: { getSnapshot: () => new Map() } },
+      uiWorkspace: { openSession: vi.fn(), connectWorkspace: vi.fn(async () => 'session-1') },
+      uiSession: { sessionStatus: { getSnapshot: () => new Map() } },
       remote: { session: { follow: async function* () { const result = await history(); yield { type: 'snapshot', records: result.value.events } } } },
       workspaces: {
         list: { getSnapshot: () => ({ items: [] }) },
         create: vi.fn(async () => ({ workspaceId: 'workspace-1', path: '/tmp/deepdeck-reader' })),
       },
       sessions: {
+        ...referenceMethods,
         list: sessionList,
         binding: () => ({ session: { rename: vi.fn(async () => ({ ok: true })), prompt } }),
         open: vi.fn(),

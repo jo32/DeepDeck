@@ -2,6 +2,7 @@ import {
   copyFileSync,
   existsSync,
   lstatSync,
+  mkdirSync,
   readFileSync,
   renameSync,
   writeFileSync,
@@ -14,6 +15,29 @@ type ProfileManifest = {
   optionalDependencies?: Record<string, string>;
   dsh?: { profile?: { bundles?: unknown } };
 };
+
+export const DESKTOP_BUNDLE = "@deepdeck/dsh-client-ui-desktop-chrome";
+
+/** Install defaults below the user's patch layer so volatile settings remain writable. */
+export function ensureDesktopBundle(dshHome: string): void {
+  const profile = join(dshHome, "profiles", "web");
+  const path = join(profile, "package.json");
+  mkdirSync(profile, { recursive: true });
+  const source = existsSync(path) ? readFileSync(path, "utf8") : undefined;
+  const manifest: ProfileManifest = source === undefined ? {} : JSON.parse(source);
+  const bundles = manifest.dsh?.profile?.bundles;
+  if (bundles !== undefined && (!Array.isArray(bundles) || bundles.some(value => typeof value !== "string"))) {
+    throw new Error("Web profile bundles must be a list of package names");
+  }
+  if (Array.isArray(bundles) && bundles.includes(DESKTOP_BUNDLE)) return;
+  manifest.dsh ??= {};
+  manifest.dsh.profile ??= {};
+  manifest.dsh.profile.bundles = [...(bundles as string[] | undefined ?? ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"]), DESKTOP_BUNDLE];
+  if (source !== undefined && !existsSync(`${path}.deepdeck-before-bundle`)) copyFileSync(path, `${path}.deepdeck-before-bundle`);
+  const temporary = `${path}.deepdeck-${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  renameSync(temporary, path);
+}
 
 export interface PresetBundleMigration {
   backupPath?: string;

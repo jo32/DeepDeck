@@ -1,5 +1,5 @@
 - insert:
-    - id: deepdeck-computer-use
+    - id: computer-use
       name: '@deepdeck/dsh-computer-use'
 
     # The group waits for the management service before constructing its child,

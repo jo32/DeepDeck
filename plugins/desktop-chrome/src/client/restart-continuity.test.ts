@@ -22,7 +22,7 @@ describe('restart Session continuity', () => {
           getSnapshot: () => ({ phase: 'ready', byId: { running: { running: false } } }),
           subscribe: () => () => {},
         },
-        binding: () => ({ session: { prompt } }),
+        retain: () => ({ ready: Promise.resolve({ session: { prompt } }), release: vi.fn() }),
       },
       remote: { fileReferences: { list: vi.fn() } },
     }
@@ -47,7 +47,7 @@ describe('restart Session continuity', () => {
           getSnapshot: () => ({ phase: 'ready', byId: { waiting: { running: false } } }),
           subscribe: () => () => {},
         },
-        binding: () => ({ session: { prompt } }),
+        retain: () => ({ ready: Promise.resolve({ session: { prompt } }), release: vi.fn() }),
       },
       remote: { fileReferences: { list: models } },
     }

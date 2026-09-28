@@ -1,3 +1,6 @@
+import { WelcomeNotice } from '../../../../vendor/deepseek-harness/packages/client/ui-settings-models/lib/types/client/WelcomeNotice.js'
+import { WelcomeNoticeStore } from '../../../../vendor/deepseek-harness/packages/client/ui-settings-models/lib/types/client/welcome-store.js'
+import type {} from '@deepseek-ai/dsh-client-ui-settings-models/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
@@ -10,12 +13,11 @@ import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import {
   Button,
-  IconAgentPresetOutline16,
-  IconCloseOutline16,
-  IconDataOutline16,
-  IconPersonalizationOutline16,
-  IconSettingsOutline14,
-  IconSettingsOutline16,
+  IconAgentPresetOutlineRegular,
+  IconCloseOutlineRegular,
+  IconDataOutlineRegular,
+  IconPersonalizationOutlineRegular,
+  IconSettingsOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -129,10 +131,10 @@ export function StoreOutlineIcon({ size = 16, className }: {
 
 function navIcon(id: string): React.JSX.Element {
   if (id === 'store') return <StoreOutlineIcon className={shellCss.navIcon} />
-  if (id === 'models') return <IconDataOutline16 className={shellCss.navIcon} size={16} />
-  if (id === 'agent-presets') return <IconAgentPresetOutline16 className={shellCss.navIcon} size={16} />
-  if (id === 'plugins') return <IconPersonalizationOutline16 className={shellCss.navIcon} size={16} />
-  return <IconSettingsOutline16 className={shellCss.navIcon} size={16} />
+  if (id === 'models') return <IconDataOutlineRegular className={shellCss.navIcon} size={16} />
+  if (id === 'agent-presets') return <IconAgentPresetOutlineRegular className={shellCss.navIcon} size={16} />
+  if (id === 'plugins') return <IconPersonalizationOutlineRegular className={shellCss.navIcon} size={16} />
+  return <IconSettingsOutlineRegular className={shellCss.navIcon} size={16} />
 }
 
 export function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: {
@@ -180,7 +182,7 @@ export function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }:
           <div className={shellCss.header}>
             <div className={shellCss.actions}>{renderSlot('settings.action', {})}</div>
             <button ref={closeButton} type="button" className={shellCss.close} onClick={onClose}>
-              <IconCloseOutline16 size={14} />
+              <IconCloseOutlineRegular size={14} />
               <span className={shellCss.hiddenLabel}>{renderSlot('settings.close', {})}</span>
             </button>
           </div>
@@ -200,9 +202,10 @@ function SettingsShell(props: SettingsShellProps): React.JSX.Element {
   const [completedOnboarding, setCompletedOnboarding] = useState<ReadonlySet<string>>(() => new Set())
   const rows = useSections(snapshot => snapshot)
   const onboardingSteps = useOnboardingSteps(snapshot => snapshot)
-  const onboardingActive = useSessions(state =>
-    state.phase === 'ready'
-    && (state.current === undefined || state.byId[state.current]?.blank === true))
+  const onboardingActive = useSessions(state => {
+    const selected = Object.values(state.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)
+    return state.phase === 'ready' && (selected === undefined || selected.blank === true)
+  })
   const onboardingStep = onboardingActive
     ? onboardingSteps.find(step => !completedOnboarding.has(step.id))
     : undefined
@@ -255,7 +258,7 @@ function SettingsShell(props: SettingsShellProps): React.JSX.Element {
 function TriggerContent({ wide, t }: PropsRuntime<'settings.trigger'> & PropsLocale<typeof DESKTOP_SETTINGS_LOCALE>) {
   return (
     <>
-      {wide ? <IconSettingsOutline16 size={16} /> : <IconSettingsOutline14 size={18} />}
+      {wide ? <IconSettingsOutlineRegular size={16} /> : <IconSettingsOutlineRegular size={18} />}
       {wide && <span className={chromeCss.triggerLabel}>{t('trigger')}</span>}
     </>
   )
@@ -368,9 +371,15 @@ export function installDesktopSettingsShell(ctx: ClientContext): void {
     'deepdeck desktop: settings dictionaries',
   )
   const t = ctx.locale.bind(DESKTOP_SETTINGS_LOCALE)
+  const welcome = new WelcomeNoticeStore(ctx.configForms.get('deepdeck-desktop-chrome'))
+  ctx.effect(() => () => welcome.dispose(), 'deepdeck desktop: welcome config')
+  ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
+    name: 'settings.onboarding', id: 'welcome-notice', order: -100, priority: -100,
+    inject: () => ({ controller: welcome, hooks: { welcome: welcome.store }, t: ctx.locale.bind('settings.models') }),
+  }, WelcomeNotice))
   const connection = ctx.get('connection') as ConnectionHandle
   const documentController = connection.isLoopback
-    ? new SettingsDocumentStore(ctx.remote, ctx.settingsScope.describe())
+    ? new SettingsDocumentStore(ctx.remote, ctx.configForms.describe())
     : undefined
   ctx.effect(() => () => { documentController?.dispose() }, 'deepdeck desktop: settings document action')
 
@@ -388,7 +397,7 @@ export function installDesktopSettingsShell(ctx: ClientContext): void {
           if (version !== rowsVersion || revision !== rowsRevision) {
             rowsVersion = version
             rowsRevision = revision
-            rows = ctx.slots.entries('settings.section').map(entry => ({
+            rows = ctx.slots.entriesOfSlot('settings.section').map(entry => ({
               id: entry.options.id ?? '',
               order: entry.options.order ?? 0,
               label: resolveSlotLabel(entry.options.label) ?? '',
@@ -410,7 +419,7 @@ export function installDesktopSettingsShell(ctx: ClientContext): void {
           const version = ctx.slots.getVersion('settings.onboarding')
           if (version !== onboardingVersion) {
             onboardingVersion = version
-            onboardingSteps = ctx.slots.entries('settings.onboarding').map(entry => ({
+            onboardingSteps = ctx.slots.entriesOfSlot('settings.onboarding').map(entry => ({
               id: entry.options.id ?? '',
               order: entry.options.order ?? 0,
             })).sort((left, right) => left.order - right.order)

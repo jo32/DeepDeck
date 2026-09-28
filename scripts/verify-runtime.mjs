@@ -5,8 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.34";
-const DSH_PLUGIN_API_VERSION = "0.1.5-rc.2";
+const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.47";
+const DSH_PLUGIN_API_VERSION = "0.1.7-rc.2";
 const REACT_PEER_RANGE = "^18.2.0 || ^19.1.1";
 const BUN_VERSION = "1.4.0";
 
@@ -99,14 +99,14 @@ async function verifyCodexConnectContract(root, manifest) {
   const dshPeers = Object.entries(manifest.peerDependencies ?? {})
     .filter(([name]) => name.startsWith("@deepseek-ai/dsh-"));
   if (dshPeers.length === 0 || dshPeers.some(([, version]) => !version.split(" || ").includes(DSH_PLUGIN_API_VERSION))) {
-    throw new Error("Bundled Codex Connect does not declare a 0.1.5-rc.2-only DSH peer contract");
+    throw new Error("Bundled Codex Connect does not declare a 0.1.7-rc.2-only DSH peer contract");
   }
   if (manifest.peerDependencies?.react !== REACT_PEER_RANGE) {
     throw new Error("Bundled Codex Connect does not declare its React 18/19 peer contract");
   }
   const compatibility = JSON.parse(await readFile(join(root, "compatibility.json"), "utf8"));
   if (!compatibility.dshPluginApi?.versions?.includes(DSH_PLUGIN_API_VERSION)) {
-    throw new Error("Bundled Codex Connect compatibility.json does not report Harness 0.1.5-rc.2");
+    throw new Error("Bundled Codex Connect compatibility.json does not report Harness 0.1.7-rc.2");
   }
 }
 
@@ -261,7 +261,7 @@ for (const plugin of manifest.plugins) {
     if (plugin === "browser") {
       const sidebarRoot = join(root, "node_modules", "dsh-better-sidebar");
       const sidebarManifest = JSON.parse(await readFile(join(sidebarRoot, "package.json"), "utf8"));
-      if (sidebarManifest.version !== "0.19.1") throw new Error("Browser requires the Harness 0.1.5 compatible sidebar release");
+      if (sidebarManifest.version !== "0.21.1") throw new Error("Browser requires the Harness 0.1.7 compatible sidebar release");
       requiredRuntimePaths.push(...["index.js", "client-editor.js", "client-mermaid.js"].map(file => join(sidebarRoot, "lib", file)));
       bundledWebMCPCompiler = join(root, "node_modules", "esbuild", "lib", "main.js");
       bundledDevToolsMcp = join(root, "node_modules", "chrome-devtools-mcp", "build", "src", "bin", "chrome-devtools-mcp.js");

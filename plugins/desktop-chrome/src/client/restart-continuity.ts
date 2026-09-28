@@ -15,14 +15,13 @@ export interface RestartContinuityRuntime {
       getSnapshot: () => SessionListSnapshot
       subscribe: (listener: () => void) => () => void
     }
-    binding: (sessionId: SessionId) => undefined | {
-      readonly session: {
-        prompt: (
-          content: Array<{ readonly type: 'text'; readonly text: string }>,
-          mode: 'queue',
-          signal?: AbortSignal,
-        ) => Promise<{ readonly ok: boolean }>
-      }
+    retain: (sessionId: SessionId, options: { source: 'workspaceOperation'; signal?: AbortSignal | undefined }) => {
+      readonly ready: Promise<{
+        readonly session: {
+          prompt: (content: Array<{ readonly type: 'text'; readonly text: string }>, mode: 'queue', signal?: AbortSignal) => Promise<{ readonly ok: boolean }>
+        }
+      }>
+      release: () => void
     }
   }
   readonly remote: {
@@ -71,14 +70,18 @@ export async function recoverRestartSessions(
       const result = await runtime.remote.fileReferences.list(sessionId, '', signal)
       return result.ok ? entry.sessionId : undefined
     }
-    const binding = runtime.sessions.binding(sessionId)
-    if (binding === undefined) return undefined
-    const result = await binding.session.prompt(
-      [{ type: 'text', text: CONTINUATION_PROMPT }],
-      'queue',
-      signal,
-    )
-    return result.ok ? entry.sessionId : undefined
+    const reference = runtime.sessions.retain(sessionId, { source: 'workspaceOperation', signal })
+    try {
+      const binding = await reference.ready
+      const result = await binding.session.prompt(
+        [{ type: 'text', text: CONTINUATION_PROMPT }],
+        'queue',
+        signal,
+      )
+      return result.ok ? entry.sessionId : undefined
+    } finally {
+      reference.release()
+    }
   }))
   const acknowledged = completed.filter((sessionId): sessionId is string => sessionId !== undefined)
   if (acknowledged.length > 0 || recovery.sessions.length === 0) {

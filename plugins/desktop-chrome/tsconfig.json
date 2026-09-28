@@ -18,6 +18,8 @@
     "rootDir": "src",
     "outDir": "lib/types",
     "paths": {
+      "@deepseek-ai/dsh-settings": ["../../vendor/deepseek-harness/packages/settings/settings/lib/types/index.d.ts"],
+      "@deepseek-ai/dsh-client-ui-settings-models/client": ["../../vendor/deepseek-harness/packages/client/ui-settings-models/lib/types/client/index.d.ts"],
       "react": ["../../apps/desktop/node_modules/@types/react/index.d.ts"],
       "react/jsx-runtime": ["../../apps/desktop/node_modules/@types/react/jsx-runtime.d.ts"],
       "@deepseek-ai/schemastery": ["../../vendor/deepseek-harness/vendor/schemastery/lib/types/index.d.ts"],

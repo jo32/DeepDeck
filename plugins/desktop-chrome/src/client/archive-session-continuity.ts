@@ -3,7 +3,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 
 interface SessionSelectionSnapshot {
-  readonly current: SessionId | undefined
+  readonly byId: Readonly<Record<string, { readonly id: SessionId; readonly retainedBy: Readonly<Record<string, number>> }>>
 }
 
 interface WorkspaceArchiveSnapshot {
@@ -33,11 +33,11 @@ export interface ArchiveSessionContinuityRuntime {
 export function installArchiveSessionContinuity(
   runtime: ArchiveSessionContinuityRuntime,
 ): () => void {
-  let previousCurrent = runtime.sessions.list.getSnapshot().current
+  let previousCurrent = Object.values(runtime.sessions.list.getSnapshot().byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id
 
   return runtime.workspaces.list.subscribe(() => {
     const workspaces = runtime.workspaces.list.getSnapshot()
-    const current = runtime.sessions.list.getSnapshot().current
+    const current = Object.values(runtime.sessions.list.getSnapshot().byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id
     const archivedCurrent = previousCurrent !== undefined
       && current === undefined
       && workspaces.archivedSessionIds.includes(previousCurrent)

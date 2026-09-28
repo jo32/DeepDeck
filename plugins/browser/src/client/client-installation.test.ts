@@ -33,7 +33,8 @@ describe('Browser Client Cordis assembly', () => {
     const generation = {}
     for (const name of inject) {
       if (name === 'remote' || name === 'remote.fileReferences') continue
-      ctx.provide(name, name === 'sessions' ? {
+      ctx.provide(name, name === 'uiWorkspace' ? { openSession: open } : name === 'sessions' ? {
+        retain: () => ({ ready: Promise.resolve(binding), release: vi.fn() }),
         list: { getSnapshot: () => ({ byId: { 'saved-session': { cwd: '/site', running: false } } }) },
         binding: () => binding, open,
       } : name === 'connection' ? { generation: { getSnapshot: () => generation } } : {})

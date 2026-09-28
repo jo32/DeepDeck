@@ -1,0 +1,516 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -7141,11 +7141,10 @@
+ 				account.dispose();
+ 			}, "dsh-codex-connect: account observation");
+ 			ctx.effect(() => {
+-				updater.refresh();
+ 				return () => {
+ 					updater.dispose();
+ 				};
+-			}, "dsh-codex-connect: update checker");
++			}, "dsh-codex-connect: manual update store");
+ 			ctx.effect(() => ctx.locale.register(namespace, {
+ 				zh,
+ 				en
+@@ -7177,13 +7176,6 @@
+ 					configScope
+ 				})
+ 			}, OpenAICodexModelsCard));
+-			ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+-				name: "shell.overlay",
+-				id: "dsh-codex-connect-update",
+-				order: 40,
+-				locale: namespace,
+-				inject: () => ({ updater })
+-			}, OpenAICodexUpdateOverlay));
+ 			ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
+ 				name: "conversation.input.right",
+ 				id: "codex-connect-task-models",
+diff --git a/lib/index.js b/lib/index.js
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -2547,7 +2547,7 @@
+ 		}
+ 	};
+ }
+-/** Build the pi-ai profile with the model-error index required by DSH 0.1.7-rc.1. */
++/** Build the pi-ai profile with the model-error index required by DSH 0.1.7-rc.2. */
+ function createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, contextWindowOverrides, backendRequests) {
+ 	const effectiveProvider = contextWindowOverrides === void 0 ? provider : withOpenAICodexContextWindowOverrides(provider, contextWindowOverrides);
+ 	return {
+@@ -4545,7 +4545,7 @@
+ //#region src/compatibility.ts
+ const COMPATIBILITY_SCHEMA_VERSION = 1;
+ const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
+-const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.1";
++const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.2";
+ const SUPPORTED_DSH_PLUGIN_API_VERSIONS = [SUPPORTED_DSH_PLUGIN_API_VERSION];
+ const SUPPORTED_DSH_PLUGIN_API_RANGE = SUPPORTED_DSH_PLUGIN_API_VERSIONS.join(" || ");
+ const SUPPORTED_PI_AI_RANGE = "0.85.1";
+@@ -4654,7 +4654,7 @@
+ 	const status = aggregateStatus([node, ...Object.values(packages)]);
+ 	const dshVersion = packages["@deepseek-ai/dsh-llm"].installed;
+ 	const piVersion = packages[PI_AI_PACKAGE].installed;
+-	const matchedPair = dshVersion === packages["@deepseek-ai/dsh-llm-pi-ai"].installed && dshVersion === packages["@deepseek-ai/dsh-compaction"].installed && dshVersion === "0.1.7-rc.1" && piVersion === "0.85.1";
++	const matchedPair = dshVersion === packages["@deepseek-ai/dsh-llm-pi-ai"].installed && dshVersion === packages["@deepseek-ai/dsh-compaction"].installed && dshVersion === "0.1.7-rc.2" && piVersion === "0.85.1";
+ 	return {
+ 		schemaVersion: 1,
+ 		status: status === "compatible" && !matchedPair ? "unverified" : status,
+@@ -9346,12 +9346,13 @@
+ /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
+ const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
+ /** Standalone search endpoint used by the official Codex client. */
+-const OPENAI_CODEX_SEARCH_URL = `${OPENAI_CODEX_BASE_URL}/alpha/search`;
++const OPENAI_CODEX_SEARCH_URL = `${OPENAI_CODEX_BASE_URL}/responses`;
++const OPENAI_CODEX_SEARCH_INSTRUCTIONS = "Search the web for the user query and return a concise answer grounded in the sources you found.";
+ /** Convert the configured mode to the official endpoint field. */
+ function externalWebAccess(mode) {
+ 	switch (mode) {
+ 		case "cached": return false;
+-		case "indexed": return "indexed";
++		case "indexed": return false;
+ 		case "live": return true;
+ 	}
+ }
+@@ -9388,38 +9389,93 @@
+ 		return;
+ 	}
+ }
++/** Add one citeable, deduplicated source from an opaque Responses DTO. */
++function addSource(sources, seen, item) {
++	const url = citeableUrl(item["url"]);
++	if (url === void 0 || seen.has(url)) return;
++	seen.add(url);
++	const title = optionalString(item, "title");
++	const snippet = optionalString(item, "snippet");
++	sources.push({
++		url,
++		...title === void 0 ? {} : { title },
++		...snippet === void 0 ? {} : { snippet }
++	});
++}
+ /**
+-* Map the standalone endpoint's forward-compatible result DTOs into the dsh
+-* web result. Unknown DTO types and fields are ignored; malformed envelope
+-* fields fail at the network boundary.
+-* @param value - parsed response JSON.
++* Map a terminal Responses API object into the stable dsh web result.
++* Cited URLs are ordered first, followed by the complete source list requested
++* through `include: ["web_search_call.action.sources"]`.
++* @param value - terminal `response.completed`/`response.incomplete` response.
+ * @returns normalized answer and citeable sources.
+ */
+ function mapOpenAICodexSearchResponse(value) {
+-	if (!isRecord$1(value) || typeof value["output"] !== "string") throw new WebError("OpenAI Codex returned a search response without string output", "WEB_PROVIDER_ERROR");
+-	const output = value["output"];
+-	const rawResults = value["results"];
+-	if (rawResults !== void 0 && !Array.isArray(rawResults)) throw new WebError("OpenAI Codex returned a search response with non-array results", "WEB_PROVIDER_ERROR");
++	if (!isRecord$1(value) || !Array.isArray(value["output"])) throw new WebError("OpenAI Codex returned a Responses object without array output", "WEB_PROVIDER_ERROR");
++	const output = [];
++	const citedSources = [];
++	const otherSources = [];
++	const cited = /* @__PURE__ */ new Set();
++	const other = /* @__PURE__ */ new Set();
++	for (const item of value["output"]) {
++		if (!isRecord$1(item)) continue;
++		if (item["type"] === "message" && Array.isArray(item["content"])) {
++			for (const content of item["content"]) {
++				if (!isRecord$1(content) || content["type"] !== "output_text") continue;
++				const text = optionalString(content, "text");
++				if (text !== void 0) output.push(text);
++				if (!Array.isArray(content["annotations"])) continue;
++				for (const annotation of content["annotations"]) {
++					if (!isRecord$1(annotation) || annotation["type"] !== "url_citation") continue;
++					addSource(citedSources, cited, annotation);
++				}
++			}
++			continue;
++		}
++		if (item["type"] !== "web_search_call" || !isRecord$1(item["action"])) continue;
++		const rawSources = item["action"]["sources"];
++		if (!Array.isArray(rawSources)) continue;
++		for (const source of rawSources) if (isRecord$1(source)) addSource(otherSources, other, source);
++	}
+ 	const sources = [];
+ 	const seen = /* @__PURE__ */ new Set();
+-	for (const item of rawResults ?? []) {
+-		if (!isRecord$1(item) || item["type"] !== "text_result") continue;
+-		const url = citeableUrl(item["url"]);
+-		if (url === void 0 || seen.has(url)) continue;
+-		seen.add(url);
+-		const title = optionalString(item, "title");
+-		const snippet = optionalString(item, "snippet");
+-		sources.push({
+-			url,
+-			...title === void 0 ? {} : { title },
+-			...snippet === void 0 ? {} : { snippet }
+-		});
+-	}
++	for (const source of [...citedSources, ...otherSources]) {
++		if (seen.has(source.url)) continue;
++		seen.add(source.url);
++		sources.push(source);
++	}
++	const content = output.join("");
+ 	return {
+-		...output.length === 0 ? {} : { content: output },
++		...content.length === 0 ? {} : { content },
+ 		sources,
+-		truncated: false
++		truncated: value["status"] === "incomplete"
+ 	};
++}
++/** Parse one complete SSE response and return its terminal Responses object. */
++function terminalResponseFromSse(text) {
++	let terminal;
++	const streamedOutput = [];
++	const blocks = text.replace(/\r\n/gu, "\n").split(/\n\n+/u);
++	for (const block of blocks) {
++		const data = block.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n").trim();
++		if (data.length === 0 || data === "[DONE]") continue;
++		let event;
++		try {
++			event = JSON.parse(data);
++		} catch (error) {
++			throw new WebError("OpenAI Codex returned malformed Responses SSE data", "WEB_PROVIDER_ERROR", { cause: error });
++		}
++		if (!isRecord$1(event)) continue;
++		if (event["type"] === "error") throw new WebError(providerMessage(event) ?? "OpenAI Codex Responses stream failed", "WEB_PROVIDER_ERROR");
++		if (event["type"] === "response.failed") throw new WebError(providerMessage(event["response"]) ?? "OpenAI Codex Responses request failed", "WEB_PROVIDER_ERROR");
++		if (event["type"] === "response.output_item.done" && Number.isSafeInteger(event["output_index"]) && event["output_index"] >= 0 && isRecord$1(event["item"])) streamedOutput[event["output_index"]] = event["item"];
++		if (event["type"] === "response.completed" || event["type"] === "response.incomplete") terminal = event["response"];
++	}
++	if (terminal === void 0) throw new WebError("OpenAI Codex Responses stream ended without a terminal response", "WEB_PROVIDER_ERROR");
++	if (isRecord$1(terminal) && Array.isArray(terminal["output"]) && terminal["output"].length === 0 && streamedOutput.length > 0) return {
++		...terminal,
++		output: streamedOutput.filter((item) => item !== void 0)
++	};
++	return terminal;
+ }
+ /** Stable cancellation error for every provider phase. */
+ function searchAborted(signal, fallback) {
+@@ -9465,7 +9521,8 @@
+ 			if (size > 1048576) throw new Error("Search response exceeds the byte limit");
+ 			chunks.push(value);
+ 		}
+-		return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)));
++		const text = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks));
++		return response.ok ? terminalResponseFromSse(text) : JSON.parse(text);
+ 	} finally {
+ 		reader.cancel().catch(() => {});
+ 		reader.releaseLock();
+@@ -9529,9 +9586,12 @@
+ 		if (access === void 0 || access.length === 0) throw new WebError("OpenAI Codex search is signed out; run \"dsh openai-codex login\"", "WEB_PROVIDER_CREDENTIAL_MISSING");
+ 		const accountId = accountIdFromToken(access);
+ 		throwIfSearchAborted(signal);
++		const requestId = this.options.resolveRequestId();
+ 		const body = {
+-			id: this.options.resolveRequestId(),
+ 			model: this.options.model,
++			store: false,
++			stream: true,
++			instructions: OPENAI_CODEX_SEARCH_INSTRUCTIONS,
+ 			input: [{
+ 				type: "message",
+ 				role: "user",
+@@ -9540,13 +9600,14 @@
+ 					text: request.query
+ 				}]
+ 			}],
+-			commands: { search_query: [{ q: request.query }] },
+-			settings: {
++			tools: [{
++				type: "web_search",
+ 				search_context_size: this.options.contextSize,
+-				allowed_callers: ["direct"],
+ 				external_web_access: externalWebAccess(this.options.mode)
+-			},
+-			max_output_tokens: this.options.maxOutputTokens
++			}],
++			tool_choice: "required",
++			parallel_tool_calls: true,
++			include: ["web_search_call.action.sources"]
+ 		};
+ 		this.options.recordRequest?.({
+ 			endpoint: OPENAI_CODEX_SEARCH_URL,
+@@ -9559,8 +9620,11 @@
+ 				authorization: `Bearer ${access}`,
+ 				"chatgpt-account-id": accountId,
+ 				"content-type": "application/json",
+-				accept: "application/json"
+-			}, "plugin");
++				accept: "text/event-stream",
++				"openai-beta": "responses=experimental",
++				"session-id": requestId,
++				"x-client-request-id": requestId
++			}, "plugin", requestId);
+ 			response = await abortable$1(requestFetch(OPENAI_CODEX_SEARCH_URL, {
+ 				method: "POST",
+ 				redirect: "error",
+diff --git a/lib/index.d.ts b/lib/index.d.ts
+--- a/lib/index.d.ts
++++ b/lib/index.d.ts
+@@ -296,8 +296,8 @@
+ //#region src/compatibility.d.ts
+ export declare const COMPATIBILITY_SCHEMA_VERSION: 1;
+ export declare const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
+-export declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.1";
+-export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.1"];
++export declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.2";
++export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.2"];
+ export declare const SUPPORTED_DSH_PLUGIN_API_RANGE: string;
+ export declare const SUPPORTED_PI_AI_RANGE = "0.85.1";
+ export declare const PI_AI_PACKAGE = "@earendil-works/pi-ai";
+@@ -345,8 +345,8 @@
+     readonly node: "^22.19.0 || >=24.0.0";
+   };
+   readonly dshPluginApi: {
+-    readonly version: "0.1.7-rc.1";
+-    readonly versions: readonly ["0.1.7-rc.1"];
++    readonly version: "0.1.7-rc.2";
++    readonly versions: readonly ["0.1.7-rc.2"];
+     readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-invariants", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
+   };
+   readonly piAi: {
+@@ -552,10 +552,12 @@
+ /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
+ export declare const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
+ /** Standalone search endpoint used by the official Codex client. */
+-export declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/alpha/search";
++export declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/responses";
+ interface SearchRequestBody {
+-  readonly id: string;
+   readonly model: string;
++  readonly store: false;
++  readonly stream: true;
++  readonly instructions: string;
+   readonly input: readonly [{
+     readonly type: 'message';
+     readonly role: 'user';
+@@ -564,17 +566,14 @@
+       readonly text: string;
+     }];
+   }];
+-  readonly commands: {
+-    readonly search_query: readonly [{
+-      readonly q: string;
+-    }];
+-  };
+-  readonly settings: {
++  readonly tools: readonly [{
++    readonly type: 'web_search';
+     readonly search_context_size: OpenAICodexSearchContextSize;
+-    readonly allowed_callers: readonly ['direct'];
+-    readonly external_web_access: boolean | 'indexed';
+-  };
+-  readonly max_output_tokens: number;
++    readonly external_web_access: boolean;
++  }];
++  readonly tool_choice: 'required';
++  readonly parallel_tool_calls: true;
++  readonly include: readonly ['web_search_call.action.sources'];
+ }
+ /** Exact secret-free request recorded before a standalone search dispatch. */
+ interface OpenAICodexSearchRequestRecord {
+diff --git a/package.json b/package.json
+--- a/package.json
++++ b/package.json
+@@ -112,27 +112,27 @@
+   },
+   "peerDependencies": {
+     "@deepseek-ai/cordis": "^4.0.2",
+-    "@deepseek-ai/dsh-agent": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-atomic-write": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-attachment": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-chat": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-layout": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-tool": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-commands": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-compaction": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-fs": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-home-paths": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-invariants": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-llm": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-session": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-settings": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-tools": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-util-values": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-web": "0.1.7-rc.1",
+-    "react": "^18.2.0"
++    "@deepseek-ai/dsh-agent": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-atomic-write": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-attachment": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-chat": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-layout": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-tool": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-commands": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-compaction": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-fs": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-home-paths": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-invariants": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-llm": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-session": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-settings": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-util-values": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-web": "0.1.7-rc.2",
++    "react": "^18.2.0 || ^19.1.1"
+   },
+   "peerDependenciesMeta": {
+     "@deepseek-ai/dsh-commands": {
+@@ -143,65 +143,65 @@
+     "@deepseek-ai/cordis": "^4.0.4",
+     "@deepseek-ai/cordis-plugin-include": "1.0.9",
+     "@deepseek-ai/cordis-plugin-loader": "1.0.5",
+-    "@deepseek-ai/dsh-agent": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-agent-loop": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-api-gateway": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-api-remotes": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-api-session-controller": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-atomic-write": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-attachment": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-attachment-local": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-authorization": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-connection": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-locale": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-store": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-chat": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-conversation": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-layout": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-session": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-settings": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-settings-models": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-slots": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-client-ui-tool": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-commands": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-compaction": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-compaction-basic": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-file-reference": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-fs": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-fs-local": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-home-paths": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-invariants": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-llm": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-native-command": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-sandbox": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-scope": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-session": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-session-persistence": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-session-persistence-jsonl": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-session-projection": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-session-query": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-session-title": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-settings": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-skill": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-storage": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-storage-domain": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-subagent": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-system-prompt": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-token-meter": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-tools": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-typert-registry": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-user-approval": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-util-values": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-web": "0.1.7-rc.1",
+-    "@deepseek-ai/dsh-workspace": "0.1.7-rc.1",
++    "@deepseek-ai/dsh-agent": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-agent-loop": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-api-gateway": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-api-remotes": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-api-session-controller": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-atomic-write": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-attachment": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-attachment-local": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-authorization": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-connection": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-locale": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-store": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-chat": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-conversation": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-layout": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-renderer": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-session": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-settings": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-settings-models": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-slots": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-client-ui-tool": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-commands": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-compaction": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-compaction-basic": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-file-reference": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-fs": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-fs-local": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-home-paths": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-invariants": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-llm": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-native-command": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-sandbox": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-scope": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-session": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-session-persistence": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-session-persistence-jsonl": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-session-projection": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-session-query": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-session-title": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-settings": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-skill": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-storage": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-storage-domain": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-subagent": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-system-prompt": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-token-meter": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-typert-registry": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-user-approval": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-util-values": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-web": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-workspace": "0.1.7-rc.2",
+     "@testing-library/react": "^16.3.2",
+     "@shikijs/langs": "^4.3.1",
+     "@types/node": "^22.20.0",
+@@ -228,7 +228,7 @@
+     "micromark-util-symbol": "^2.0.1",
+     "pi-ai-oauth-source": "npm:@earendil-works/pi-ai@0.84.4",
+     "playwright": "1.63.0",
+-    "react": "^18.2.0",
++    "react": "^18.2.0 || ^19.1.1",
+     "react-dom": "^18.2.0",
+     "shiki": "^4.3.1",
+     "simple-icons": "16.31.0",
+diff --git a/compatibility.json b/compatibility.json
+--- a/compatibility.json
++++ b/compatibility.json
+@@ -4,8 +4,8 @@
+     "node": "^22.19.0 || >=24.0.0"
+   },
+   "dshPluginApi": {
+-    "version": "0.1.7-rc.1",
+-    "versions": ["0.1.7-rc.1"],
++    "version": "0.1.7-rc.2",
++    "versions": ["0.1.7-rc.2"],
+     "packages": [
+       "@deepseek-ai/dsh-agent",
+       "@deepseek-ai/dsh-atomic-write",

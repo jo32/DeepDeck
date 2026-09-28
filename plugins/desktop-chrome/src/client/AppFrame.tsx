@@ -121,11 +121,11 @@ function DesktopAppFrame({
 }: AppFrameProps) {
   const panels = useStore(state => state)
   const detailsSession = useSessions((state) => {
-    const current = state.current
+    const current = Object.values(state.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id
     return current !== undefined && state.byId[current]?.blank === false ? current : undefined
   })
-  const blankSession = useSessions(state => state.current !== undefined && state.byId[state.current]?.blank === true)
-  const emptyWorkspaceReady = useSessions(state => state.phase === 'ready' && state.current === undefined)
+  const blankSession = useSessions(state => Object.values(state.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.blank === true)
+  const emptyWorkspaceReady = useSessions(state => state.phase === 'ready' && Object.values(state.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id === undefined)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
   const [layoutMotionReady, setLayoutMotionReady] = useState(false)

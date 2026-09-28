@@ -147,6 +147,9 @@ describe('ComputerUseLoaderGate', () => {
       provide: vi.fn(),
       effect: vi.fn((factory: () => unknown) => factory()),
       on: vi.fn((event: string, listener: never) => {
+        if (event === 'settings/document-updated') {
+          onSettingsChange = async next => { enabled = next.enabled; (listener as () => void)(); await new Promise(resolve => setTimeout(resolve, 0)) }
+        }
         if (event === 'tools/pre-execute') {
           onToolPreExecute = listener as typeof onToolPreExecute
         }
@@ -155,7 +158,8 @@ describe('ComputerUseLoaderGate', () => {
       root: { logger: undefined },
     }
 
-    await apply(ctx as never, onboarding)
+    let enabled = true
+    await apply(ctx as never, { get: () => ({ enabled }) }, onboarding)
 
     expect(ctx.provide).toHaveBeenCalledWith(
       'deepdeckComputerUse',
