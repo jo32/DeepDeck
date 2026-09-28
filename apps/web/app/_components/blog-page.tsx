@@ -4,6 +4,7 @@ import { blogDate, blogPath, blogPosts, blogStructuredData } from '../../lib/blo
 import type { BlogPost } from '../../lib/blog-types';
 import type { SiteLocale } from '../../lib/locale';
 import results from '../../public/research/benchmarks/webmcp-reference-retest-2026-09-23.json';
+import { BlogMarkdown } from './blog-markdown';
 import s from './blog.module.css';
 
 function BlogShell({ locale, slug, children }: { locale: SiteLocale; slug?: string; children: ReactNode }) {
@@ -29,7 +30,7 @@ export function BlogIndex({ locale }: { locale: SiteLocale }) {
     <section className={s.indexIntro}><p className={s.eyebrow}>DEEPDECK / FIELD NOTES</p><h1>{zh ? '开发、实验，' : 'Build. Test.'}<br /><span>{zh ? '和下一次改进。' : 'Keep learning.'}</span></h1><p className={s.lead}>{zh ? '写下 Agent 是怎样做出来、测出来、再改好的。也记录那些没有变好的地方。' : 'How we build, evaluate, and improve agents. Including the things that did not get better.'}</p></section>
     <section className={s.posts} aria-labelledby="posts-title"><div className={s.listHeading}><h2 id="posts-title">{zh ? '最新文章' : 'Latest writing'}</h2><span>{String(blogPosts.length).padStart(2, '0')}</span></div>
       {blogPosts.map(post => { const content = post.translations[locale]; return <article key={post.slug} className={s.card}>
-        <a href={blogPath(locale, post.slug)} className={s.coverLink} aria-label={content.title}><Image src="/blog/benchmark-iteration.svg" alt={zh ? '评测、读记录、改接口、再复测的迭代过程' : 'Benchmark, inspect traces, improve the interface, retest'} width={1200} height={630} className={s.cover} priority /></a>
+        <a href={blogPath(locale, post.slug)} className={s.coverLink} aria-label={content.title}><Image src={post.cover.src} alt={post.cover.alt[locale]} width={1200} height={630} className={s.cover} sizes="(max-width: 720px) 100vw, 55vw" /></a>
         <div className={s.cardBody}><p className={s.eyebrow}>{content.category}</p><h3><a href={blogPath(locale, post.slug)}>{content.title}</a></h3><p>{content.description}</p><div className={s.meta}><time dateTime={post.date}>{blogDate(post.date, locale)}</time><span>{post.author}</span></div><a className={s.readLink} href={blogPath(locale, post.slug)}>{zh ? '阅读全文' : 'Read the story'} <span aria-hidden="true">↗</span></a></div>
       </article>; })}
     </section>
@@ -119,14 +120,14 @@ export function BlogArticle({ locale, post }: { locale: SiteLocale; post: BlogPo
   return <BlogShell locale={locale} slug={post.slug}>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: blogStructuredData(post, locale) }} />
     <main id="blog-content" className={s.shell}>
-      <header className={s.articleHeader}><a className={s.back} href={blogPath(locale)}>← {zh ? '所有文章' : 'All posts'}</a><p className={s.eyebrow}>{content.category}</p><h1>{content.title}</h1><p className={s.lead}>{content.description}</p><div className={s.meta}><span>{post.author}</span><time dateTime={post.date}>{blogDate(post.date, locale)}</time><a href="#sources">{zh ? '代码与数据 ↗' : 'Code & data ↗'}</a></div></header>
+      <header className={s.articleHeader}><a className={s.back} href={blogPath(locale)}>← {zh ? '所有文章' : 'All posts'}</a><p className={s.eyebrow}>{content.category}</p><h1>{content.title}</h1><p className={s.lead}>{content.description}</p><div className={s.meta}><span>{post.author}</span><time dateTime={post.date}>{blogDate(post.date, locale)}</time><a href="#sources">{zh ? '参考资料 ↗' : 'References ↗'}</a></div></header>
       <div className={s.articleLayout}>
         <aside className={s.toc}><details open><summary>{zh ? '文章目录' : 'In this article'}</summary><nav aria-label={zh ? '文章目录' : 'Article contents'}><ol>{content.sections.map(section => <li key={section.id}><a href={`#${section.id}`}>{section.title}</a></li>)}</ol></nav></details></aside>
         <article className={s.prose} aria-label={content.title}>
-          <Image src="/blog/benchmark-iteration.svg" width={1200} height={630} alt={zh ? '从评测到读记录、改接口，再回到复测' : 'From benchmarks to traces, interface changes, and a retest'} className={s.articleCover} priority />
-          <div className={s.introduction}>{content.introduction.map(p => <p key={p}>{p}</p>)}</div>
-          {content.sections.map(section => <section key={section.id} id={section.id}><h2>{section.title}</h2>{section.paragraphs.map((p, i) => <div key={p}><p>{p}</p>{i === 0 && section.figure === 'tool-reference' && <ToolReferenceFigure locale={locale} />}{i === 0 && section.figure === 'retest' && <RetestFigure locale={locale} />}</div>)}{section.points && <ol className={s.steps}>{section.points.map(point => <li key={point}>{point}</li>)}</ol>}</section>)}
-          <section id="sources" className={s.sources}><p className={s.eyebrow}>OPEN RECORD</p><h2>{zh ? '代码、数据与实验记录' : 'Code, data, and experiment records'}</h2><ul>{post.sources.map(source => <li key={source.href}><a href={source.href}>{source.label[locale]} ↗</a></li>)}</ul><a className={s.readLink} href={zh ? '/zh/benchmarks#results' : '/benchmarks#results'}>{zh ? '查看 DeepDeck Bench 完整评测' : 'Explore the full DeepDeck Bench evaluation'} ↗</a></section>
+          <Image src={post.cover.src} width={1200} height={630} alt={post.cover.alt[locale]} className={s.articleCover} sizes="(max-width: 720px) 100vw, 790px" priority />
+          <div className={s.introduction}>{content.introduction.map(p => <BlogMarkdown key={p}>{p}</BlogMarkdown>)}</div>
+          {content.sections.map(section => <section key={section.id} id={section.id}><h2>{section.title}</h2>{section.markdown && <BlogMarkdown>{section.markdown}</BlogMarkdown>}{section.paragraphs.map((p, i) => <div key={p}><p>{p}</p>{i === 0 && section.figure === 'tool-reference' && <ToolReferenceFigure locale={locale} />}{i === 0 && section.figure === 'retest' && <RetestFigure locale={locale} />}</div>)}{section.points && <ol className={s.steps}>{section.points.map(point => <li key={point}>{point}</li>)}</ol>}</section>)}
+          <section id="sources" className={s.sources}><p className={s.eyebrow}>OPEN RECORD</p><h2>{post.sourcesHeading?.[locale] ?? (zh ? '参考资料' : 'References')}</h2><ul>{post.sources.map(source => <li key={source.href}><a href={source.href}>{source.label[locale]} ↗</a></li>)}</ul>{post.relatedLink && <a className={s.readLink} href={post.relatedLink.href[locale]}>{post.relatedLink.label[locale]} ↗</a>}</section>
         </article>
       </div>
     </main>

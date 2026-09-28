@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#fafafa"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#171717">
+    <text x="72" y="82" font-size="18" letter-spacing="3" fill="#666">OPEN SOURCE / FIELD NOTES</text>
+    <text x="68" y="185" font-size="64" font-weight="600" letter-spacing="-2">What should we</text>
+    <text x="68" y="261" font-size="64" font-weight="600" letter-spacing="-2">open source?</text>
+    <path d="M72 309H1128" stroke="#d4d4d4"/>
+    <rect x="72" y="354" width="328" height="146" rx="8" fill="white" stroke="#d4d4d4"/>
+    <rect x="436" y="354" width="328" height="146" rx="8" fill="white" stroke="#d4d4d4"/>
+    <rect x="800" y="354" width="328" height="146" rx="8" fill="white" stroke="#d4d4d4"/>
+    <text x="96" y="394" font-size="14" letter-spacing="2" fill="#737373">01 / DEFINE</text>
+    <text x="96" y="459" font-size="32" font-weight="500">Tasks</text>
+    <text x="460" y="394" font-size="14" letter-spacing="2" fill="#737373">02 / EVALUATE</text>
+    <text x="460" y="459" font-size="32" font-weight="500">Benchmarks</text>
+    <text x="824" y="394" font-size="14" letter-spacing="2" fill="#737373">03 / VERIFY</text>
+    <text x="824" y="459" font-size="32" font-weight="500">Standards</text>
+    <text x="72" y="567" font-size="18" fill="#666">Shared requirements. Repeatable experiments. Different implementations.</text>
+    <text x="1128" y="82" text-anchor="end" font-size="18" fill="#666">jo32</text>
+  </g>
+</svg>
