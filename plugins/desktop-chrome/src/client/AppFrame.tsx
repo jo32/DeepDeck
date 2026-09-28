@@ -177,6 +177,7 @@ function DesktopAppFrame({
     panels.details,
   )
   const normalDetails = computeColumns(viewport, sidebarPreference, panels.detailsWidth).details
+  const workspaceToggleVisible = blankSession && panels.panelInfo.activePanelId == null && panels.details === 0 && !panels.rightbarFullscreen
   const colsRef = useRef(cols)
   colsRef.current = cols
 
@@ -204,6 +205,7 @@ function DesktopAppFrame({
       ref={frameRef}
       className={css.frame}
       data-deepdeck-desktop-frame
+      data-workspace-toggle={workspaceToggleVisible || undefined}
       style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px` }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-rightbar-fullscreen={panels.rightbarFullscreen || undefined}
@@ -230,7 +232,7 @@ function DesktopAppFrame({
         hasConversation={detailsSession !== undefined}
         sidebarWidth={cols.sidebar}
         rightbarWidth={cols.details}
-        workspaceControl={blankSession && panels.panelInfo.activePanelId == null && panels.details === 0 && !panels.rightbarFullscreen
+        workspaceControl={workspaceToggleVisible
           ? renderSlot('desktop.workspace-toggle', {}) : null}
         actions={actions}
         startSession={startSession}

@@ -12,6 +12,13 @@ const errors = [];
 let harnessContents;
 let workspaceFixture;
 app.on('web-contents-created', (_, contents) => contents.on('console-message', event => {
+  // Chromium may defer ResizeObserver delivery while this fixture repeatedly
+  // resizes the native window. Settled geometry is asserted below; retain all
+  // other renderer errors as failures.
+  if (event.message === 'ResizeObserver loop completed with undelivered notifications.') {
+    console.warn('Resize notification deferred during native window resize');
+    return;
+  }
   if (event.level === 'error' || /session create failed/.test(event.message)) errors.push(event.message);
 }));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -127,18 +134,43 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     const svg = button.querySelector('svg');
     const style = getComputedStyle(svg);
     const rect = button.getBoundingClientRect();
-    return { glyph: svg.innerHTML, transform: style.transform, color: style.color,
+    return { iconTop: svg.getBoundingClientRect().top, iconRight: innerWidth - svg.getBoundingClientRect().right, glyph: svg.innerHTML, transform: style.transform, color: style.color,
+      strokeWidth: style.strokeWidth, fill: style.fill, stroke: style.stroke,
+      paths: [...svg.querySelectorAll('path')].map(path => { const p = getComputedStyle(path); return { strokeWidth: p.strokeWidth, stroke: p.stroke, fill: p.fill, linecap: p.strokeLinecap, linejoin: p.strokeLinejoin }; }),
       width: style.width, height: style.height, hitWidth: rect.width, hitHeight: rect.height };
   })()`);
+  contents.sendInputEvent({ type: 'mouseMove', x: 800, y: 400 });
+  await delay(100);
+  assert.equal(await evaluate(`Array.from(document.querySelectorAll('[data-sidebar-right-expand], [data-deepdeck-workspace-open]')).filter(button => button.getBoundingClientRect().width > 0).length`), 1, 'Only one right sidebar entrance may be visible');
   const collapsedToggle = await readToggleAppearance('[data-deepdeck-workspace-open]');
+  const leftToggle = await readToggleAppearance('[data-deepdeck-desktop-chrome] button[aria-label="收起侧栏"]');
+  for (const key of ['glyph', 'width', 'height', 'hitWidth', 'hitHeight']) {
+    assert.equal(collapsedToggle[key], leftToggle[key], `Titlebar sidebar buttons must share ${key}`);
+  }
+  for (const width of [1024, 1100, 1200]) {
+    window.setSize(width, 820);
+    await delay(400);
+    await click('[data-deepdeck-workspace-open]');
+    await until(() => evaluate(`!!document.querySelector('[data-sidebar-right-open]')`), `right sidebar at ${width}px`);
+    await delay(300);
+    assert(await evaluate(`!!document.querySelector('[data-sidebar-right-open]')`), 'Right sidebar must remain open');
+    await click('[data-sidebar-right-toggle]');
+    await until(() => evaluate(`!!document.querySelector('[data-deepdeck-workspace-open]')`), 'right sidebar closed');
+  }
+  window.setSize(1600, 820);
+  await delay(400);
+
   writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT.replace('.png', '-toggle.png'), (await contents.capturePage()).toPNG());
   await click('[data-sidebar-right-expand], [data-deepdeck-workspace-open]');
   await until(() => evaluate(`!!document.querySelector('[data-sidebar-right-open] [data-sidebar-right-guide]')`), 'workspace guide');
   if (await evaluate(`!!document.querySelector('[data-deepdeck-workspace-open]')`)) throw new Error('Expanded sidebar must have only its native collapse control');
+  await delay(400);
   const expandedToggle = await readToggleAppearance('[data-sidebar-right-toggle]');
+
   if (JSON.stringify(collapsedToggle) !== JSON.stringify(expandedToggle)) {
     throw new Error('Workspace toggle appearance changes when expanded: ' + JSON.stringify({ collapsedToggle, expandedToggle }));
   }
+  if (process.env.DEEPDECK_ICON_TEST_ONLY) { console.log('PASS sidebar icons: single entrance, identical paths, stroke, size, position and click targets before/after expansion'); clearTimeout(deadline); app.quit(); return; }
   const expectRightWorkbench = async () => {
     await delay(300);
     const geometry = await until(async () => {
@@ -205,9 +237,9 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   await click('[data-sidebar-right-mode="push"]');
   await expectRightWorkbench();
   window.setSize(1100, 820);
-  await until(() => evaluate(`!document.querySelector('[data-sidebar-right-open]')`), 'narrow layout protects conversation width');
+  const narrowWorkbench = await expectRightWorkbench();
+  assert(narrowWorkbench.conversation.width >= 400, 'Narrow layout must preserve the Harness conversation minimum');
   await click('button', ['收起侧栏']);
-  await click('[data-sidebar-right-expand], [data-deepdeck-workspace-open]');
   await expectRightWorkbench();
   window.setSize(1600, 820);
   await until(() => evaluate('innerWidth === 1600'), 'restored wide viewport');
@@ -278,7 +310,7 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT.replace('.png', '-browser.png'), (await browser.capturePage()).toPNG());
   } finally { siteServer.close(); }
   assert.deepEqual(errors, []);
-  console.log('PASS actual Harness UI: startup, hero geometry, sidebar toggle, input hit area, single native workspace sidebar, file previews, width dragging and retention, tab retention, fullscreen, narrow-window collapse, settings, Browser Site Agent connection, saved Session restore and panel reopening.');
+  console.log('PASS actual Harness UI: startup, hero geometry, sidebar toggle, input hit area, single native workspace sidebar, file previews, width dragging and retention, tab retention, fullscreen, narrow-window sidebar availability, settings, Browser Site Agent connection, saved Session restore and panel reopening.');
   if (workspaceFixture) rmSync(workspaceFixture, { force: true });
   clearTimeout(deadline);
   app.quit();

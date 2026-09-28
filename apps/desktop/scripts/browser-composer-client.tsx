@@ -1,3 +1,6 @@
+import { ConversationContent } from '../../../vendor/deepseek-harness/packages/client/ui-conversation/src/client/skeleton/ConversationContent';
+import { HomeHeroArtwork } from '../../../plugins/home-hero/src/client/HomeHeroArtwork';
+import { DockedComposer } from '../../../plugins/home-hero/src/client/ComposerPresentation';
 // Real Harness skeleton, editor and permission menu with local fixture data.
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -40,7 +43,7 @@ function Fixture() {
     if (name === 'conversation.composer.bar') return <div data-slot={name} style={{ display: 'contents' }}><InputBar {...{
       ...props, sessionId: 'fixture', useInput: select(input), useSession: select(session),
       useNotices: select(undefined), useLexicon: select(new Map()), useMenuLauncher: select(undefined),
-      useBusyEnter: select('queue'), useFileUploads: select({}),
+      useStopShortcut: select([]), useBusyEnter: select('queue'), useFileUploads: select({}),
       useProjection: (key: string, selector?: (value: unknown) => unknown) => {
         const value = key === 'permissions' ? { currentValue: permission, options: [
           { value: 'read-only', name: 'read-only' }, { value: 'workspace-write', name: 'workspace-write' },
@@ -56,9 +59,9 @@ function Fixture() {
         }
         return true;
       },
-      resolveDraftAttachments: () => [], renderSlot: () => null, t,
+      resolveDraftAttachments: () => [], renderSlot: (name: string) => name === 'conversation.composer.dock' ? <div style={{ height: 22 }}>63%</div> : null, t,
     } as any} /></div>;
-    if (name === 'conversation.input.dock') return <BrowserEmptyConversation {...{ session } as any} />;
+    if (name === 'conversation.input.dock') return <><BrowserEmptyConversation {...{ session } as any} /><DockedComposer><HomeHeroArtwork session={{ ...session, subagent: null } as any} input={input as any} t={t as any} /></DockedComposer></>;
     if (name === 'conversation.session' && active) return <div data-slot={name} style={{ display: 'contents' }}><div className={chatCss.root}><div className={chatCss.scroll}><div className={chatCss.column} data-chat-flow>
       <p data-fixture-long-path>{'webmcp-publish/project/source/'.repeat(30)}</p>
       <pre data-fixture-code style={{ overflowX: 'auto', maxWidth: '100%' }}>{'const longOutput = "example"; '.repeat(50)}</pre>
@@ -97,7 +100,15 @@ function Fixture() {
               useSessionPendingInteraction: select(new Map()), useConversation: select({ activeTargets: new Set() }),
               useSessions: select({ byId: { fixture: { cwd: '/tmp', blank: !active } } }),
               useWorkspaces: select({ phase: 'ready', items: [{ title: 'Fixture', workspaceId: 'fixture', sessionIds: ['fixture'] }] }),
-              useComposerBlock: select(undefined), renderSlot, renderSlotChain: (_name: string, _props: unknown, options: any) => options.fallback, t,
+              useComposerBlock: select(undefined), renderSlot,
+              renderFactorySlot: (_name: string, props: any) => <ConversationContent {...{
+                ...props, sessionId: 'fixture', useSession: select(session), useInput: select(input),
+                useSessions: select({ byId: { fixture: { cwd: '/tmp', blank: !active } } }),
+                useWorkspaces: select({ phase: 'ready', items: [{ title: 'Fixture', workspaceId: 'fixture', sessionIds: ['fixture'] }] }),
+                useSessionStatus: select(new Map()), useComposerBlock: select(undefined), renderSlot,
+                useFactorySlot: (_slot: string, Component: any) => () => <Component renderSlot={renderSlot} />,
+                renderSlotChain: (_slot: string, _props: unknown, options: any) => options.fallback, t,
+              } as any} />, t,
             } as any} /></div>
           </BrowserConversationContext.Provider>
         </div>

@@ -10,7 +10,7 @@
   line-height: 1;
   background: transparent;
   border: none;
-  border-radius: 28px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
@@ -23,7 +23,13 @@
 }
 
 .icon {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
   transform: scaleX(-1);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--dsw-alias-border-focus, currentColor);
+  outline-offset: 1px;
 }

@@ -584,7 +584,8 @@ async function prepare() {
     await deployHarness(deployedHarness, runtimeWorkspace);
     const deployNodeModules = join(deployedHarness, "node_modules");
     const baseBundle = join(deployNodeModules, "@deepseek-ai", "dsh-base");
-    if (!(await pathExists(baseBundle))) throw new Error("Harness deploy omitted the required dsh-base bundle");
+    // pnpm can prune workspace-only bundles during deploy. Validate the base
+    // after restoring the complete, reviewed workspace dependency closure.
     const sourceCli = join(harnessRoot, "apps", "cli");
     const sourceCliNodeModules = join(sourceCli, "node_modules");
     const deployCli = join(deployedHarness, "apps", "cli");
@@ -596,7 +597,7 @@ async function prepare() {
     await materializeWorkspaceOverrides(deployNodeModules);
     await materializeSymlinks(deployNodeModules);
     await materializeMissingWorkspacePackages(deployNodeModules, closure.workspacePackages);
-    if (!(await pathExists(baseBundle))) throw new Error("Harness materialization removed the required dsh-base bundle");
+    if (!(await pathExists(baseBundle))) throw new Error("Harness materialization omitted the required dsh-base bundle");
 
     for (const plugin of PLUGINS) await copyPlugin(plugin, temporaryRoot);
     await materializeSymlinks(deployNodeModules);

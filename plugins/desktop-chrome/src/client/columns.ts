@@ -1,7 +1,8 @@
 /** Resolved widths for the desktop frame. */
 export interface Columns { sidebar: number; center: number; details: number }
 
-export const CENTER_MIN = 640
+// Match the Harness composer minimum so ordinary desktop windows can open the right pane.
+export const CENTER_MIN = 400
 export const SIDEBAR_MIN = 264
 export const SIDEBAR_MAX = 420
 export const SIDEBAR_DEFAULT = 280

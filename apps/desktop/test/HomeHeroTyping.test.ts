@@ -53,12 +53,14 @@ async function render(
   onCompositionReady?: () => void,
 ) {
   await act(async () => {
-    root?.render(createElement(HomeHeroArtwork, {
+    root?.render(createElement('div', { 'data-composer-seat': '' },
+      createElement('div', { 'data-composer-card': '' }),
+      createElement(HomeHeroArtwork, {
       session: session(composerPhase, sessionOverrides),
       input: { draft: "ship it", attachmentIds: [], draftRev, phase: "plain" },
       t,
       onCompositionReady,
-    } satisfies HomeHeroArtworkProps));
+    } satisfies HomeHeroArtworkProps)));
   });
 }
 
@@ -133,7 +135,7 @@ describe("HomeHeroArtwork typing expression", () => {
       toJSON: () => ({}),
     });
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
-      if (this.hasAttribute("data-deepdeck-home-hero-target")) return box(900, 700, 34, 34);
+      if (this.hasAttribute("data-composer-card")) return box(500, 600, 442, 142);
       if (this.hasAttribute("data-deepdeck-home-hero-resting-target")) return box(840, 390, 184, 232);
       if (this.hasAttribute("data-deepdeck-home-hero-mascot")) {
         const motion = this.getAttribute("data-motion");
@@ -217,7 +219,7 @@ describe("HomeHeroArtwork typing expression", () => {
       toJSON: () => ({}),
     });
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
-      if (this.hasAttribute("data-deepdeck-home-hero-target")) return box(900, 700, 34, 34);
+      if (this.hasAttribute("data-composer-card")) return box(500, 600, 442, 142);
       if (this.hasAttribute("data-deepdeck-home-hero-resting-target")) return box(840, 390, 184, 232);
       if (this.hasAttribute("data-deepdeck-home-hero-mascot")) return box(887, 675, 48, 60);
       return box(0, 0, 0, 0);

@@ -220,9 +220,17 @@ export function HomeHeroArtwork({
   const heroTargetRef = useRef<HTMLSpanElement>(null)
   const targetRef = useRef<HTMLSpanElement>(null)
 
+  const [sendTarget, setSendTarget] = useState<LaunchRect | null>(null)
+  // The published card anchor is scoped to this composer occurrence. Measuring
+  // it avoids coupling the action to optional quota/status rows below the card.
+  const composerCard = () => artworkRef.current
+    ?.closest('[data-composer-seat]')?.querySelector<HTMLElement>('[data-composer-card]') ?? null
   const readDockTarget = () => {
-    const target = launchRect(targetRef.current)
-    return target === null ? null : resolveDockedOrbRect(target)
+    const card = launchRect(composerCard())
+    if (card === null) return null
+    const target = { left: card.left + card.width - 42, top: card.top + card.height - 42, width: 34, height: 34 }
+    setSendTarget(current => sameRect(current, target) ? current : target)
+    return resolveDockedOrbRect(target)
   }
 
   const readHeroTarget = () => launchRect(heroTargetRef.current)
@@ -410,6 +418,8 @@ export function HomeHeroArtwork({
     const targetParent = targetRef.current?.parentElement
     if (artworkRef.current !== null) observer?.observe(artworkRef.current)
     if (targetParent !== null && targetParent !== undefined) observer?.observe(targetParent)
+    const card = composerCard()
+    if (card !== null) observer?.observe(card)
 
     return () => {
       window.removeEventListener('resize', measure)
@@ -516,7 +526,9 @@ export function HomeHeroArtwork({
         data-deepdeck-home-hero-resting-target=""
         aria-hidden="true"
       />
-      <span className={css.sendTargetRail} aria-hidden="true">
+      <span className={css.sendTargetRail} aria-hidden="true" style={sendTarget === null
+        ? { visibility: 'hidden' }
+        : { left: sendTarget.left, top: sendTarget.top }}>
         <span ref={targetRef} className={css.sendTarget} data-deepdeck-home-hero-target="">
           <span
             className={css.nativeActionCover}

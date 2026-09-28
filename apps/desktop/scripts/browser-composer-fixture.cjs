@@ -50,6 +50,7 @@ app.setPath('userData', join(assets, 'profile'));
       if (value) return value;
       await new Promise(resolve => setTimeout(resolve, 30));
     }
+    console.error(await evaluate(`JSON.stringify(Array.from(document.querySelectorAll('[data-deepdeck-home-hero-target], [data-composer-card], button[aria-label]')).map(e => ({tag:e.tagName, label:e.getAttribute('aria-label'), rect:e.getBoundingClientRect().toJSON()})))`));
     throw new Error(`Timed out: ${label}`);
   };
   const click = async (selector, index = 0) => {
@@ -103,6 +104,13 @@ app.setPath('userData', join(assets, 'profile'));
     for (const width of [420, 360]) {
       if (width === 360) await click('[data-fixture-action="resize"]');
       await syncGuest();
+      await until(`(() => {
+        const target = document.querySelector('[data-deepdeck-home-hero-target]')?.getBoundingClientRect();
+        const button = document.querySelector('button[aria-label="Send message"]')?.getBoundingClientRect();
+        return target && button && ['x', 'y', 'width', 'height'].every(key => Math.abs(target[key] - button[key]) < 1);
+      })()`, `character covers native send button (${active}, ${width}px)`);
+
+      if (process.env.DEEPDECK_COMPOSER_SCOPE === 'orb') continue;
       const fileAttemptsBefore = await evaluate('Number(document.querySelector("[data-fixture-file-attempts]").dataset.fixtureFileAttempts)');
       await click('button[aria-label="Open CONTRIBUTING.md in sidebar"]');
       await until(dialogVisible, `file Open error clears native website (${active}, ${width}px)`);
@@ -172,6 +180,16 @@ app.setPath('userData', join(assets, 'profile'));
   await click('[data-fixture-action="messages"]');
   await click('[data-fixture-action="draft"]');
   await until('document.querySelector("[data-composer-input]").textContent.length > 400', 'long draft');
+  if (process.env.DEEPDECK_COMPOSER_SCOPE === 'orb') {
+    await until(`(() => {
+      const target = document.querySelector('[data-deepdeck-home-hero-target]').getBoundingClientRect();
+      const button = document.querySelector('button[aria-label="Send message"]').getBoundingClientRect();
+      return Math.abs(target.x - button.x) < 1 && Math.abs(target.y - button.y) < 1;
+    })()`, 'character alignment after long draft');
+    if (process.env.DEEPDECK_COMPOSER_SCREENSHOT) writeFileSync(process.env.DEEPDECK_COMPOSER_SCREENSHOT, (await wc.capturePage()).toPNG());
+    console.log('PASS character alignment: real Harness composer, empty/active, status row, 360/420px, long draft.');
+    server.close(); app.quit(); return;
+  }
   await click('button[aria-label="Access mode, current: Workspace Write"]');
   await until(menuVisible, 'menu over expanded draft');
   assert(await evaluate('window.fixtureInput === document.querySelector("[data-composer-input]")'), 'the editor stays mounted across phases');

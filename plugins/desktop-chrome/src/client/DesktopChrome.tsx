@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PanelActions } from './service.ts'
 import { NewSessionIcon } from './NewSessionIcon.tsx'
 import css from './desktop-chrome.module.css'
@@ -14,15 +15,6 @@ interface DesktopChromeProps {
 }
 
 const SIDEBAR_DRAG_START = 114
-
-function SidebarIcon(): React.JSX.Element {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <rect x="1.75" y="2.25" width="12.5" height="11.5" rx="2" />
-      <path d="M6 2.75v10.5" />
-    </svg>
-  )
-}
 
 /** Native React controls that remain reachable when the sidebar is 0px. */
 export function DesktopChrome({
@@ -60,7 +52,7 @@ export function DesktopChrome({
           aria-expanded={!sidebarCollapsed}
           onClick={() => { actions.toggleSidebar() }}
         >
-          <SidebarIcon />
+          <IconPanelLeftOutlineRegular className={css.sidebarIcon} />
         </button>
         {sidebarCollapsed && (
           <button

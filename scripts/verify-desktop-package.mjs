@@ -60,7 +60,9 @@ function assertEqual(actual, expected, label) {
 async function assertNoElectronFiles(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
-    if (/^electron(?:\.|$)/i.test(entry.name)) {
+    // Internal source/type directories may legitimately be named electron.
+    // Reject branded resource files; helper bundle identities are checked separately.
+    if (!entry.isDirectory() && /^electron(?:\.|$)/i.test(entry.name)) {
       throw new Error(`Packaged app retains an Electron-branded file: ${path}`);
     }
     if (entry.isDirectory()) await assertNoElectronFiles(path);

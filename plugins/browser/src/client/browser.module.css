@@ -226,7 +226,6 @@
 .emptyMessageArea { display: none; }
 .emptyMessageArea:has([data-browser-chat-welcome]) { display: flex; flex: 1; min-height: 0; overflow-y: auto; align-items: center; }
 .conversation:has([data-browser-chat-welcome]) :global([data-phase='hero']) { flex: none; height: auto; }
-.conversation :global([data-phase='hero']) { --deepdeck-send-target-bottom: 9px; --deepdeck-send-target-right: 9px; }
 /* The welcome scrolls in its own message area. This short hero scrollport
    only holds the composer, so let its anchored menus paint above the card. */
 .conversation :global([data-phase='hero'] [data-conversation-scroll]) { justify-content: flex-end; overflow: visible; }

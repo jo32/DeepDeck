@@ -17,26 +17,19 @@
   pointer-events: none;
 }
 
-/* The marker mirrors the resident 34px primary button without reaching into
-   Harness DOM. In active layout the card is centered at the shared width cap;
-   16px is its outer clearance, 8px its toolbar inset, and 16px its visual
-   bottom after row padding plus the button's -2px optical adjustment. */
+/* Positioned from the public composer-card boundary. Status/dock rows below
+   the card must not shift the native action cover. */
 .sendTargetRail {
-  position: absolute;
-  right: var(--dsh-composer-side-clearance, 16px);
-  bottom: var(--deepdeck-send-target-bottom, 16px);
-  left: var(--dsh-composer-side-clearance, 16px);
-  width: auto;
-  max-width: var(--dsh-composer-card-max-width, 780px);
+  position: fixed;
+  width: 34px;
   height: 34px;
-  margin-inline: auto;
   pointer-events: none;
 }
 
 .sendTarget {
   position: absolute;
   top: 0;
-  right: var(--deepdeck-send-target-right, 8px);
+  right: 0;
   z-index: 19;
   width: 34px;
   height: 34px;
