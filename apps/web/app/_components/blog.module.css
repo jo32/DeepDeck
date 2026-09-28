@@ -49,6 +49,16 @@
 .introduction { font-size: 19px; color: #404040; }
 .prose section { scroll-margin-top: 32px; margin-top: 50px; }
 .prose h2 { font-size: 27px; letter-spacing: -.02em; line-height: 1.45; margin: 0 0 22px; font-weight: 600; }
+.prose h3 { font-size: 21px; line-height: 1.6; margin: 30px 0 16px; font-weight: 600; }
+.prose p a, .prose li a { text-decoration: underline; text-underline-offset: 4px; }
+.prose ul { padding-left: 24px; margin: 0 0 24px; }
+.prose li { margin-bottom: 10px; }
+.prose p code, .articleTable code { font-size: .9em; padding: 2px 5px; background: #f5f5f5; border-radius: 3px; }
+.prose > section > .tableScroll { margin: 0 0 26px; }
+.articleTable { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 15px; line-height: 1.8; }
+.articleTable th, .articleTable td { padding: 14px 18px; text-align: left; vertical-align: top; border-bottom: 1px solid #e5e5e5; }
+.articleTable thead { background: #fafafa; }
+.articleTable tbody tr:last-child td { border-bottom: 0; }
 .prose figure { margin: 28px 0; }
 .prose figcaption { color: #666666; font-size: 12px; line-height: 1.8; margin-top: 12px; }
 .toolCards { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #e5e5e5; border-radius: 6px; overflow: hidden; }

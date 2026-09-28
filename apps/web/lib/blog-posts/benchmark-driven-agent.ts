@@ -4,6 +4,16 @@ export const benchmarkDrivenAgent: BlogPost = {
   slug: 'benchmark-driven-agent-iteration',
   date: '2026-09-23',
   author: 'jo32',
+  cover: {
+    src: '/blog/benchmark-iteration.svg',
+    socialImage: '/blog/benchmark-iteration.png',
+    alt: { zh: '评测、读记录、改接口、再复测的迭代过程', en: 'Benchmark, inspect traces, improve the interface, retest' },
+  },
+  sourcesHeading: { zh: '代码、数据与实验记录', en: 'Code, data, and experiment records' },
+  relatedLink: {
+    href: { zh: '/zh/benchmarks#results', en: '/benchmarks#results' },
+    label: { zh: '查看 DeepDeck Bench 完整评测', en: 'Explore the full DeepDeck Bench evaluation' },
+  },
   translations: {
     zh: {
       title: '我如何用 Benchmark 迭代 Agent',
