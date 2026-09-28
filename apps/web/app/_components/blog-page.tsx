@@ -55,12 +55,15 @@ function ToolReferenceFigure({ locale }: { locale: SiteLocale }) {
 
   return <figure className={s.toolFigure}>
     <p className={s.toolTask}>{zh ? '同一个任务：用订单号和邮箱查询订单状态' : 'Same task: look up an order using its reference and email'}</p>
-    <h3>{zh ? '先看工具发现：w_a17 是怎么到模型手里的？' : 'Discovery first: how does the model receive w_a17?'}</h3>
-    <p>{zh ? '① 模型先调用 browser_list_tools，参数是空对象，表示列出当前页面的全部工具：' : '① The model calls browser_list_tools with an empty object to list all tools on the current page:'}</p>
+    <h3>{zh ? '工具发现与调用' : 'Tool discovery and invocation'}</h3>
+    <h4 className={s.discoveryStep}>{zh ? '获取工具清单' : 'List available tools'}</h4>
+    <p>{zh ? '模型先调用 browser_list_tools，参数是空对象，表示列出当前页面的全部工具：' : 'The model calls browser_list_tools with an empty object to list all tools on the current page:'}</p>
     <pre className={s.toolJson} tabIndex={0}><code>{JSON.stringify(discoveryCall, null, 2)}</code></pre>
-    <p>{zh ? '② DeepDeck 读取页面提供的工具，为每个工具生成 toolRef，并保存它对应的页面和工具信息。然后把 toolRef 加到工具清单里，作为这次工具调用的结果返回给模型。下面只展示返回值中与查询订单有关的字段：' : '② DeepDeck reads the page’s tools, generates a toolRef for each, and stores its tool and page identity. It adds toolRef to the tool list and returns that list to the model as the tool result. This excerpt shows only the fields relevant to order lookup:'}</p>
+    <h4 className={s.discoveryStep}>{zh ? '生成并返回工具编号' : 'Generate and return tool references'}</h4>
+    <p>{zh ? 'DeepDeck 读取页面提供的工具，为每个工具生成 toolRef，并保存它对应的页面和工具信息。然后把 toolRef 加到工具清单里，作为这次工具调用的结果返回给模型。下面只展示返回值中与查询订单有关的字段：' : 'DeepDeck reads the page’s tools, generates a toolRef for each, and stores its tool and page identity. It adds toolRef to the tool list and returns that list to the model as the tool result. This excerpt shows only the fields relevant to order lookup:'}</p>
     <pre className={s.toolJson} tabIndex={0}><code>{JSON.stringify(discoveryResult, null, 2)}</code></pre>
-    <p>{zh ? '③ 模型看到 get_order_status 对应 w_a17，也看到它需要 order_reference 和 email。下一次调用 browser_webmcp_call 时，模型直接使用刚才返回的 w_a17，再填写订单号和邮箱。下面对比这一步的新旧参数。' : '③ The model sees that get_order_status has reference w_a17 and requires order_reference and email. In its next browser_webmcp_call, it uses the returned w_a17 with those business inputs. The comparison below shows the old and new arguments for this step.'}</p>
+    <h4 className={s.discoveryStep}>{zh ? '使用编号调用工具' : 'Call a tool by reference'}</h4>
+    <p>{zh ? '模型看到 get_order_status 对应 w_a17，也看到它需要 order_reference 和 email。下一次调用 browser_webmcp_call 时，模型直接使用刚才返回的 w_a17，再填写订单号和邮箱。下面对比这一步的新旧参数。' : 'The model sees that get_order_status has reference w_a17 and requires order_reference and email. In its next browser_webmcp_call, it uses the returned w_a17 with those business inputs. The comparison below shows the old and new arguments for this step.'}</p>
     <p className={s.codeLabel}>{zh ? 'w_a17 是为方便阅读缩短的示意值，不是模型自己编的，也不是网站生成的。实际格式是 w_加随机前缀和序号，例如 w_8f3a2c10_1。同一会话中工具及页面不变时可复用；页面或工具改变后，旧编号失效，需要重新发现。browser_context 也会在 targets[].tools[] 返回 name 和 toolRef；需要完整参数定义时可调用 browser_list_tools。' : 'w_a17 is shortened for readability; neither the model nor the website generates it. Actual references use a random prefix and a counter, for example w_8f3a2c10_1. They can be reused within a session while the tool and page remain unchanged. Changes invalidate old references and require rediscovery. browser_context also returns name and toolRef in targets[].tools[]; browser_list_tools provides the full input schemas.'}</p>
     <div className={s.toolCards}>
       <div>
