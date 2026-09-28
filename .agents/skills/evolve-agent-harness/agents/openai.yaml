@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Harness 进化"
+  short_description: "从评测和调用记录定位问题，验证 Harness 改动及其质量、耗时与成本"
+  default_prompt: "使用 $evolve-agent-harness，分析当前项目的 benchmark 和调用记录，完成一轮有对照的 Harness 改进，报告成功率、耗时、含缓存费用及退步用例。"
