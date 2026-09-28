@@ -1,0 +1,185 @@
+--- a/packages/client/modules/src/index.ts
++++ b/packages/client/modules/src/index.ts
+@@ -295,7 +295,7 @@
+ /** Count generated lines while assembling indexed-map section offsets. */
+ function newlineCount(value: string): number {
+   let count = 0
+-  for (const char of value) if (char === '\n') count += 1
++  for (let index = value.indexOf('\n'); index !== -1; index = value.indexOf('\n', index + 1)) count += 1
+   return count
+ }
+ 
+@@ -332,20 +332,46 @@
+   }
+ }
+ 
++interface PreparedComboRecord {
++  bundle: Buffer
++  sourceMap: WebPluginRecord['sourceMap']
++  source: string
++  lines: number
++  section: Record<string, unknown>
++}
++
++// Weak keys release removed plugins. HMR replaces the byte snapshots, so the
++// cache is invalidated even when rebuilt() mutates an existing record.
++const preparedComboRecords = new WeakMap<WebPluginRecord, PreparedComboRecord>()
++
++function prepareComboRecord(record: WebPluginRecord): PreparedComboRecord {
++  const cached = preparedComboRecords.get(record)
++  if (cached?.bundle === record.bundle && cached.sourceMap === record.sourceMap) return cached
++  const prepared = comboSource(record)
++  const source = `${prepared.source};\n`
++  const result: PreparedComboRecord = {
++    bundle: record.bundle,
++    sourceMap: record.sourceMap,
++    source,
++    lines: newlineCount(source),
++    section: record.sourceMap === undefined
++      ? identitySectionMap(prepared.source, prepared.fallbackSource)
++      : comboSectionMap(record),
++  }
++  preparedComboRecords.set(record, result)
++  return result
++}
++
+ /** Concatenate one or more factory registrations and compose their maps as indexed sections. */
+ function buildCombo(records: readonly WebPluginRecord[], revision?: string): ComboArtifact {
+   let source = ''
+   const sections: { offset: { line: number; column: 0 }; map: Record<string, unknown> }[] = []
+   let line = 0
+   for (const record of records) {
+-    const prepared = comboSource(record)
+-    const section = record.sourceMap === undefined
+-      ? identitySectionMap(prepared.source, prepared.fallbackSource)
+-      : comboSectionMap(record)
+-    sections.push({ offset: { line, column: 0 }, map: section })
+-    const bundle = `${prepared.source};\n`
+-    source += bundle
+-    line += newlineCount(bundle)
++    const prepared = prepareComboRecord(record)
++    sections.push({ offset: { line, column: 0 }, map: prepared.section })
++    source += prepared.source
++    line += prepared.lines
+   }
+   const sourceMap = Buffer.from(`${JSON.stringify({ version: 3, file: 'client.js', sections })}\n`)
+   const sourceBytes = Buffer.from(source)
+@@ -354,15 +380,6 @@
+   const url = comboUrl(entries, rev)
+   const sourceMapUrl = comboUrl(entries, rev, true)
+   return { url, rev, entries, script: comboScript(source, sourceMapUrl), sourceMap, sourceMapUrl }
+-}
+-
+-/** Add initial-load scheduling metadata to a combo artifact. */
+-function buildBatch(phase: WebBootBatchPhase, records: readonly WebPluginRecord[]): BatchArtifact {
+-  const artifact = buildCombo(records)
+-  return {
+-    ...artifact,
+-    descriptor: { phase, url: artifact.url, rev: artifact.rev, entries: artifact.entries },
+-  }
+ }
+ 
+ /** Graph row for one bundle rev (url carries the rev as its cache-busting query). */
+@@ -501,6 +518,8 @@
+   private previousBatchResponses = new Map<string, { body: Buffer; contentType: string }>()
+   private flushQueued = false
+   private composed: WebBootGraph
++  private readonly singleCombos = new WeakMap<WebPluginRecord, { rev: string; artifact: ComboArtifact }>()
++  private batchCombos = new Map<string, ComboArtifact>()
+ 
+   /**
+    * Build the service: subscribe, seed, and run the activation flush.
+@@ -658,11 +677,18 @@
+       .map(entry => this.table.get(entry.id))
+       .filter((record): record is WebPluginRecord => record !== undefined)
+     const artifacts: BatchArtifact[] = []
++    const nextBatchCombos = new Map<string, ComboArtifact>()
++    const cachedBatch = (phase: WebBootBatchPhase, records: WebPluginRecord[]): BatchArtifact => {
++      const key = JSON.stringify(records.map(record => [record.entry.id, record.entry.rev]))
++      const artifact = this.batchCombos.get(key) ?? buildCombo(records)
++      nextBatchCombos.set(key, artifact)
++      return { ...artifact, descriptor: { phase, url: artifact.url, rev: artifact.rev, entries: artifact.entries } }
++    }
+     for (const records of partitionComboRecords(bootstrap)) {
+-      artifacts.push(buildBatch('bootstrap', records))
++      artifacts.push(cachedBatch('bootstrap', records))
+     }
+     for (const records of partitionComboRecords(application)) {
+-      artifacts.push(buildBatch('application', records))
++      artifacts.push(cachedBatch('application', records))
+     }
+ 
+     const batchResponses = new Map<string, { body: Buffer; contentType: string }>()
+@@ -678,7 +704,12 @@
+     }
+     const responses = new Map(batchResponses)
+     for (const record of this.table.values()) {
+-      const artifact = buildCombo([record], record.entry.rev)
++      let cached = this.singleCombos.get(record)
++      if (cached?.rev !== record.entry.rev) {
++        cached = { rev: record.entry.rev, artifact: buildCombo([record], record.entry.rev) }
++        this.singleCombos.set(record, cached)
++      }
++      const artifact = cached.artifact
+       responses.set(artifact.url, {
+         body: artifact.script,
+         contentType: 'text/javascript; charset=utf-8',
+@@ -688,6 +719,9 @@
+         contentType: 'application/json; charset=utf-8',
+       })
+     }
++    // Retain only the current composition; historical HMR generations do not
++    // accumulate in the artifact cache.
++    this.batchCombos = nextBatchCombos
+     this.previousBatchResponses = this.batchResponses
+     this.batchResponses = batchResponses
+     this.responses = responses
+--- a/packages/client/modules/tests/node-half.client.spec.ts
++++ b/packages/client/modules/tests/node-half.client.spec.ts
+@@ -843,3 +843,46 @@
+       .toThrow('module graph cycle @fixture/cycle-a -> @fixture/cycle-b -> @fixture/cycle-a')
+   })
+ })
++
++describe('startup artifact cache invalidation', () => {
++  it('keeps activation snapshots across unrelated arrivals and refreshes them on rebuild', async () => {
++    const id = '@fixture/cached-first'
++    const extra = '@fixture/cached-extra'
++    writeBuiltPackage(id, {})
++    writeBuiltPackage(extra, {})
++    const entries = [id]
++    const { context, service, route } = constructWithRoute(entries)
++    const initial = service.graph().entries.find(entry => entry.id === id)!
++    const before = await routeRequest(route, initial.url)
++    writeFileSync(service.clientPath(id)!, 'module.exports = { changed: true }\n')
++    entries.push(extra)
++    emitLoaderEntryChange(context, extra)
++    await Promise.resolve()
++    expect((await routeRequest(route, initial.url)).body).toEqual(before.body)
++    service.rebuilt(id)
++    const next = service.graph().entries.find(entry => entry.id === id)!
++    expect(next.rev).not.toBe(initial.rev)
++    expect((await routeRequest(route, next.url)).body.toString()).toContain('changed: true')
++  })
++
++  it('does not reuse an old batch after a plugin is removed and mounted with new bytes', async () => {
++    const id = '@fixture/cached-remount'
++    writeBuiltPackage(id, {})
++    const entries = [id]
++    const { context, service, route } = constructWithRoute(entries)
++    const clientPath = service.clientPath(id)!
++    const initial = service.graph().batches![0]!
++    entries.pop()
++    emitLoaderEntryChange(context, id)
++    await Promise.resolve()
++    expect(service.graph().entries).toEqual([])
++    writeFileSync(clientPath, 'module.exports = { remounted: true }\n')
++    entries.push(id)
++    emitLoaderEntryChange(context, id)
++    await Promise.resolve()
++    const next = service.graph().batches![0]!
++    expect(next.url).not.toBe(initial.url)
++    expect((await routeRequest(route, next.url)).body.toString()).toContain('remounted: true')
++    expect((await routeRequest(route, initial.url)).status).toBe(404)
++  })
++})

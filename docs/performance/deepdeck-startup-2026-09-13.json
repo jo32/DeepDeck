@@ -1,0 +1,15 @@
+{
+  "baseline": [
+    9.192,
+    7.297,
+    7.302
+  ],
+  "optimized": [
+    2.675,
+    2.579,
+    2.79
+  ],
+  "baseline_median_seconds": 7.302,
+  "optimized_median_seconds": 2.675,
+  "reduction_percent": 63.36620104081074
+}
