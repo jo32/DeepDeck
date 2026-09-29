@@ -11,12 +11,14 @@ interface ComposerBoundary {
   compact: boolean
   modelDestination: HTMLSpanElement | null
   setModelDestination: (element: HTMLSpanElement | null) => void
+  ownedPointerEvents: WeakSet<Event>
 }
 const BrowserComposerBoundary = createContext<ComposerBoundary | null>(null)
 
 export function BrowserComposerProvider({ panel, children }: { panel: RefObject<HTMLElement | null>; children: ReactNode }) {
   const [compact, setCompact] = useState(true)
   const [modelDestination, setModelDestination] = useState<HTMLSpanElement | null>(null)
+  const [ownedPointerEvents] = useState(() => new WeakSet<Event>())
   useLayoutEffect(() => {
     const element = panel.current
     if (!element) return
@@ -26,14 +28,17 @@ export function BrowserComposerProvider({ panel, children }: { panel: RefObject<
     update()
     return () => { observer.disconnect() }
   }, [panel])
-  return <BrowserComposerBoundary.Provider value={{ panel, compact, modelDestination, setModelDestination }}>{children}</BrowserComposerBoundary.Provider>
+  return <BrowserComposerBoundary.Provider value={{ panel, compact, modelDestination, setModelDestination, ownedPointerEvents }}>{children}</BrowserComposerBoundary.Provider>
 }
 
 /** The original model seat retains its locked prop, directory and selection actions. */
 export function BrowserComposerModel({ children }: { children: ReactNode }) {
   const boundary = useContext(BrowserComposerBoundary)
   if (!boundary?.compact) return children
-  return boundary.modelDestination ? createPortal(children, boundary.modelDestination) : null
+  // React capture follows the component tree even for the Harness menu's
+  // body portal. Record ownership without stopping the menu's own handlers.
+  return boundary.modelDestination ? createPortal(<span className={css.modelDestination}
+    onPointerDownCapture={event => { boundary.ownedPointerEvents.add(event.nativeEvent) }}>{children}</span>, boundary.modelDestination) : null
 }
 export const COMPOSER_CONTROLS = 'deepdeck.browser.composer.controls' as const
 export const COMPOSER_CONTROL_LABELS = {
@@ -112,7 +117,7 @@ export function BrowserComposerOverflow({ sessionId, renderSlot, t }: Props) {
   useEffect(() => {
     if (!open) return
     const onPointerDown = (event: PointerEvent) => {
-      if (!(event.target instanceof Node) || trigger.current?.contains(event.target) || popup.current?.contains(event.target)) return
+      if (boundary?.ownedPointerEvents.has(event) || !(event.target instanceof Node) || trigger.current?.contains(event.target) || popup.current?.contains(event.target)) return
       setOpen(false)
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -126,7 +131,7 @@ export function BrowserComposerOverflow({ sessionId, renderSlot, t }: Props) {
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [open])
+  }, [open, boundary?.ownedPointerEvents])
 
   const controls = Object.entries(COMPOSER_CONTROL_LABELS).map(([controlId, key]) =>
     <Control key={controlId} id={controlId} label={t(key)} compact={compact} onAvailability={onAvailability}>
@@ -139,6 +144,7 @@ export function BrowserComposerOverflow({ sessionId, renderSlot, t }: Props) {
       title={t('moreComposer')} aria-haspopup="dialog" aria-expanded={open} aria-controls={id}
       onClick={() => { setOpen(value => !value) }}><BrowserIcon name="more" /></button>
     {createPortal(<div ref={popup} id={id} role="dialog" tabIndex={-1} aria-label={t('moreComposer')} aria-hidden={!open}
+      onPointerDownCapture={event => { boundary?.ownedPointerEvents.add(event.nativeEvent) }}
       className={css.popup} data-open={open} data-browser-composer-utilities
       style={{ bottom }}>
       <div className={css.heading}>{t('moreComposer')}<button type="button" className={css.trigger}

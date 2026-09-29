@@ -215,6 +215,9 @@
 .conversation {
   --deepdeck-hero-shadow: none;
   --deepdeck-hero-docked-shadow: drop-shadow(0 0 0 transparent);
+  /* The docked surface still measures a hidden hero destination. Keep that
+     anchor inside the sidebar so it cannot widen the transcript scrollport. */
+  --deepdeck-hero-rest-right: 0px;
 }
 
 .connectionState { flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 32px; gap: 12px; color: var(--browser-muted); font-size: 13px; line-height: 1.8; }

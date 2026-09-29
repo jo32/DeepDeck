@@ -41,6 +41,7 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     catch (error) { throw new Error(`Renderer verification failed: ${code.slice(0, 800)}`, { cause: error }); }
   };
   const click = async (selector, labels = [], target = contents) => {
+    BaseWindow.getAllWindows().find(window => window.contentView.children.some(view => view.webContents === target))?.focus();
     target.focus();
     const point = await until(() => target.executeJavaScript(`(() => {
       const candidates = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).filter(e =>
@@ -164,8 +165,13 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   await click('[data-sidebar-right-expand], [data-deepdeck-workspace-open]');
   await until(() => evaluate(`!!document.querySelector('[data-sidebar-right-open] [data-sidebar-right-guide]')`), 'workspace guide');
   if (await evaluate(`!!document.querySelector('[data-deepdeck-workspace-open]')`)) throw new Error('Expanded sidebar must have only its native collapse control');
-  await delay(400);
-  const expandedToggle = await readToggleAppearance('[data-sidebar-right-toggle]');
+  // Native resize and renderer animation delivery need not settle in 400ms.
+  // Wait for the actual titlebar position before comparing the artwork.
+  const expandedToggle = await until(async () => {
+    const appearance = await readToggleAppearance('[data-sidebar-right-toggle]');
+    return Math.abs(appearance.iconTop - collapsedToggle.iconTop) < 0.1
+      && Math.abs(appearance.iconRight - collapsedToggle.iconRight) < 0.1 ? appearance : undefined;
+  }, 'expanded sidebar toggle reaches the titlebar');
 
   if (JSON.stringify(collapsedToggle) !== JSON.stringify(expandedToggle)) {
     throw new Error('Workspace toggle appearance changes when expanded: ' + JSON.stringify({ collapsedToggle, expandedToggle }));
@@ -283,9 +289,11 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     }, 'Browser shell');
     harnessContents = browser;
     const browserRead = code => browser.executeJavaScript(code);
+    await until(() => browserRead(`!!document.querySelector('[role="tab"][aria-selected="true"]')`), 'initial Browser tab ready');
     await click('input', ['搜索或输入网站地址', 'Search or enter a website'], browser);
-    await browser.insertText(`http://127.0.0.1:${siteServer.address().port}/`);
-    await delay(100);
+    const siteAddress = `http://127.0.0.1:${siteServer.address().port}/`;
+    await browser.insertText(siteAddress);
+    await until(() => browserRead(`document.activeElement?.value === ${JSON.stringify(siteAddress)}`), 'website address entered');
     browser.sendInputEvent({ type: 'keyDown', keyCode: 'Return' });
     browser.sendInputEvent({ type: 'char', keyCode: '\r' });
     browser.sendInputEvent({ type: 'keyUp', keyCode: 'Return' });

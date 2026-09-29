@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
+import { runStartupStep } from "./start-desktop.mjs";
 import {
   calculateDesktopBuildFingerprint,
   desktopBuildArtifacts,
@@ -74,4 +75,16 @@ test("tracks the provider-aware web plugin as a desktop build input and artifact
   assert.ok(desktopBuildInputs.includes("plugins/provider-aware-web"));
   assert.ok(desktopBuildArtifacts.includes("plugins/provider-aware-web/lib/index.js"));
   assert.ok(desktopBuildArtifacts.includes("plugins/provider-aware-web/lib/client.js"));
+});
+
+test("startup preparation propagates failures and removes signal handlers", async () => {
+  const { workspaceRoot } = await fixture();
+  const script = join(workspaceRoot, "prepare.mjs");
+  const listeners = [process.listenerCount("SIGINT"), process.listenerCount("SIGTERM")];
+  await writeFile(script, "process.exit(7);\n");
+  await assert.rejects(runStartupStep(script, { progress: true }), error => error.exitCode === 7);
+  assert.deepEqual([process.listenerCount("SIGINT"), process.listenerCount("SIGTERM")], listeners);
+  await writeFile(script, "process.exit(0);\n");
+  await runStartupStep(script, { progress: true });
+  assert.deepEqual([process.listenerCount("SIGINT"), process.listenerCount("SIGTERM")], listeners);
 });

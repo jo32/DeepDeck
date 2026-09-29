@@ -13,6 +13,8 @@ import chatCss from '../../../vendor/deepseek-harness/packages/client/ui-chat/sr
 import { ConversationRoot } from '../../../vendor/deepseek-harness/packages/client/ui-conversation/src/client/skeleton/ConversationRoot';
 import { InputBar } from '../../../vendor/deepseek-harness/packages/client/ui-conversation/src/client/skeleton/InputBar';
 import { en as conversationEn } from '../../../vendor/deepseek-harness/packages/client/ui-conversation/src/client/locales';
+import { PermissionSelect } from '../../../vendor/deepseek-harness/packages/client/ui-permission-presets/src/client/PermissionSelect';
+import { accessEn } from '../../../vendor/deepseek-harness/packages/client/ui-permission-presets/src/client/locales';
 import { BrowserConversationContext, BrowserEmptyConversation } from '../../../plugins/browser/src/client/BrowserConversation';
 import { en } from '../../../plugins/browser/src/client/locales';
 import css from '../../../plugins/browser/src/client/browser.module.css';
@@ -40,6 +42,21 @@ function Fixture() {
   const t = (key: keyof typeof conversationEn, vars: Record<string, string> = {}) =>
     Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), conversationEn[key] ?? key);
   const renderSlot = (name: string, props: any) => {
+    if (name === 'conversation.composer.dock') return <div style={{ height: 22 }}>63%</div>;
+    if (name === 'conversation.input.permission') return <PermissionSelect {...{
+      ...props, sessionId: 'fixture', useProjection: () => ({ currentValue: permission }),
+      usePermissionCatalog: select({ value: { options: [
+        { value: 'read-only', name: 'read-only' }, { value: 'workspace-write', name: 'workspace-write' },
+        { value: 'danger-full-access', name: 'danger-full-access' },
+      ] } }),
+      select: async (preset: string) => {
+        setPermission(preset);
+        setPermissionCommands(count => count + 1);
+        return true;
+      },
+      t: (key: keyof typeof accessEn, vars: Record<string, string> = {}) =>
+        Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), accessEn[key] ?? key),
+    } as any} />;
     if (name === 'conversation.composer.bar') return <div data-slot={name} style={{ display: 'contents' }}><InputBar {...{
       ...props, sessionId: 'fixture', useInput: select(input), useSession: select(session),
       useNotices: select(undefined), useLexicon: select(new Map()), useMenuLauncher: select(undefined),
@@ -59,7 +76,7 @@ function Fixture() {
         }
         return true;
       },
-      resolveDraftAttachments: () => [], renderSlot: (name: string) => name === 'conversation.composer.dock' ? <div style={{ height: 22 }}>63%</div> : null, t,
+      resolveDraftAttachments: () => [], renderSlot, t,
     } as any} /></div>;
     if (name === 'conversation.input.dock') return <><BrowserEmptyConversation {...{ session } as any} /><DockedComposer><HomeHeroArtwork session={{ ...session, subagent: null } as any} input={input as any} t={t as any} /></DockedComposer></>;
     if (name === 'conversation.session' && active) return <div data-slot={name} style={{ display: 'contents' }}><div className={chatCss.root}><div className={chatCss.scroll}><div className={chatCss.column} data-chat-flow>
@@ -85,7 +102,7 @@ function Fixture() {
         <div className={css.panelHeader}>example.com · Connected</div>
         <div className={css.panelNavigation}><div className={css.panelNav}><button>Conversation</button></div></div>
         <PresentedFileCard file={{ path: 'CONTRIBUTING.md', description: 'Contribution and verification guide', seq: 1, index: 0 } as any}
-          cwd="/tmp/fixture" phase={undefined} host={null} onPreview={openFile} onAction={() => {}}
+          cwd="/tmp/fixture" phase={undefined} host={null} onPreview={openFile} actions={null}
           t={((key: keyof typeof deliverablesEn, vars: Record<string, string> = {}) => Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), deliverablesEn[key] ?? key)) as any} />
         {/* Same shared Modal used by ChatView's file-open failure dialog;
             the failing opener stays local to this layout fixture. */}
