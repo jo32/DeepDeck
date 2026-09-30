@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.4",
-    "open-computer-use": "0.3.1"
+    "open-computer-use": "0.3.6"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
