@@ -52,6 +52,14 @@ jobs:
           pnpm install --lockfile-only
           pnpm install --frozen-lockfile
 
+      - name: Install Harness dependencies
+        if: steps.computer-use.outputs.changed == 'true'
+        run: pnpm harness:install
+
+      - name: Build Harness
+        if: steps.computer-use.outputs.changed == 'true'
+        run: pnpm harness:build
+
       - name: Verify the updated Cordis plugin
         if: steps.computer-use.outputs.changed == 'true'
         run: |
