@@ -29,6 +29,7 @@ extraResources:
       - branding/**/*
       - cordis.patch.yml
       - runtime-manifest.json
+      - runtime-size.json
 
 artifactName: DeepDeck-${version}-${os}-${arch}.${ext}
 

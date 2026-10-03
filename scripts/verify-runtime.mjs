@@ -208,6 +208,8 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
     });
     const tree = await treeResponse.json();
     if (!treeResponse.ok || tree.ok !== true) throw new Error(`Bundled sidebar file service failed: ${JSON.stringify(tree)}`);
+    const mermaidResponse = await fetch(new URL("/sidebar/bundle/mermaid.js", url), { signal: AbortSignal.timeout(5_000) });
+    if (!mermaidResponse.ok || !(await mermaidResponse.text()).includes("mermaid")) throw new Error("Bundled sidebar Mermaid chunk is unavailable");
     const editorResponse = await fetch(new URL("/sidebar/bundle/editor.js", url), { signal: AbortSignal.timeout(5_000) });
     if (!editorResponse.ok || !(await editorResponse.text()).includes("TextEditor")) throw new Error("Bundled sidebar editor chunk is unavailable");
   } catch (error) {
@@ -335,6 +337,23 @@ await run(nodeBinary, [
   "--input-type=module", "-e",
   `const {transform} = await import(${JSON.stringify(pathToFileURL(bundledWebMCPCompiler).href)}); const result = await transform('const answer: number = 42', {loader:'ts', platform:'browser'}); if (!result.code.includes('42')) throw new Error('WebMCP compiler failed');`,
 ]);
+// Prove the retained native terminal binary actually loads after platform pruning.
+await run(nodeBinary, ["--input-type=module", "-e", `
+  import { createRequire } from 'node:module';
+  const require = createRequire(${JSON.stringify(pathToFileURL(cli).href)});
+  const pty = require('node-pty');
+  const terminal = pty.spawn(process.execPath, ['--version'], {env: {PATH: ''}});
+  let output = '';
+  const timer = setTimeout(() => { terminal.kill(); process.exit(1); }, 10000);
+  terminal.onData(chunk => output += chunk);
+  terminal.onExit(({exitCode}) => { clearTimeout(timer); if (exitCode !== 0 || !output.includes(process.version)) process.exit(1); });
+`]);
+if (manifest.platform !== "win32") {
+  const bunxVersion = await run(join(dirname(bundledBun), "bunx.exe"), ["--version"]);
+  if (bunxVersion.trim() !== BUN_VERSION) throw new Error("Bundled bunx launcher failed");
+  const esbuildLauncher = join(dirname(bundledWebMCPCompiler), "..", "bin", "esbuild");
+  await run(esbuildLauncher, ["--version"]);
+}
 await verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli);
 console.log(
   `verify-runtime: DeepDeck ${manifest.applicationVersion}, Node ${manifest.nodeVersion}, ${manifest.platform}-${manifest.architecture}`,

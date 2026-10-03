@@ -176,6 +176,17 @@ jobs:
             spctl --assess --type execute --verbose=2 "$app"
           fi
 
+      - name: Upload runtime source maps and size report
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-debug-${{ matrix.arch }}
+          include-hidden-files: true
+          path: |
+            .deepdeck/debug/
+            .deepdeck/runtime/runtime-size.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload signed release outputs
         uses: actions/upload-artifact@v7
         with:

@@ -154,3 +154,24 @@ Before calling the channel production-ready, perform a real two-version test usi
 6. compare GitHub and R2 SHA-256 values with `SHA256SUMS`.
 
 Stable is the only enabled channel. A future beta prefix can be added without changing stable. electron-updater's `stagingPercentage` can later support 10% → 30% → 100% rollout, but it should be introduced only with an operational promotion/abort procedure.
+
+## Runtime size policy
+
+`runtime:prepare` applies `scripts/runtime-footprint.mjs` before the runtime smoke
+checks. macOS runtime resources have a 900 MiB logical-file budget (Electron is
+excluded); exceeding it stops packaging. `runtime-size.json` records the size
+before/after file pruning. Dependency exclusions happen earlier, so compare full
+app archives to measure the total reduction.
+
+Source maps are retained under `.deepdeck/debug/<version>-<platform>-<arch>` and
+uploaded as separate `desktop-debug-<arch>` CI artifacts, not shipped to users.
+Only the target node-pty prebuild is retained. On Unix, identical Bun and esbuild
+executable aliases become relative shell launchers; the canonical binaries and
+all existing entry paths remain available. Windows keeps its executable aliases.
+
+Three.js is a build dependency of the prebundled home client. The sidebar 0.21.1
+runtime closure keeps its host dependencies and all client/lazy chunks, excluding
+libraries already compiled into those chunks. Upgrading the sidebar requires
+reviewing this explicit dependency policy; an unknown version fails preparation.
+The runtime verifier exercises native terminal startup, compiler entry points,
+Harness web startup, sidebar file service, and editor/Mermaid chunk delivery.

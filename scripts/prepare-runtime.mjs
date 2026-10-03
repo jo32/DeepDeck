@@ -1,3 +1,4 @@
+import { runtimeDependencies, slimRuntime } from "./runtime-footprint.mjs";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
@@ -484,7 +485,7 @@ async function copyPluginDependencies(source, destination, dependencies) {
       await readFile(join(dependencySource, "package.json"), "utf8"),
     );
     pending.push(
-      ...Object.keys(dependencyManifest.dependencies ?? {}).map((dependencyName) => ({
+      ...Object.keys(runtimeDependencies(dependencyManifest) ?? {}).map((dependencyName) => ({
         issuer: dependencySource,
         packageName: dependencyName,
       })),
@@ -623,6 +624,12 @@ async function prepare() {
         workspacePackages: closure.workspacePackageCount,
       }, null, 2)}\n`,
     );
+
+    const footprint = await slimRuntime(temporaryRoot, {
+      platform: options.platform, arch: options.arch,
+      debugRoot: join(generatedRoot, "debug", `${desktopPackage.version}-${key}`),
+    });
+    console.log(`prepare-runtime: footprint ${JSON.stringify(footprint)}`);
 
     await run(nodeBinary, [join(deployCli, "lib", "bin.js"), "--help"]);
     await run(process.execPath, [join(workspaceRoot, "scripts", "verify-runtime.mjs"), `--root=${temporaryRoot}`]);
