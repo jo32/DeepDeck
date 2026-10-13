@@ -10,6 +10,11 @@ on:
         description: Existing v-prefixed SemVer tag to release
         required: true
         type: string
+      confirm_publish:
+        description: Joe confirms publishing this tag to GitHub Releases and the stable updater feed
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -201,6 +206,11 @@ jobs:
           retention-days: 14
 
   publish:
+    # Tag pushes only build. Both initial dispatch and any rerun must be Joe's.
+    # Gate the entire job: even immutable R2 uploads are publicly downloadable.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true &&
+          github.actor == 'jo32' && github.triggering_actor == 'jo32' }}
     needs:
       - validate
       - build-macos

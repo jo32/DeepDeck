@@ -4,7 +4,7 @@ DeepDeck uses GitHub Releases for the version record and manual downloads, and a
 
 ## One-time external setup
 
-Create a protected GitHub Environment named `production-release`. Require reviewers if desired and add these secrets:
+Create a GitHub Environment named `production-release` and add these secrets. The workflow requires Joe (`jo32`) to explicitly confirm publication through manual dispatch; environment reviewers may be configured as an additional gate:
 
 | Secret | Purpose |
 | --- | --- |
@@ -93,7 +93,8 @@ upgrading the signer or removing the patch.
 
 ## Open Computer Use runtime updates
 
-`.github/workflows/update-computer-use.yml` checks npm daily and on manual
+`.github/workflows/update-computer-use.yml` checks npm weekly on Monday at
+02:17 UTC (10:17 Asia/Shanghai) and on manual
 dispatch for the latest stable `open-computer-use` release. It validates the
 package identity, MIT license, upstream repository, registry tarball origin,
 and published SHA-512 integrity metadata before refreshing the exact dependency
@@ -112,11 +113,15 @@ version refresh locally.
 ## Production release
 
 1. Bump `apps/desktop/package.json` to the new SemVer version and merge the fully tested change.
-2. Create and push an exact matching tag such as `v1.0.1`. A manual dispatch must also name an existing matching tag.
-3. Approve the `production-release` Environment when prompted.
-4. Keep the GitHub Release in draft until the workflow completes all publication stages.
+2. Create and push an exact matching tag such as `v1.0.1`. Tag pushes validate and build signed artifacts only; they do not create a GitHub Release, upload R2 objects, or promote the updater feed.
+3. Review the tag's successful build and artifacts. When ready to publish, Joe (`jo32`) must manually run **Release DeepDeck** from `main`, enter the existing tag, and enable `confirm_publish`. This checkbox defaults to false. The confirmed run rebuilds and validates the exact tag before publication.
+4. Approve the `production-release` Environment if additional protection rules require it. Keep the GitHub Release in draft until the confirmed workflow completes all publication stages.
 
-The workflow enforces this order:
+The entire `publish` job requires manual dispatch, `confirm_publish: true`, and both the original actor and the rerun actor to be `jo32`. A tag push, an unconfirmed dispatch, another user's dispatch, or another user's rerun cannot upload public R2 artifacts, change either stable feed, or publish the GitHub Release. Re-running a tag build does not grant publication approval; Joe must start a new confirmed dispatch.
+
+This gate applies to workflow revisions containing it. Merge the workflow change before creating new release tags, and dispatch from `main`; historical tags and historical workflow runs retain their old workflow definition and must not be used to bypass confirmation.
+
+After Joe's confirmed dispatch, the workflow enforces this order:
 
 1. validate tag, app version, fixed identity, HTTPS feed, signing policy, and custom domain;
 2. install with frozen lockfiles, build Harness, run check/test/build;
