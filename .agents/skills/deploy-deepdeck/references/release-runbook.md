@@ -85,13 +85,13 @@ Merge the confirmation gate before creating new release tags. Historical tags an
 
 ## 4. Monitor GitHub Actions
 
-Find the run whose `headBranch` and `headSha` match the pushed tag and commit:
+For the tag build, find the push run whose `headBranch` and `headSha` match the pushed tag and commit. For publication, select Joe's confirmed `workflow_dispatch` run from `main` and verify its `tag` input and validation output; its workflow `headSha` identifies `main`, while checkout uses the requested release tag.
 
 ```bash
 gh run list \
   --workflow "Release DeepDeck" \
   --limit 10 \
-  --json databaseId,headBranch,headSha,status,conclusion,url
+  --json databaseId,event,headBranch,headSha,status,conclusion,url
 gh run watch RUN_ID --exit-status
 ```
 
