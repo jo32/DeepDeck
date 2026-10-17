@@ -10,7 +10,7 @@ import { runtimeDependencies, slimRuntime } from './runtime-footprint.mjs';
 const exec = promisify(execFile);
 test('sidebar pruning is version-gated and preserves host dependencies', () => {
   const dependencies = { ws: '1', yaml: '2', '@deepseek-ai/schemastery': '3', mermaid: '4' };
-  assert.deepEqual(runtimeDependencies({ name: 'dsh-better-sidebar', version: '0.21.1', dependencies }),
+  assert.deepEqual(runtimeDependencies({ name: 'dsh-better-sidebar', version: '0.28.0', dependencies }),
     { ws: '1', yaml: '2', '@deepseek-ai/schemastery': '3' });
   assert.throws(() => runtimeDependencies({ name: 'dsh-better-sidebar', version: 'next', dependencies }), /Review/);
   assert.equal(runtimeDependencies({ name: 'other', dependencies }), dependencies);

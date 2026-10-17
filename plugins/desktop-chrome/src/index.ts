@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 
-/** Welcome acknowledgement stays with DeepDeck's replacement settings shell. */
+/** Retain the legacy acknowledgement field so existing profiles remain readable. */
 export const Config = z.object({ welcomeNoticeVersion: z.string().volatile() })
 
 export function apply(ctx: Context): void {

@@ -89,3 +89,22 @@ test("build and check entrypoints prepare Harness before compiling plugins", asy
     assert.ok(scripts[name].startsWith("pnpm harness:ensure && "));
   }
 });
+
+test("Harness development links belong to the pinned release candidate", async () => {
+  const root = new URL("../", import.meta.url);
+  const harness = JSON.parse(await readFile(new URL("vendor/deepseek-harness/package.json", root), "utf8"));
+  assert.match(harness.version, /^\d+\.\d+\.\d+-rc\.\d+$/);
+  const manifest = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
+  const links = Object.entries(manifest.devDependencies)
+    .filter(([name, value]) => name.startsWith("@deepseek-ai/") && value.startsWith("link:"));
+  assert.ok(links.length > 0, "plugin APIs must resolve from the pinned checkout");
+  for (const [name, target] of links) {
+    const directory = target.slice("link:".length);
+    assert.ok(directory.startsWith("vendor/deepseek-harness/"));
+    const manifest = JSON.parse(await readFile(new URL(`${directory}/package.json`, root), "utf8"));
+    assert.equal(manifest.name, name, `incorrect link for ${name}`);
+    if (name.startsWith("@deepseek-ai/dsh-")) {
+      assert.equal(manifest.version, harness.version, `mixed Harness API for ${name}`);
+    }
+  }
+});

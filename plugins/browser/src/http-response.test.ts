@@ -7,7 +7,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { apply } from './index.js'
 import { BrowserSiteStore } from './site-store.js'
 
-vi.mock('dsh-better-sidebar', () => ({ apply: () => {} }))
+vi.mock('dsh-better-sidebar', () => ({ apply: () => {}, inject: ['webServer', 'sessions', 'connection', 'tools'] }))
 vi.mock('./runtime.js', () => ({ BrowserRuntime: class { dispose() {} } }))
 vi.mock('./native-client.js', () => ({ BrowserNativeClient: class { async request() {} } }))
 

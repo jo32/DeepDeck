@@ -169,7 +169,7 @@ Only the target node-pty prebuild is retained. On Unix, identical Bun and esbuil
 executable aliases become relative shell launchers; the canonical binaries and
 all existing entry paths remain available. Windows keeps its executable aliases.
 
-Three.js is a build dependency of the prebundled home client. The sidebar 0.21.1
+Three.js is a build dependency of the prebundled home client. The sidebar 0.28.0
 runtime closure keeps its host dependencies and all client/lazy chunks, excluding
 libraries already compiled into those chunks. Upgrading the sidebar requires
 reviewing this explicit dependency policy; an unknown version fails preparation.

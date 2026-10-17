@@ -181,13 +181,17 @@ export function apply(ctx: ClientContext): void {
     }, ViewToggle)
   })
 
-  // The stock strip is a list cell, so a lower-priority entry with the same
-  // id shadows it without reaching into the upstream plugin's lifecycle.
-  ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
-    name: 'conversation.composer.dock',
-    id: 'stats',
-    priority: -100,
-  }, HiddenComposerStats))
+  // Harness exposes each statistics pill separately. Keep their readings in
+  // DeepDeck's combined popover by replacing both declared dock entries.
+  ctx.slots.inject('conversation.composer.dock', function* () {
+    for (const id of ['activity', 'usage']) {
+      yield ctx.slots.register({
+        name: 'conversation.composer.dock',
+        id,
+        priority: -100,
+      }, HiddenComposerStats)
+    }
+  })
 
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
     name: 'conversation.input.right',

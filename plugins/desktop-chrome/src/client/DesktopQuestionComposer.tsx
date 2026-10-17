@@ -12,7 +12,7 @@ import {
   IconChevronRightOutlineRegular, IconChevronUpOutlineRegular, IconCloseOutlineRegular,
   IconEditOutlineRegular, MarkdownText,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PendingQuestion, QuestionAnswer, QuestionComposerProps, QuestionWait } from '@deepseek-ai/dsh-client-ui-user-questions/client'
+import type { PendingQuestion, QuestionAnswer, QuestionComposerProps } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import questionCss from '../../../../vendor/deepseek-harness/packages/client/ui-user-questions/src/client/QuestionComposer.module.css'
 import desktopCss from './question-composer.module.css'
 
@@ -81,6 +81,7 @@ export function DesktopQuestionComposer(props: Pick<QuestionComposerProps, 'matc
 export function selectDesktopQuestion({ pendingInteraction }: ComposerChainProps): PendingQuestion | null {
   if (pendingInteraction?.kind !== 'question' || !('questions' in pendingInteraction)) return null
   const pending = pendingInteraction as PendingQuestion
+  if (pending.review !== undefined) return null
   return pending.questions.length > 0 && pending.questions.every(question => question.intent === undefined) ? pending : null
 }
 
@@ -118,7 +119,7 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
   const cancelFlow = (): void => {
     setBusy('cancel')
     setError(null)
-    void pending.cancel().catch((cause: unknown) => {
+    void pending.dismiss().catch((cause: unknown) => {
       setBusy(null)
       setError({ text: cause instanceof Error ? cause.message : String(cause) })
     })
@@ -170,7 +171,9 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
     }
     setBusy('answer')
     setError(null)
-    void pending.answer(answer).catch((cause: unknown) => {
+    void pending.answer(answer).then(() => {
+      if (pending.dismissal === 'hide') return pending.dismiss()
+    }).catch((cause: unknown) => {
       setBusy(null)
       setError({ text: cause instanceof Error ? cause.message : String(cause) })
     })
@@ -247,8 +250,8 @@ function QuestionFlow({ pending, t }: { pending: PendingQuestion } & Pick<Questi
               {minimized ? <IconChevronUpOutlineRegular /> : <IconChevronDownOutlineRegular />}
             </button>
             <button
-              type="button" className={css.iconButton} aria-label={t('nav.cancel')}
-              title={t('nav.cancel')}
+              type="button" className={css.iconButton} aria-label={t(pending.dismissal === 'hide' ? 'nav.close' : 'nav.cancel')}
+              title={t(pending.dismissal === 'hide' ? 'nav.close' : 'nav.cancel')}
               disabled={busy !== null} onClick={cancelFlow}
             >
               <IconCloseOutlineRegular />

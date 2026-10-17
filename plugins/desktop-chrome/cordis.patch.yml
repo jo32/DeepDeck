@@ -9,7 +9,7 @@
   name: '@deepseek-ai/dsh-client-ui-sidebar'
   disabled: true
 
-# DeepDeck owns the settings shell and its welcome acknowledgement config.
+# DeepDeck owns the settings shell and skips the upstream preview notice.
 - id: ui-settings-general
   name: '@deepseek-ai/dsh-client-ui-settings-general'
   disabled: true

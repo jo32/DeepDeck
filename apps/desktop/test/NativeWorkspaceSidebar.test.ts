@@ -55,8 +55,14 @@ it('routes workspace tools and file resources into the native sidebar without op
     expect(store.getSnapshot().sessionId).toBe('second')
     service.openTab({ type: 'terminal' })
     expect(native.openTab).toHaveBeenLastCalledWith('terminal', expect.anything())
+    const openCount = native.openTab.mock.calls.length
     service.openTab({ type: 'git' }, { sessionId: 'first' })
-    expect(native.openTabIn).toHaveBeenCalledWith('first', 'git', expect.anything())
+    expect(native.openTabIn).not.toHaveBeenCalled()
+    expect(native.openTab).toHaveBeenCalledTimes(openCount)
+    // The RC-compatible sidebar queues background opens until their seat mounts.
+    current = 'first'
+    listeners.forEach(listener => listener())
+    expect(native.openTab).toHaveBeenLastCalledWith('git', expect.anything())
     store.setPrefs({ ...store.getPrefs(), tabsEnabled: { ...store.getPrefs().tabsEnabled, git: false } })
     expect([...definitions.values()].some(value => value.kind === 'git')).toBe(false)
   } finally {

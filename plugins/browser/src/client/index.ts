@@ -30,6 +30,15 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export const inject = ['remote', 'remote.fileReferences', 'uiWorkspace', 'slots', 'sessions', 'workspaces', 'connection', 'locale', 'theme', 'deepdeckCharacter', 'modules'] as const
 
 export function apply(ctx: ClientContext): void {
+  try {
+    install(ctx)
+  } catch (error: unknown) {
+    console.error('DeepDeck Browser client setup failed:', error)
+    throw error
+  }
+}
+
+function install(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(BROWSER_LOCALE, { en, zh }), 'deepdeck browser: dictionaries')
   ctx.slots.inject('sidebar.launchers', () => ctx.slots.register({
     name: 'sidebar.launchers', id: 'deepdeck-browser', order: 0, locale: BROWSER_LOCALE,

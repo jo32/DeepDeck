@@ -6,7 +6,7 @@ import { dirname, join, relative } from 'node:path';
 // Keep its host dependencies, and require review when the upstream version changes.
 export function runtimeDependencies(manifest) {
   if (manifest.name !== 'dsh-better-sidebar') return manifest.dependencies;
-  if (manifest.version !== '0.21.1') throw new Error('Review sidebar runtime dependencies before upgrading');
+  if (manifest.version !== '0.28.0') throw new Error('Review sidebar runtime dependencies before upgrading');
   return Object.fromEntries(['@deepseek-ai/schemastery', 'ws', 'yaml'].map(name => {
     if (!manifest.dependencies?.[name]) throw new Error(`Missing sidebar dependency: ${name}`);
     return [name, manifest.dependencies[name]];

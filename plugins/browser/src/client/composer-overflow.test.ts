@@ -21,6 +21,19 @@ function setup() {
 }
 
 describe('Browser composer overflow assembly', () => {
+  it('preserves the RC model selector that owns its label Slot', () => {
+    const fixture = setup()
+    const Original = () => null
+    fixture.core.register({ name: 'conversation.input.model', children: {
+      'conversation.input.model.label': { kind: 'single', scope: 'session', inline: true },
+    } }, Original)
+    fixture.install()
+    expect(fixture.core.entriesOfSlot('conversation.input.model')[0]?.component).toBe(Original)
+    expect(fixture.core.spec('conversation.input.model.label')).toMatchObject({ kind: 'single', scope: 'session' })
+    fixture.dispose()
+    expect(fixture.core.spec('conversation.input.model.label')).toBeDefined()
+  })
+
   it('wraps the model seat with its original business face and restores it on unload', () => {
     const fixture = setup()
     const Original = () => null

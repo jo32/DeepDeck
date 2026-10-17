@@ -215,7 +215,7 @@ async function deployHarness(target, workspaceDirectory) {
       "--config.link-workspace-packages=true",
       target,
     ],
-    { cwd: workspaceDirectory, env: { CI: "true" } },
+    { cwd: workspaceDirectory, env: { CI: "true", DISABLE_V8_COMPILE_CACHE: "1" } },
   );
 }
 

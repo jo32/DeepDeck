@@ -23,14 +23,17 @@ export function installComposerOverflow(ctx: ClientContext): void {
       dispose()
       source = next
       if (!next) return
+      // RC model selectors own a label Slot. Its declaration and render
+      // authorization belong to that entry, so leave the owning seat intact.
+      if (next.children && Object.keys(next.children).length) return
       const Original = next.component as ComponentType<Record<string, unknown>>
       wrapper = (props) => createElement(BrowserComposerModel, null, createElement(Original, props))
       // Wrap the public seat itself, forwarding all owner and injected props.
       // The editor still computes `locked`; no model state is duplicated here.
-      const register = ctx.slots.register.bind(ctx.slots) as unknown as (options: StoredEntry['options'] & { name: 'conversation.input.model' } & Pick<StoredEntry, 'inject' | 'store' | 'locale' | 'children'>, component: unknown) => () => void
+      const register = ctx.slots.register.bind(ctx.slots) as unknown as (options: StoredEntry['options'] & { name: 'conversation.input.model' } & Pick<StoredEntry, 'inject' | 'store' | 'locale'>, component: unknown) => () => void
       dispose = register({ ...next.options, name: 'conversation.input.model', priority: (next.options.priority ?? 0) - 1,
         ...(next.inject ? { inject: next.inject } : {}), ...(next.store ? { store: next.store } : {}),
-        ...(next.locale ? { locale: next.locale } : {}), ...(next.children ? { children: next.children } : {}),
+        ...(next.locale ? { locale: next.locale } : {}),
       }, wrapper)
     }
     const unsubscribe = ctx.slots.subscribe('conversation.input.model', sync)

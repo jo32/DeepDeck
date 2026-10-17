@@ -1,5 +1,3 @@
-import { WelcomeNotice } from '../../../../vendor/deepseek-harness/packages/client/ui-settings-models/lib/types/client/WelcomeNotice.js'
-import { WelcomeNoticeStore } from '../../../../vendor/deepseek-harness/packages/client/ui-settings-models/lib/types/client/welcome-store.js'
 import type {} from '@deepseek-ai/dsh-client-ui-settings-models/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -371,12 +369,6 @@ export function installDesktopSettingsShell(ctx: ClientContext): void {
     'deepdeck desktop: settings dictionaries',
   )
   const t = ctx.locale.bind(DESKTOP_SETTINGS_LOCALE)
-  const welcome = new WelcomeNoticeStore(ctx.configForms.get('deepdeck-desktop-chrome'))
-  ctx.effect(() => () => welcome.dispose(), 'deepdeck desktop: welcome config')
-  ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
-    name: 'settings.onboarding', id: 'welcome-notice', order: -100, priority: -100,
-    inject: () => ({ controller: welcome, hooks: { welcome: welcome.store }, t: ctx.locale.bind('settings.models') }),
-  }, WelcomeNotice))
   const connection = ctx.get('connection') as ConnectionHandle
   const documentController = connection.isLoopback
     ? new SettingsDocumentStore(ctx.remote, ctx.configForms.describe())
@@ -419,10 +411,14 @@ export function installDesktopSettingsShell(ctx: ClientContext): void {
           const version = ctx.slots.getVersion('settings.onboarding')
           if (version !== onboardingVersion) {
             onboardingVersion = version
-            onboardingSteps = ctx.slots.entriesOfSlot('settings.onboarding').map(entry => ({
-              id: entry.options.id ?? '',
-              order: entry.options.order ?? 0,
-            })).sort((left, right) => left.order - right.order)
+            // DeepDeck does not show Harness's versioned preview announcement.
+            // Exclude upstream contributions too, including in browser windows.
+            onboardingSteps = ctx.slots.entriesOfSlot('settings.onboarding')
+              .filter(entry => entry.options.id !== 'welcome-notice')
+              .map(entry => ({
+                id: entry.options.id ?? '',
+                order: entry.options.order ?? 0,
+              })).sort((left, right) => left.order - right.order)
           }
           return onboardingSteps
         },

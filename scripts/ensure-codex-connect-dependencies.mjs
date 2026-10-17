@@ -1,11 +1,36 @@
 import { spawn } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { access, cp, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const codexConnectRoot = join(repositoryRoot, "vendor", "dsh-codex-connect");
 const manifestPath = join(codexConnectRoot, "package.json");
+
+async function ensureSourceChatTypes() {
+  // This historical source checkout omits ui-chat, which its tool Slot types
+  // import. Keep those tests on their own API instead of inheriting the app's RC.
+  const require = createRequire(join(repositoryRoot, "package.json"));
+  const source = dirname(require.resolve("@deepdeck/codex-source-chat-types/package.json"));
+  const expected = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
+  const sourceManifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  if (expected.version !== sourceManifest.devDependencies["@deepseek-ai/dsh-client-ui-tool"]) {
+    throw new Error("Codex source chat types must match its locked tool-view API");
+  }
+  const destination = join(codexConnectRoot, "node_modules", "@deepseek-ai", "dsh-client-ui-chat");
+  try {
+    const installed = JSON.parse(await readFile(join(destination, "package.json"), "utf8"));
+    if (installed.version === expected.version) return;
+    throw new Error(`Unexpected source ui-chat version: ${installed.version}`);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  await cp(source, destination, {
+    recursive: true,
+    filter: path => path !== join(source, "node_modules") && !path.startsWith(`${join(source, "node_modules")}${sep}`),
+  });
+}
 
 async function missingDirectDependencies() {
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -41,6 +66,7 @@ function run(command, args) {
 
 const missing = await missingDirectDependencies();
 if (missing.length === 0) {
+  await ensureSourceChatTypes();
   console.log("Codex Connect dependencies are ready.");
   process.exit(0);
 }
@@ -70,3 +96,4 @@ const stillMissing = await missingDirectDependencies();
 if (stillMissing.length > 0) {
   throw new Error(`Codex Connect dependencies are still missing: ${stillMissing.join(", ")}`);
 }
+await ensureSourceChatTypes();

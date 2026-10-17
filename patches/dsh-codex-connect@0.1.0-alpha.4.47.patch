@@ -1,7 +1,89 @@
+diff --git a/compatibility.json b/compatibility.json
+index 3c0f9ff..e41e734 100644
+--- a/compatibility.json
++++ b/compatibility.json
+@@ -4,8 +4,10 @@
+     "node": "^22.19.0 || >=24.0.0"
+   },
+   "dshPluginApi": {
+-    "version": "0.1.7-rc.1",
+-    "versions": ["0.1.7-rc.1"],
++    "version": "0.2.1-rc.2",
++    "versions": [
++      "0.2.1-rc.2"
++    ],
+     "packages": [
+       "@deepseek-ai/dsh-agent",
+       "@deepseek-ai/dsh-atomic-write",
+@@ -13,7 +15,6 @@
+       "@deepseek-ai/dsh-compaction",
+       "@deepseek-ai/dsh-home-paths",
+       "@deepseek-ai/dsh-host-webserver",
+-      "@deepseek-ai/dsh-invariants",
+       "@deepseek-ai/dsh-llm",
+       "@deepseek-ai/dsh-llm-pi-ai",
+       "@deepseek-ai/dsh-fs",
+@@ -26,6 +27,6 @@
+   },
+   "piAi": {
+     "package": "@earendil-works/pi-ai",
+-    "version": "0.85.1"
++    "version": "1.1.0"
+   }
+ }
+diff --git a/lib/bin.js b/lib/bin.js
+index efa79d2..347e70d 100755
+--- a/lib/bin.js
++++ b/lib/bin.js
+@@ -608,7 +608,7 @@ var OpenAICodexCredentialStore = class {
+ const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
+ const SUPPORTED_DSH_PLUGIN_API_VERSIONS = ["0.1.7-rc.1"];
+ const SUPPORTED_DSH_PLUGIN_API_RANGE = SUPPORTED_DSH_PLUGIN_API_VERSIONS.join(" || ");
+-const SUPPORTED_PI_AI_RANGE = "0.85.1";
++const SUPPORTED_PI_AI_RANGE = "1.1.0";
+ const PI_AI_PACKAGE = "@earendil-works/pi-ai";
+ const DSH_PLUGIN_API_PACKAGES = [
+ 	"@deepseek-ai/dsh-agent",
+@@ -617,7 +617,6 @@ const DSH_PLUGIN_API_PACKAGES = [
+ 	"@deepseek-ai/dsh-compaction",
+ 	"@deepseek-ai/dsh-home-paths",
+ 	"@deepseek-ai/dsh-host-webserver",
+-	"@deepseek-ai/dsh-invariants",
+ 	"@deepseek-ai/dsh-llm",
+ 	"@deepseek-ai/dsh-llm-pi-ai",
+ 	"@deepseek-ai/dsh-fs",
+@@ -639,7 +638,7 @@ function isSupportedDshPluginApiVersion(value) {
+ 	return SUPPORTED_DSH_PLUGIN_API_VERSIONS.some((version) => version === value);
+ }
+ function piAiVersionStatus(value) {
+-	return value.trim() === "0.85.1" ? "compatible" : "unverified";
++	return value.trim() === "1.1.0" ? "compatible" : "unverified";
+ }
+ function parseNodeVersion(value) {
+ 	const match = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/u.exec(value.trim());
+@@ -700,7 +699,7 @@ function evaluateCompatibility(input = {}) {
+ 	const status = aggregateStatus([node, ...Object.values(packages)]);
+ 	const dshVersion = packages["@deepseek-ai/dsh-llm"].installed;
+ 	const piVersion = packages[PI_AI_PACKAGE].installed;
+-	const matchedPair = dshVersion === packages["@deepseek-ai/dsh-llm-pi-ai"].installed && dshVersion === packages["@deepseek-ai/dsh-compaction"].installed && dshVersion === "0.1.7-rc.1" && piVersion === "0.85.1";
++	const matchedPair = dshVersion === packages["@deepseek-ai/dsh-llm-pi-ai"].installed && dshVersion === packages["@deepseek-ai/dsh-compaction"].installed && dshVersion === "0.1.7-rc.1" && piVersion === "1.1.0";
+ 	return {
+ 		schemaVersion: 1,
+ 		status: status === "compatible" && !matchedPair ? "unverified" : status,
+@@ -6816,7 +6815,7 @@ var CodexCapabilityDiagnostics = class {
+ 		});
+ 		const missing = Object.values(versions).some((value) => value === null) || !/^v?\d+\.\d+\.\d+$/u.test(versions["node"] ?? "");
+ 		const dshVersion = versions["@deepseek-ai/dsh-llm"];
+-		const runtime = DSH_PLUGIN_API_PACKAGES.some((name) => versions[name] !== null && (!isSupportedDshPluginApiVersion(versions[name]) || versions[name] !== dshVersion)) || compatibility.status === "incompatible" || compatibility.status === "unverified" ? result("rejected", "declared-version-mismatch", "Use DSH plugin API 0.1.7-rc.1 with pi-ai 0.85.1, keeping every declared DSH API package at the same exact version. Older and mixed combinations are not verified by this candidate.") : missing || compatibility.status === "unknown" ? result("unknown", "version-metadata-unavailable", "Run this command from the plugin installation in the intended profile.") : result("supported", "declared-host-versions-match", "Host package versions satisfy the declared requirements; this is not a live profile or browser compatibility test.");
++		const runtime = DSH_PLUGIN_API_PACKAGES.some((name) => versions[name] !== null && (!isSupportedDshPluginApiVersion(versions[name]) || versions[name] !== dshVersion)) || compatibility.status === "incompatible" || compatibility.status === "unverified" ? result("rejected", "declared-version-mismatch", "Use DSH plugin API 0.1.7-rc.1 with pi-ai 1.1.0, keeping every declared DSH API package at the same exact version. Older and mixed combinations are not verified by this candidate.") : missing || compatibility.status === "unknown" ? result("unknown", "version-metadata-unavailable", "Run this command from the plugin installation in the intended profile.") : result("supported", "declared-host-versions-match", "Host package versions satisfy the declared requirements; this is not a live profile or browser compatibility test.");
+ 		const model = this.deps.catalog().find((item) => item.id === request.model)?.id ?? null;
+ 		const unknownNetwork = result("unknown", "not-probed", "Run capabilities --model <catalog-id> --probe explicitly; this sends a fixed short request and may consume quota.");
+ 		const checks = {
 diff --git a/lib/client.js b/lib/client.js
+index 6601054..cd0bd94 100644
 --- a/lib/client.js
 +++ b/lib/client.js
-@@ -7141,11 +7141,10 @@
+@@ -7141,11 +7141,10 @@ window.__ModuleLoader__.load({
  				account.dispose();
  			}, "dsh-codex-connect: account observation");
  			ctx.effect(() => {
@@ -14,7 +96,7 @@ diff --git a/lib/client.js b/lib/client.js
  			ctx.effect(() => ctx.locale.register(namespace, {
  				zh,
  				en
-@@ -7177,13 +7176,6 @@
+@@ -7177,13 +7176,6 @@ window.__ModuleLoader__.load({
  					configScope
  				})
  			}, OpenAICodexModelsCard));
@@ -28,37 +110,138 @@ diff --git a/lib/client.js b/lib/client.js
  			ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
  				name: "conversation.input.right",
  				id: "codex-connect-task-models",
+diff --git a/lib/index.d.ts b/lib/index.d.ts
+index 9b75c98..61981c9 100644
+--- a/lib/index.d.ts
++++ b/lib/index.d.ts
+@@ -296,12 +296,12 @@ export declare const IMAGE_GENERATE_TOOL_NAME = "codex_connect_image_generate";
+ //#region src/compatibility.d.ts
+ export declare const COMPATIBILITY_SCHEMA_VERSION: 1;
+ export declare const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
+-export declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.1";
+-export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.1"];
++export declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.2.1-rc.2";
++export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.2.1-rc.2"];
+ export declare const SUPPORTED_DSH_PLUGIN_API_RANGE: string;
+-export declare const SUPPORTED_PI_AI_RANGE = "0.85.1";
++export declare const SUPPORTED_PI_AI_RANGE = "1.1.0";
+ export declare const PI_AI_PACKAGE = "@earendil-works/pi-ai";
+-export declare const DSH_PLUGIN_API_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-invariants", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
++export declare const DSH_PLUGIN_API_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
+ export declare const COMPATIBILITY_PACKAGES: readonly ["@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-compaction", "@earendil-works/pi-ai"];
+ type CompatibilityPackageName = (typeof COMPATIBILITY_PACKAGES)[number];
+ /** Version metadata proves a declared match, not behavioral failure for an untested package. */
+@@ -345,13 +345,13 @@ export declare const COMPATIBILITY_CONTRACT: {
+     readonly node: "^22.19.0 || >=24.0.0";
+   };
+   readonly dshPluginApi: {
+-    readonly version: "0.1.7-rc.1";
+-    readonly versions: readonly ["0.1.7-rc.1"];
+-    readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-invariants", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
++    readonly version: "0.2.1-rc.2";
++    readonly versions: readonly ["0.2.1-rc.2"];
++    readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
+   };
+   readonly piAi: {
+     readonly package: "@earendil-works/pi-ai";
+-    readonly version: "0.85.1";
++    readonly version: "1.1.0";
+   };
+ };
+ /** Evaluate a captured set of versions without touching the filesystem. */
+@@ -552,10 +552,12 @@ export declare const OPENAI_CODEX_SEARCH_PROVIDER = "openai-codex";
+ /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
+ export declare const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
+ /** Standalone search endpoint used by the official Codex client. */
+-export declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/alpha/search";
++export declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/responses";
+ interface SearchRequestBody {
+-  readonly id: string;
+   readonly model: string;
++  readonly store: false;
++  readonly stream: true;
++  readonly instructions: string;
+   readonly input: readonly [{
+     readonly type: 'message';
+     readonly role: 'user';
+@@ -564,17 +566,14 @@ interface SearchRequestBody {
+       readonly text: string;
+     }];
+   }];
+-  readonly commands: {
+-    readonly search_query: readonly [{
+-      readonly q: string;
+-    }];
+-  };
+-  readonly settings: {
++  readonly tools: readonly [{
++    readonly type: 'web_search';
+     readonly search_context_size: OpenAICodexSearchContextSize;
+-    readonly allowed_callers: readonly ['direct'];
+-    readonly external_web_access: boolean | 'indexed';
+-  };
+-  readonly max_output_tokens: number;
++    readonly external_web_access: boolean;
++  }];
++  readonly tool_choice: 'required';
++  readonly parallel_tool_calls: true;
++  readonly include: readonly ['web_search_call.action.sources'];
+ }
+ /** Exact secret-free request recorded before a standalone search dispatch. */
+ interface OpenAICodexSearchRequestRecord {
 diff --git a/lib/index.js b/lib/index.js
+index a7bbc93..fe3900f 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -2547,7 +2547,7 @@
+@@ -2547,7 +2547,7 @@ function requestProvider(provider, fastMode, proxyManager, resolveProxyUrl, back
  		}
  	};
  }
 -/** Build the pi-ai profile with the model-error index required by DSH 0.1.7-rc.1. */
-+/** Build the pi-ai profile with the model-error index required by DSH 0.1.7-rc.2. */
++/** Build the pi-ai profile with the model-error index required by DSH 0.2.1-rc.2. */
  function createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, contextWindowOverrides, backendRequests) {
  	const effectiveProvider = contextWindowOverrides === void 0 ? provider : withOpenAICodexContextWindowOverrides(provider, contextWindowOverrides);
  	return {
-@@ -4545,7 +4545,7 @@
+@@ -4545,10 +4545,10 @@ function registerOpenAICodexProxyRoutes(ctx, trustedOrigins, manager) {
  //#region src/compatibility.ts
  const COMPATIBILITY_SCHEMA_VERSION = 1;
  const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
 -const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.1";
-+const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.2";
++const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.2.1-rc.2";
  const SUPPORTED_DSH_PLUGIN_API_VERSIONS = [SUPPORTED_DSH_PLUGIN_API_VERSION];
  const SUPPORTED_DSH_PLUGIN_API_RANGE = SUPPORTED_DSH_PLUGIN_API_VERSIONS.join(" || ");
- const SUPPORTED_PI_AI_RANGE = "0.85.1";
-@@ -4654,7 +4654,7 @@
+-const SUPPORTED_PI_AI_RANGE = "0.85.1";
++const SUPPORTED_PI_AI_RANGE = "1.1.0";
+ const PI_AI_PACKAGE = "@earendil-works/pi-ai";
+ const DSH_PLUGIN_API_PACKAGES = [
+ 	"@deepseek-ai/dsh-agent",
+@@ -4557,7 +4557,6 @@ const DSH_PLUGIN_API_PACKAGES = [
+ 	"@deepseek-ai/dsh-compaction",
+ 	"@deepseek-ai/dsh-home-paths",
+ 	"@deepseek-ai/dsh-host-webserver",
+-	"@deepseek-ai/dsh-invariants",
+ 	"@deepseek-ai/dsh-llm",
+ 	"@deepseek-ai/dsh-llm-pi-ai",
+ 	"@deepseek-ai/dsh-fs",
+@@ -4593,7 +4592,7 @@ function isSupportedDshPluginApiVersion(value) {
+ 	return SUPPORTED_DSH_PLUGIN_API_VERSIONS.some((version) => version === value);
+ }
+ function piAiVersionStatus(value) {
+-	return value.trim() === "0.85.1" ? "compatible" : "unverified";
++	return value.trim() === "1.1.0" ? "compatible" : "unverified";
+ }
+ function parseNodeVersion(value) {
+ 	const match = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/u.exec(value.trim());
+@@ -4654,7 +4653,7 @@ function evaluateCompatibility(input = {}) {
  	const status = aggregateStatus([node, ...Object.values(packages)]);
  	const dshVersion = packages["@deepseek-ai/dsh-llm"].installed;
  	const piVersion = packages[PI_AI_PACKAGE].installed;
 -	const matchedPair = dshVersion === packages["@deepseek-ai/dsh-llm-pi-ai"].installed && dshVersion === packages["@deepseek-ai/dsh-compaction"].installed && dshVersion === "0.1.7-rc.1" && piVersion === "0.85.1";
-+	const matchedPair = dshVersion === packages["@deepseek-ai/dsh-llm-pi-ai"].installed && dshVersion === packages["@deepseek-ai/dsh-compaction"].installed && dshVersion === "0.1.7-rc.2" && piVersion === "0.85.1";
++	const matchedPair = dshVersion === packages["@deepseek-ai/dsh-llm-pi-ai"].installed && dshVersion === packages["@deepseek-ai/dsh-compaction"].installed && dshVersion === "0.2.1-rc.2" && piVersion === "1.1.0";
  	return {
  		schemaVersion: 1,
  		status: status === "compatible" && !matchedPair ? "unverified" : status,
-@@ -9346,12 +9346,13 @@
+@@ -9346,12 +9345,13 @@ const OPENAI_CODEX_SEARCH_TIMEOUT_MS = 3e4;
  /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
  const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
  /** Standalone search endpoint used by the official Codex client. */
@@ -74,7 +257,7 @@ diff --git a/lib/index.js b/lib/index.js
  		case "live": return true;
  	}
  }
-@@ -9388,38 +9389,93 @@
+@@ -9388,39 +9388,94 @@ function citeableUrl(value) {
  		return;
  	}
  }
@@ -147,12 +330,11 @@ diff --git a/lib/index.js b/lib/index.js
 -			...title === void 0 ? {} : { title },
 -			...snippet === void 0 ? {} : { snippet }
 -		});
--	}
 +	for (const source of [...citedSources, ...otherSources]) {
 +		if (seen.has(source.url)) continue;
 +		seen.add(source.url);
 +		sources.push(source);
-+	}
+ 	}
 +	const content = output.join("");
  	return {
 -		...output.length === 0 ? {} : { content: output },
@@ -161,7 +343,7 @@ diff --git a/lib/index.js b/lib/index.js
 -		truncated: false
 +		truncated: value["status"] === "incomplete"
  	};
-+}
+ }
 +/** Parse one complete SSE response and return its terminal Responses object. */
 +function terminalResponseFromSse(text) {
 +	let terminal;
@@ -188,10 +370,11 @@ diff --git a/lib/index.js b/lib/index.js
 +		output: streamedOutput.filter((item) => item !== void 0)
 +	};
 +	return terminal;
- }
++}
  /** Stable cancellation error for every provider phase. */
  function searchAborted(signal, fallback) {
-@@ -9465,7 +9521,8 @@
+ 	return new WebError("OpenAI Codex search aborted", "WEB_ABORTED", { cause: signal?.aborted === true ? signal.reason : fallback });
+@@ -9465,7 +9520,8 @@ async function readSearchJson(response, signal) {
  			if (size > 1048576) throw new Error("Search response exceeds the byte limit");
  			chunks.push(value);
  		}
@@ -201,7 +384,7 @@ diff --git a/lib/index.js b/lib/index.js
  	} finally {
  		reader.cancel().catch(() => {});
  		reader.releaseLock();
-@@ -9529,9 +9586,12 @@
+@@ -9529,9 +9585,12 @@ var OpenAICodexSearchProvider = class {
  		if (access === void 0 || access.length === 0) throw new WebError("OpenAI Codex search is signed out; run \"dsh openai-codex login\"", "WEB_PROVIDER_CREDENTIAL_MISSING");
  		const accountId = accountIdFromToken(access);
  		throwIfSearchAborted(signal);
@@ -215,7 +398,7 @@ diff --git a/lib/index.js b/lib/index.js
  			input: [{
  				type: "message",
  				role: "user",
-@@ -9540,13 +9600,14 @@
+@@ -9540,13 +9599,14 @@ var OpenAICodexSearchProvider = class {
  					text: request.query
  				}]
  			}],
@@ -235,7 +418,7 @@ diff --git a/lib/index.js b/lib/index.js
  		};
  		this.options.recordRequest?.({
  			endpoint: OPENAI_CODEX_SEARCH_URL,
-@@ -9559,8 +9620,11 @@
+@@ -9559,8 +9619,11 @@ var OpenAICodexSearchProvider = class {
  				authorization: `Bearer ${access}`,
  				"chatgpt-account-id": accountId,
  				"content-type": "application/json",
@@ -249,75 +432,22 @@ diff --git a/lib/index.js b/lib/index.js
  			response = await abortable$1(requestFetch(OPENAI_CODEX_SEARCH_URL, {
  				method: "POST",
  				redirect: "error",
-diff --git a/lib/index.d.ts b/lib/index.d.ts
---- a/lib/index.d.ts
-+++ b/lib/index.d.ts
-@@ -296,8 +296,8 @@
- //#region src/compatibility.d.ts
- export declare const COMPATIBILITY_SCHEMA_VERSION: 1;
- export declare const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
--export declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.1";
--export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.1"];
-+export declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.2";
-+export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.2"];
- export declare const SUPPORTED_DSH_PLUGIN_API_RANGE: string;
- export declare const SUPPORTED_PI_AI_RANGE = "0.85.1";
- export declare const PI_AI_PACKAGE = "@earendil-works/pi-ai";
-@@ -345,8 +345,8 @@
-     readonly node: "^22.19.0 || >=24.0.0";
-   };
-   readonly dshPluginApi: {
--    readonly version: "0.1.7-rc.1";
--    readonly versions: readonly ["0.1.7-rc.1"];
-+    readonly version: "0.1.7-rc.2";
-+    readonly versions: readonly ["0.1.7-rc.2"];
-     readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-invariants", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
-   };
-   readonly piAi: {
-@@ -552,10 +552,12 @@
- /** Trusted first-party Codex base; OAuth credentials never cross to a configured origin. */
- export declare const OPENAI_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex";
- /** Standalone search endpoint used by the official Codex client. */
--export declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/alpha/search";
-+export declare const OPENAI_CODEX_SEARCH_URL = "https://chatgpt.com/backend-api/codex/responses";
- interface SearchRequestBody {
--  readonly id: string;
-   readonly model: string;
-+  readonly store: false;
-+  readonly stream: true;
-+  readonly instructions: string;
-   readonly input: readonly [{
-     readonly type: 'message';
-     readonly role: 'user';
-@@ -564,17 +566,14 @@
-       readonly text: string;
-     }];
-   }];
--  readonly commands: {
--    readonly search_query: readonly [{
--      readonly q: string;
--    }];
--  };
--  readonly settings: {
-+  readonly tools: readonly [{
-+    readonly type: 'web_search';
-     readonly search_context_size: OpenAICodexSearchContextSize;
--    readonly allowed_callers: readonly ['direct'];
--    readonly external_web_access: boolean | 'indexed';
--  };
--  readonly max_output_tokens: number;
-+    readonly external_web_access: boolean;
-+  }];
-+  readonly tool_choice: 'required';
-+  readonly parallel_tool_calls: true;
-+  readonly include: readonly ['web_search_call.action.sources'];
- }
- /** Exact secret-free request recorded before a standalone search dispatch. */
- interface OpenAICodexSearchRequestRecord {
 diff --git a/package.json b/package.json
+index 6d678be..22164ca 100644
 --- a/package.json
 +++ b/package.json
-@@ -112,27 +112,27 @@
+@@ -84,8 +84,8 @@
+     "NOTICE"
+   ],
+   "dependencies": {
+-    "@deepseek-ai/schemastery": "3.18.4",
+-    "@earendil-works/pi-ai": "0.85.1",
++    "@deepseek-ai/schemastery": "3.18.5",
++    "@earendil-works/pi-ai": "1.1.0",
+     "undici": "^8.10.0"
+   },
+   "license": "Apache-2.0",
+@@ -112,27 +112,26 @@
    },
    "peerDependencies": {
      "@deepseek-ai/cordis": "^4.0.2",
@@ -342,31 +472,30 @@ diff --git a/package.json b/package.json
 -    "@deepseek-ai/dsh-util-values": "0.1.7-rc.1",
 -    "@deepseek-ai/dsh-web": "0.1.7-rc.1",
 -    "react": "^18.2.0"
-+    "@deepseek-ai/dsh-agent": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-atomic-write": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-attachment": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-chat": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-layout": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-tool": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-commands": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-compaction": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-fs": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-home-paths": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-invariants": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-llm": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-session": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-settings": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-util-values": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-web": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-atomic-write": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-attachment": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-chat": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-tool": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-commands": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-compaction": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-fs": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-home-paths": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-host-webserver": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-llm-pi-ai": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-session": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-settings": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-util-values": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-web": "0.2.1-rc.2",
 +    "react": "^18.2.0 || ^19.1.1"
    },
    "peerDependenciesMeta": {
      "@deepseek-ai/dsh-commands": {
-@@ -143,65 +143,65 @@
+@@ -143,65 +142,64 @@
      "@deepseek-ai/cordis": "^4.0.4",
      "@deepseek-ai/cordis-plugin-include": "1.0.9",
      "@deepseek-ai/cordis-plugin-loader": "1.0.5",
@@ -429,69 +558,68 @@ diff --git a/package.json b/package.json
 -    "@deepseek-ai/dsh-util-values": "0.1.7-rc.1",
 -    "@deepseek-ai/dsh-web": "0.1.7-rc.1",
 -    "@deepseek-ai/dsh-workspace": "0.1.7-rc.1",
-+    "@deepseek-ai/dsh-agent": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-agent-loop": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-api-gateway": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-api-remotes": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-api-session-controller": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-atomic-write": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-attachment": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-attachment-local": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-authorization": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-connection": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-locale": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-store": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-chat": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-layout": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-session": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-settings": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-settings-models": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-slots": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-client-ui-tool": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-commands": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-compaction": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-compaction-basic": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-file-reference": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-fs": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-fs-local": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-home-paths": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-invariants": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-llm": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-native-command": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-sandbox": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-scope": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-session": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-session-persistence": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-session-persistence-jsonl": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-session-projection": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-session-query": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-session-title": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-settings": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-skill": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-storage": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-storage-domain": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-subagent": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-system-prompt": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-token-meter": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-typert-registry": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-user-approval": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-util-values": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-web": "0.1.7-rc.2",
-+    "@deepseek-ai/dsh-workspace": "0.1.7-rc.2",
++    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-agent-default-model": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-agent-loop": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-api-gateway": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-api-remotes": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-api-session-controller": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-atomic-write": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-attachment": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-attachment-local": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-authorization": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-connection": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-store": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-chat": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-conversation": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-model-selection": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-session": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-settings-models": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-settings-plugins": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-client-ui-tool": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-commands": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-compaction": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-compaction-basic": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-file-reference": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-fs": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-fs-local": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-home-paths": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-host-webserver": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-launch-environment": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-llm-pi-ai": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-native-command": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-sandbox": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-scope": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-session": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-session-persistence": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-session-persistence-jsonl": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-session-projection": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-session-query": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-session-title": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-settings": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-skill": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-storage": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-subagent": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-token-meter": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-typert-registry": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-user-approval": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-util-values": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-web": "0.2.1-rc.2",
++    "@deepseek-ai/dsh-workspace": "0.2.1-rc.2",
      "@testing-library/react": "^16.3.2",
      "@shikijs/langs": "^4.3.1",
      "@types/node": "^22.20.0",
-@@ -228,7 +228,7 @@
+@@ -228,7 +226,7 @@
      "micromark-util-symbol": "^2.0.1",
      "pi-ai-oauth-source": "npm:@earendil-works/pi-ai@0.84.4",
      "playwright": "1.63.0",
@@ -500,17 +628,3 @@ diff --git a/package.json b/package.json
      "react-dom": "^18.2.0",
      "shiki": "^4.3.1",
      "simple-icons": "16.31.0",
-diff --git a/compatibility.json b/compatibility.json
---- a/compatibility.json
-+++ b/compatibility.json
-@@ -4,8 +4,8 @@
-     "node": "^22.19.0 || >=24.0.0"
-   },
-   "dshPluginApi": {
--    "version": "0.1.7-rc.1",
--    "versions": ["0.1.7-rc.1"],
-+    "version": "0.1.7-rc.2",
-+    "versions": ["0.1.7-rc.2"],
-     "packages": [
-       "@deepseek-ai/dsh-agent",
-       "@deepseek-ai/dsh-atomic-write",

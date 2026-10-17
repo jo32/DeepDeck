@@ -56,7 +56,7 @@ export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: bo
   ctx.effect(() => {
     const disposers = builtinViewers().map(viewer => service.registerFileViewer(viewer))
     if (options.desktop) {
-      for (const descriptor of builtinTabs().filter(tab => tab.id !== 'browser')) disposers.push(service.registerTab(descriptor))
+      for (const descriptor of builtinTabs(context).filter(tab => tab.id !== 'browser')) disposers.push(service.registerTab(descriptor))
     } else {
       disposers.push(service.registerTab({ id: 'editor', title: () => t('filesTitle'), order: 10,
         component: props => <EditorHost {...props} expanded={props.expanded ?? []} revealed={[]} onToggleDir={props.onToggleDir ?? (() => {})} onReferenceFile={path => { appendToDraft(context, props.scope.sessionId, `@${path}`) }} /> }))
@@ -105,7 +105,7 @@ export function createWorkspaceFiles(ctx: ClientContext, options: { desktop?: bo
       {fileError && <p role="alert">{fileError}</p>}
       <div className={css.filePanes}>
         <div className={css.tree} aria-label={t('filesFolders')}>
-          <FileTree store={store} key={root.home} sessionId={sessionId} cwd={root.home} expanded={state.expanded} revealed={[]}
+          <FileTree service={service} key={root.home} sessionId={sessionId} cwd={root.home} expanded={state.expanded} revealed={[]}
             onToggle={path => store.reduce(state => toggleExpanded(state, path))}
             onOpenFile={path => service.updateTab(tabId, { path, title: path.split(/[\\/]/).pop() ?? path })}
             onReferenceFile={reference} refreshTick={refreshTick + uploadTick} onUploadRequest={(dir, items) => { void upload(dir, items) }} busy={uploading} />

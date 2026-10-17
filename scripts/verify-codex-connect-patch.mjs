@@ -10,9 +10,9 @@ import { zstdDecompressSync } from "node:zlib";
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const expectedPackageVersion = "0.1.0-alpha.4.47";
-const expectedDshVersion = "0.1.7-rc.2";
+const expectedDshVersion = "0.2.1-rc.2";
 const expectedReactRange = "^18.2.0 || ^19.1.1";
-const expectedPiAiVersion = "0.85.1";
+const expectedPiAiVersion = "1.1.0";
 const staleDshVersions = ["0.1.0-rc.7", "0.1.0-rc.8"];
 const textExtensions = new Set([".d.ts", ".js", ".json", ".md", ".yaml", ".yml"]);
 
@@ -69,7 +69,7 @@ if (manifest.dependencies?.["@earendil-works/pi-ai"] !== expectedPiAiVersion) {
   fail("pi-ai dependency contract drifted");
 }
 if (!compatibility.dshPluginApi?.versions?.includes(expectedDshVersion)) {
-  fail("compatibility.json does not declare Harness 0.1.7-rc.2");
+  fail("compatibility.json does not declare Harness 0.2.1-rc.2");
 }
 
 const textFiles = await collectTextFiles(packageRoot);
@@ -107,10 +107,10 @@ if (!clientBundle.includes('"dsh-codex-connect: manual update store"')
 
 const plugin = await import(pathToFileURL(join(packageRoot, manifest.main ?? "lib/index.js")).href);
 if (!plugin.SUPPORTED_DSH_PLUGIN_API_VERSIONS?.includes(expectedDshVersion)) {
-  fail("compiled doctor contract does not report Harness 0.1.7-rc.2");
+  fail("compiled doctor contract does not report Harness 0.2.1-rc.2");
 }
 if (!plugin.COMPATIBILITY_CONTRACT?.dshPluginApi?.versions?.includes(expectedDshVersion)) {
-  fail("compiled compatibility contract does not report Harness 0.1.7-rc.2");
+  fail("compiled compatibility contract does not report Harness 0.2.1-rc.2");
 }
 
 const expectedSearchUrl = "https://chatgpt.com/backend-api/codex/responses";
@@ -252,7 +252,7 @@ if (report.status !== "compatible") fail(`compiled compatibility evaluation retu
 
 const installedReport = await plugin.detectCompatibility();
 if (installedReport.status !== "compatible") {
-  fail(`installed 0.1.7-rc.2 dependency detection returned ${installedReport.status}`);
+  fail(`installed 0.2.1-rc.2 dependency detection returned ${installedReport.status}`);
 }
 
 // Exercise the installed, patched plugin through Cordis and the real pi-ai

@@ -12,6 +12,7 @@ const errors = [];
 let harnessContents;
 let workspaceFixture;
 app.on('web-contents-created', (_, contents) => contents.on('console-message', event => {
+  if (process.env.DEEPDECK_UI_TEST_DEBUG) console.log('[renderer]', event.message);
   // Chromium may defer ResizeObserver delivery while this fixture repeatedly
   // resizes the native window. Settled geometry is asserted below; retain all
   // other renderer errors as failures.
@@ -59,10 +60,13 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     target.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point });
     await delay(100);
   };
-  // Dismiss the upstream beta notice only in this throwaway profile.
-  await until(() => evaluate(`Array.from(document.querySelectorAll('button')).some(e => ['继续','Continue'].includes(e.textContent.trim()))`), 'beta notice');
-  await click('button', ['继续', 'Continue']);
-  await until(() => evaluate(`!Array.from(document.querySelectorAll('[role=dialog]')).some(e => /Internal Testing Notice|内部测试/.test(e.textContent))`), 'saved welcome acknowledgement');
+  // A fresh profile must reach the composer without acknowledging any preview notice.
+  const expectNoPreviewNotice = async () => assert.equal(await evaluate(
+    `Array.from(document.querySelectorAll('[role=dialog]')).some(e => /Preview Notice|Internal Testing Notice|预览版说明|内部测试/.test(e.textContent))`
+  ), false, 'Harness preview notice must not appear in DeepDeck');
+  await until(() => evaluate(`!!document.querySelector('[contenteditable="true"]')`), 'initial session composer');
+  await delay(500);
+  await expectNoPreviewNotice();
   await new Promise(resolve => { contents.once('did-finish-load', resolve); contents.reload(); });
   await until(() => evaluate(`!!document.querySelector('[data-deepdeck-desktop-frame][data-layout-motion-ready]')`), 'reloaded desktop shell');
   await click('button', ['新建会话', 'New Session']);
@@ -73,6 +77,7 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   await until(() => evaluate(`!!document.querySelector('[role="menuitem"]')`), 'workspace picker');
   await click('[role="menuitem"]', ['Default Workspace']);
   await until(() => evaluate('!!document.querySelector("[data-deepdeck-home-hero]")'), 'new session composer');
+  await expectNoPreviewNotice();
   const expectHomeHero = async () => {
     await until(() => evaluate(`!!document.querySelector('[data-deepdeck-home-hero][data-motion="resting"]')`), 'resting home hero');
     const geometry = await evaluate(`(() => {
@@ -264,7 +269,7 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
   const screenshot = await contents.capturePage();
   assert(!screenshot.isEmpty(), 'Harness view stayed hidden behind splash');
   writeFileSync(process.env.DEEPDECK_UI_TEST_SCREENSHOT, screenshot.toPNG());
-  console.log('PASS desktop Harness UI: welcome persistence, sessions, settings, sidebar geometry and hit targets, files, resizing, tab retention and fullscreen.');
+  console.log('PASS desktop Harness UI: no preview notice on fresh profiles or reload, sessions, settings, sidebar geometry and hit targets, files, resizing, tab retention and fullscreen.');
   if (process.env.DEEPDECK_UI_TEST_SCOPE === 'desktop') {
     assert.deepEqual(errors, []);
     if (workspaceFixture) rmSync(workspaceFixture, { force: true });
@@ -284,6 +289,7 @@ const deadline = setTimeout(() => { console.error('Harness UI verification timed
     const browser = await until(async () => {
       for (const candidate of webContents.getAllWebContents()) {
         if (!candidate.getURL().includes('deepdeck-surface=browser')) continue;
+        harnessContents = candidate;
         try { if (await candidate.executeJavaScript('!!document.querySelector("[data-deepdeck-browser] input")')) return candidate; } catch {}
       }
     }, 'Browser shell');

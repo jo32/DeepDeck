@@ -49,7 +49,7 @@ beforeAll(async () => {
     // replay consumption checks without comparing its transcript to the stock UI golden.
     compareReplaySession: false,
     harnessHome,
-    replayFixture: fileURLToPath(new URL('../../../vendor/deepseek-harness/snapshots/web/question-composer/session.v3.jsonl', import.meta.url)),
+    replayFixture: fileURLToPath(new URL('../../../vendor/deepseek-harness/snapshots/web/question-composer/session.v4.jsonl', import.meta.url)),
     paceMs: 15,
   })
   debugPort = await probeFreePort()
@@ -112,7 +112,7 @@ async function expectActionsInsideCard() {
 it('keeps ordinary question actions reachable in a narrow desktop conversation', async () => {
   const settled = scaffold.whenTurnSettled()
   const input = page.locator('[contenteditable="true"]').first()
-  await input.fill(fixtureUserPrompts(await readFile(new URL('../../../vendor/deepseek-harness/snapshots/web/question-composer/session.v3.jsonl', import.meta.url), 'utf8'))[0]!)
+  await input.fill(fixtureUserPrompts(await readFile(new URL('../../../vendor/deepseek-harness/snapshots/web/question-composer/session.v4.jsonl', import.meta.url), 'utf8'))[0]!)
   await input.press('Enter')
   const composer = page.locator('[data-question-key]')
   await composer.waitFor({ timeout: 30_000 })
@@ -186,6 +186,14 @@ it('keeps ordinary question actions reachable in a narrow desktop conversation',
     { id: 'more', selected: [] },
   ] })
   await composer.waitFor({ state: 'detached' })
+  const dismissed = scaffold.ctx.userQuestions.ask({ agent, questions: [{
+    id: 'dismiss', question: 'Dismiss this blocking question?',
+  }] }).catch((error: unknown) => error)
+  await composer.waitFor()
+  await composer.getByRole('button', { name: 'Dismiss all questions', exact: true }).click()
+  expect(await dismissed).toMatchObject({ code: 'ASK_CANCELLED' })
+  await composer.waitFor({ state: 'detached' })
+
   const plan = scaffold.ctx.userQuestions.ask({ agent, questions: [{
     id: 'review', question: 'Review this plan', detail: 'A plan for the fixture.',
     intent: { kind: 'plan-review', approve: 'Proceed' },
@@ -201,5 +209,38 @@ it('keeps ordinary question actions reachable in a narrow desktop conversation',
   await review.getByRole('button', { name: 'Approve', exact: true }).click()
   expect(await plan).toEqual({ answers: [{ id: 'review', selected: ['Proceed'] }] })
   await review.waitFor({ state: 'detached' })
+
+  // A completed turn exposes every upstream statistics control. DeepDeck
+  // should keep a single combined entry and an opaque dialog above the card.
+  await page.setViewportSize({ width: 1200, height: 900 })
+  const meter = page.locator('[data-deepdeck-session-meter]')
+  await meter.waitFor({ state: 'visible' })
+  expect(await page.locator('[data-composer-stat]').count()).toBe(0)
+  expect(await page.locator('[data-composer-dock] button:visible').count()).toBe(0)
+  expect(await meter.count()).toBe(1)
+  await meter.click()
+  const metrics = page.getByRole('dialog', { name: 'of context used', exact: true })
+  await metrics.waitFor({ state: 'visible' })
+  expect(await metrics.innerText()).toContain('This session')
+  expect(await metrics.innerText()).toContain('Turns / steps')
+  const surface = await metrics.evaluate(panel => {
+    const style = getComputedStyle(panel)
+    const bounds = panel.getBoundingClientRect()
+    const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.bottom - 12)
+    return { background: style.backgroundColor, opacity: style.opacity,
+      reachable: hit === panel || (hit !== null && panel.contains(hit)) }
+  })
+  // Chromium serializes an opaque computed sRGB background as rgb(), while
+  // transparent surfaces use rgba(). The panel must also stay above the input.
+  expect(surface.background).toMatch(/^rgb\(/)
+  expect(surface.opacity).toBe('1')
+  expect(surface.reachable).toBe(true)
+  await page.screenshot({ path: join(tmpdir(), 'deepdeck-session-metrics-fixed.png') })
+  await page.keyboard.press('Escape')
+  await metrics.waitFor({ state: 'detached' })
+  await meter.click()
+  await metrics.waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'New session', exact: true }).first().click()
+  await metrics.waitFor({ state: 'detached' })
   expect(pageErrors).toEqual([])
 })

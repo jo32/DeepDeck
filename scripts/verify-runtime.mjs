@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CODEX_CONNECT_VERSION = "0.1.0-alpha.4.47";
-const DSH_PLUGIN_API_VERSION = "0.1.7-rc.2";
+const DSH_PLUGIN_API_VERSION = "0.2.1-rc.2";
 const REACT_PEER_RANGE = "^18.2.0 || ^19.1.1";
 const BUN_VERSION = "1.4.0";
 
@@ -99,14 +99,14 @@ async function verifyCodexConnectContract(root, manifest) {
   const dshPeers = Object.entries(manifest.peerDependencies ?? {})
     .filter(([name]) => name.startsWith("@deepseek-ai/dsh-"));
   if (dshPeers.length === 0 || dshPeers.some(([, version]) => !version.split(" || ").includes(DSH_PLUGIN_API_VERSION))) {
-    throw new Error("Bundled Codex Connect does not declare a 0.1.7-rc.2-only DSH peer contract");
+    throw new Error("Bundled Codex Connect does not declare a 0.2.1-rc.2-only DSH peer contract");
   }
   if (manifest.peerDependencies?.react !== REACT_PEER_RANGE) {
     throw new Error("Bundled Codex Connect does not declare its React 18/19 peer contract");
   }
   const compatibility = JSON.parse(await readFile(join(root, "compatibility.json"), "utf8"));
   if (!compatibility.dshPluginApi?.versions?.includes(DSH_PLUGIN_API_VERSION)) {
-    throw new Error("Bundled Codex Connect compatibility.json does not report Harness 0.1.7-rc.2");
+    throw new Error("Bundled Codex Connect compatibility.json does not report Harness 0.2.1-rc.2");
   }
 }
 
@@ -201,16 +201,26 @@ async function verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli) {
     if (!Array.isArray(browserState.sites) || !Array.isArray(browserState.native?.tabs) || browserState.available !== false) {
       throw new Error("Bundled Browser plugin did not expose its standalone runtime state.");
     }
+    const sessionResponse = await fetch(new URL("/api/session/create", url), {
+      method: "POST", headers: { "content-type": "application/json", origin: new URL(url).origin, ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify({ type: "client-request", rpcId: "runtime-session", method: "session/create", payload: { args: { request: { cwd: dshHome } } } }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    const session = (await sessionResponse.json()).result;
+    if (!sessionResponse.ok || session.ok !== true || typeof session.value?.sessionId !== "string") {
+      throw new Error(`Bundled Session creation failed: ${JSON.stringify(session)}`);
+    }
     const treeResponse = await fetch(new URL("/sidebar/api/fs.tree", url), {
       method: "POST", headers: { "content-type": "application/json", origin: new URL(url).origin, ...(cookie ? { cookie } : {}) },
-      body: JSON.stringify({ sessionId: "sidebar-runtime-verification", cwd: dshHome, path: dshHome }),
+      body: JSON.stringify({ sessionId: session.value.sessionId, cwd: dshHome, path: dshHome }),
       signal: AbortSignal.timeout(5_000),
     });
     const tree = await treeResponse.json();
     if (!treeResponse.ok || tree.ok !== true) throw new Error(`Bundled sidebar file service failed: ${JSON.stringify(tree)}`);
-    const mermaidResponse = await fetch(new URL("/sidebar/bundle/mermaid.js", url), { signal: AbortSignal.timeout(5_000) });
+    const chunkHeaders = { origin: new URL(url).origin, ...(cookie ? { cookie } : {}) };
+    const mermaidResponse = await fetch(new URL("/sidebar/bundle/mermaid.js", url), { headers: chunkHeaders, signal: AbortSignal.timeout(5_000) });
     if (!mermaidResponse.ok || !(await mermaidResponse.text()).includes("mermaid")) throw new Error("Bundled sidebar Mermaid chunk is unavailable");
-    const editorResponse = await fetch(new URL("/sidebar/bundle/editor.js", url), { signal: AbortSignal.timeout(5_000) });
+    const editorResponse = await fetch(new URL("/sidebar/bundle/editor.js", url), { headers: chunkHeaders, signal: AbortSignal.timeout(5_000) });
     if (!editorResponse.ok || !(await editorResponse.text()).includes("TextEditor")) throw new Error("Bundled sidebar editor chunk is unavailable");
   } catch (error) {
     if (child && exitPromise) await stopChild(child, exitPromise);
@@ -263,7 +273,7 @@ for (const plugin of manifest.plugins) {
     if (plugin === "browser") {
       const sidebarRoot = join(root, "node_modules", "dsh-better-sidebar");
       const sidebarManifest = JSON.parse(await readFile(join(sidebarRoot, "package.json"), "utf8"));
-      if (sidebarManifest.version !== "0.21.1") throw new Error("Browser requires the Harness 0.1.7 compatible sidebar release");
+      if (sidebarManifest.version !== "0.28.0") throw new Error("Browser requires the Harness 0.2.1 compatible sidebar release");
       requiredRuntimePaths.push(...["index.js", "client-editor.js", "client-mermaid.js"].map(file => join(sidebarRoot, "lib", file)));
       bundledWebMCPCompiler = join(root, "node_modules", "esbuild", "lib", "main.js");
       bundledDevToolsMcp = join(root, "node_modules", "chrome-devtools-mcp", "build", "src", "bin", "chrome-devtools-mcp.js");

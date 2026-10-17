@@ -47,7 +47,7 @@
   padding: 14px;
   border: 1px solid var(--dsw-alias-border-inverted);
   border-radius: 12px;
-  background: var(--dsw-specific-menu);
+  background: var(--dsw-alias-bg-layer-2);
   box-shadow: var(--dsw-shadow-lv3);
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
@@ -170,10 +170,9 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-/* Harness currently has no slot for its resident ContextMeter. Hide only that
-   semantic dialog trigger inside the stable composer-card boundary; the
-   session meter and other plugin-owned composer controls opt out explicitly. */
-:global([data-composer-card]) :global(button[aria-haspopup="dialog"]:not([data-deepdeck-session-meter]):not([data-deepdeck-composer-control])) {
+/* The resident ContextMeter has no replacement slot. Its semantic trigger now
+   lives in the composer dock; keep only DeepDeck's combined meter in the card. */
+:global([data-composer-dock]) :global(button[aria-haspopup="dialog"]:not([data-deepdeck-session-meter]):not([data-deepdeck-composer-control])) {
   display: none;
 }
 

@@ -1,10 +1,11 @@
 # Codex Connect integration
 
-DeepDeck pins `dsh-codex-connect` to `0.1.0-alpha.4.21`, the last upstream
-release verified for this checkout's Harness `0.1.1-rc.2` and pi-ai `0.82.1`.
-Alpha 4.22 and later require Harness 0.1.2 APIs; upgrading the plugin alone
-would mix incompatible service contracts. The source submodule follows the
-same exact tag; the application loads the patched npm package.
+DeepDeck pins `dsh-codex-connect` to `0.1.0-alpha.4.47` and patches its
+compatibility contract for Harness `0.2.1-rc.2`. The plugin and Harness adapter
+use pi-ai `1.1.0` so message conversion and streaming share the same protocol.
+The retired `dsh-invariants` package is removed from the contract.
+The application loads the patched npm package; the source submodule remains
+available for its independent upstream tests.
 
 The pnpm patch preserves DeepDeck's manual update checks, React 18/19 peer
 range, and Responses-based hosted search. It also adds `gpt-6-astra` to the

@@ -1,4 +1,4 @@
-import { apply as applySidebar } from 'dsh-better-sidebar'
+import { apply as applySidebar, inject as sidebarInject } from 'dsh-better-sidebar'
 import { listDraftFiles, listWorkspaceFiles, readDraftFile } from './publication-files.js'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -12,7 +12,7 @@ import { WebMCPStore } from './webmcp-store.js'
 import { acknowledgeBenchmarkUi, startBenchmarkController, type BenchmarkContext } from './benchmark.js'
 
 export const name = 'deepdeck-browser'
-export const inject = ['workspaceRegistry', 'webServer', 'agents', 'tools', 'skills', 'systemPrompt', 'attachments', 'sessions', 'webRuntime', 'sessionController'] as const
+export const inject = [...sidebarInject, 'workspaceRegistry', 'agents', 'skills', 'systemPrompt', 'attachments', 'sessionController'] as const
 interface HostContext extends BrowserHostContext, BenchmarkContext {
   webServer: { register(route: { kind: 'exact'; path: string; handler(request: IncomingMessage, response: ServerResponse): Promise<void> }): () => void }
   reflect: { provide(name: string, value: unknown): () => void }
