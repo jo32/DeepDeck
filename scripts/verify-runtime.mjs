@@ -364,6 +364,20 @@ if (manifest.platform !== "win32") {
   const esbuildLauncher = join(dirname(bundledWebMCPCompiler), "..", "bin", "esbuild");
   await run(esbuildLauncher, ["--version"]);
 }
+// Exercise the reviewed SDKs in both module formats and both dependency
+// contexts after their development-only TypeScript files have been removed.
+await run(nodeBinary, ["--input-type=module", "-e", `
+  import { createRequire } from 'node:module';
+  import { pathToFileURL } from 'node:url';
+  for (const issuer of ${JSON.stringify([pathToFileURL(cli).href, pathToFileURL(join(pluginRoot(runtimeRoot, "dsh-codex-connect"), "package.json")).href])}) {
+    const require = createRequire(issuer);
+    for (const name of ['openai', '@anthropic-ai/sdk', '@google/genai']) {
+      const entry = require.resolve(name);
+      require(name);
+      await import(pathToFileURL(entry.replace(/\\.(?:cjs|js)$/, '.mjs')).href);
+    }
+  }
+`]);
 await verifyWebBoot(runtimeRoot, manifest, nodeBinary, cli);
 console.log(
   `verify-runtime: DeepDeck ${manifest.applicationVersion}, Node ${manifest.nodeVersion}, ${manifest.platform}-${manifest.architecture}`,

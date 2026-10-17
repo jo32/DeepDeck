@@ -43,15 +43,31 @@ async function replaceDuplicate(path, target, arguments_ = '') {
 export async function slimRuntime(root, { platform, arch, debugRoot }) {
   const before = await files(root);
   let sourceMapBytes = 0;
+  let sdkDevelopmentBytes = 0;
+  const checkedSdks = new Set();
+  // These SDKs ship compiled JavaScript for every runtime export. Their TS
+  // sources and declarations are development inputs, retained with debug files.
+  // Harness's own plugin declarations and all runtime assets stay in the app.
+  const sdkVersions = { openai: '7.19.0', '@anthropic-ai/sdk': '0.129.0', '@google/genai': '2.21.0' };
   for (const { path, bytes } of before) {
-    if (!/\.(?:[cm]?js|css|ts)\.map$/.test(path)) continue;
+    const sdk = path.replaceAll('\\', '/').match(/^(.*\/node_modules\/(openai|@anthropic-ai\/sdk|@google\/genai))\/.*\.[cm]?ts$/);
+    if (sdk && !checkedSdks.has(sdk[1])) {
+      const manifest = JSON.parse(await readFile(join(sdk[1], 'package.json'), 'utf8'));
+      if (manifest.name !== sdk[2] || manifest.version !== sdkVersions[sdk[2]]) {
+        throw new Error(`Review SDK runtime exports before pruning ${manifest.name}@${manifest.version}`);
+      }
+      checkedSdks.add(sdk[1]);
+    }
+    const sourceMap = /\.(?:[cm]?js|css|ts)\.map$/.test(path);
+    if (!sdk && !sourceMap) continue;
     if (debugRoot) {
       const target = join(debugRoot, relative(root, path));
       await mkdir(dirname(target), { recursive: true });
       await copyFile(path, target);
     }
     await rm(path);
-    sourceMapBytes += bytes;
+    if (sdk) sdkDevelopmentBytes += bytes;
+    else sourceMapBytes += bytes;
   }
   const modules = join(root, 'harness/node_modules');
   const pty = join(modules, 'node-pty');
@@ -77,7 +93,7 @@ export async function slimRuntime(root, { platform, arch, debugRoot }) {
   const sum = list => list.reduce((total, file) => total + file.bytes, 0);
   const budgetBytes = platform === 'darwin' ? 900 * 1024 * 1024 : undefined;
   if (budgetBytes && sum(after) > budgetBytes) throw new Error(`Runtime exceeds the 900 MiB macOS budget: ${sum(after)} bytes`);
-  const report = { budgetBytes, beforeBytes: sum(before), afterBytes: sum(after), sourceMapBytes, removedBytes: sum(before) - sum(after) };
+  const report = { budgetBytes, beforeBytes: sum(before), afterBytes: sum(after), sourceMapBytes, sdkDevelopmentBytes, removedBytes: sum(before) - sum(after) };
   await writeFile(join(root, 'runtime-size.json'), `${JSON.stringify(report, null, 2)}\n`);
   return report;
 }

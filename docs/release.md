@@ -163,6 +163,13 @@ excluded); exceeding it stops packaging. `runtime-size.json` records the size
 before/after file pruning. Dependency exclusions happen earlier, so compare full
 app archives to measure the total reduction.
 
+The reviewed OpenAI, Anthropic, and Google model SDKs retain their complete
+compiled JavaScript, assets, manifests, and licenses. Their TypeScript source and
+declaration files are archived with debug artifacts rather than shipped. This
+keeps the Intel runtime within the same 900 MiB budget while preserving Harness
+plugin declarations and each SDK's separate dependency versions. SDK upgrades
+must pass the version gate and a review of their compiled runtime exports.
+
 Source maps are retained under `.deepdeck/debug/<version>-<platform>-<arch>` and
 uploaded as separate `desktop-debug-<arch>` CI artifacts, not shipped to users.
 Only the target node-pty prebuild is retained. On Unix, identical Bun and esbuild

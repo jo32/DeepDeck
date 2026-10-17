@@ -57,3 +57,50 @@ test('refuses to replace a binary that differs from its canonical copy', async t
   await assert.rejects(slimRuntime(root, { platform: 'darwin', arch: 'arm64' }), /nonidentical/);
   assert.equal(await readFile(join(bin, 'bunx.exe'), 'utf8'), 'two');
 });
+
+test('archives reviewed SDK development files while retaining runnable JS, assets, licenses and Harness types', async t => {
+  const base = await mkdtemp(join(tmpdir(), 'runtime-sdk-'));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const root = join(base, 'runtime');
+  const debugRoot = join(base, 'debug');
+  const put = async (path, value) => {
+    await mkdir(dirname(join(root, path)), { recursive: true });
+    await writeFile(join(root, path), value);
+  };
+  for (const [name, version] of [['openai', '7.19.0'], ['@anthropic-ai/sdk', '0.129.0'], ['@google/genai', '2.21.0']]) {
+    const sdk = `harness/node_modules/${name}`;
+    await put(`${sdk}/package.json`, JSON.stringify({ name, version, type: 'module', main: 'index.js' }));
+    await put(`${sdk}/index.js`, 'export default 42');
+    await put(`${sdk}/src/index.ts`, 'export default 42');
+    await put(`${sdk}/index.d.ts`, 'declare const answer: number; export default answer');
+    await put(`${sdk}/assets/data.json`, '{"answer":42}');
+    await put(`${sdk}/LICENSE`, 'license text');
+  }
+  const harnessType = 'harness/node_modules/@deepseek-ai/dsh-agent/lib/index.d.ts';
+  await put(harnessType, 'export interface Agent {}');
+  const report = await slimRuntime(root, { platform: 'darwin', arch: 'arm64', debugRoot });
+  assert.ok(report.sdkDevelopmentBytes > 0);
+  for (const name of ['openai', '@anthropic-ai/sdk', '@google/genai']) {
+    const sdk = `harness/node_modules/${name}`;
+    await assert.rejects(stat(join(root, sdk, 'src/index.ts')), { code: 'ENOENT' });
+    await assert.rejects(stat(join(root, sdk, 'index.d.ts')), { code: 'ENOENT' });
+    assert.equal(await readFile(join(debugRoot, sdk, 'src/index.ts'), 'utf8'), 'export default 42');
+    assert.equal(await readFile(join(root, sdk, 'LICENSE'), 'utf8'), 'license text');
+    assert.equal(await readFile(join(root, sdk, 'assets/data.json'), 'utf8'), '{"answer":42}');
+    const { stdout } = await exec(process.execPath, ['--input-type=module', '-e',
+      `import value from ${JSON.stringify(join(root, sdk, 'index.js'))}; console.log(value)`]);
+    assert.equal(stdout.trim(), '42');
+  }
+  assert.equal(await readFile(join(root, harnessType), 'utf8'), 'export interface Agent {}');
+});
+
+test('requires SDK export review again when a provider package changes version', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'runtime-sdk-version-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const sdk = join(root, 'harness/node_modules/openai');
+  await mkdir(sdk, { recursive: true });
+  await writeFile(join(sdk, 'package.json'), JSON.stringify({ name: 'openai', version: 'next' }));
+  await writeFile(join(sdk, 'index.d.ts'), 'types');
+  await assert.rejects(slimRuntime(root, { platform: 'darwin', arch: 'x64' }), /Review SDK runtime exports/);
+  assert.equal(await readFile(join(sdk, 'index.d.ts'), 'utf8'), 'types');
+});
