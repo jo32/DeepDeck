@@ -77,17 +77,21 @@ git tag -a "v1.2.3" -m "DeepDeck v1.2.3"
 git push origin "v1.2.3"
 ```
 
-Do not move or recreate a pushed release tag. The tag-triggered workflow builds signed and notarized arm64 and x64 packages, stages a draft GitHub Release, verifies immutable R2 objects, promotes both `latest-mac.yml` files, and finally publishes the GitHub Release.
+Do not move or recreate a pushed release tag. The tag-triggered workflow only builds signed and notarized arm64 and x64 packages for review. It does not create a GitHub Release or upload anything to R2.
+
+After reviewing the successful build and explicitly confirming publication, Joe (`jo32`) must manually dispatch **Release DeepDeck** from `main`, enter the existing tag, and enable `confirm_publish` (default false). That run rebuilds and validates the tag, then stages a draft GitHub Release, verifies immutable R2 objects, promotes both `latest-mac.yml` files, and publishes the GitHub Release. The entire publication job requires both the original actor and any rerun actor to be `jo32`; re-running a tag build cannot approve publication.
+
+Merge the confirmation gate before creating new release tags. Historical tags and workflow runs retain older workflow definitions; do not dispatch from or rerun those definitions to bypass confirmation.
 
 ## 4. Monitor GitHub Actions
 
-Find the run whose `headBranch` and `headSha` match the pushed tag and commit:
+For the tag build, find the push run whose `headBranch` and `headSha` match the pushed tag and commit. For publication, select Joe's confirmed `workflow_dispatch` run from `main` and verify its `tag` input and validation output; its workflow `headSha` identifies `main`, while checkout uses the requested release tag.
 
 ```bash
 gh run list \
   --workflow "Release DeepDeck" \
   --limit 10 \
-  --json databaseId,headBranch,headSha,status,conclusion,url
+  --json databaseId,event,headBranch,headSha,status,conclusion,url
 gh run watch RUN_ID --exit-status
 ```
 

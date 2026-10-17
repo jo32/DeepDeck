@@ -2,7 +2,7 @@ name: Update Open Computer Use
 
 on:
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2 * * 1" # Monday 02:17 UTC / 10:17 Asia/Shanghai
   workflow_dispatch:
 
 permissions:
