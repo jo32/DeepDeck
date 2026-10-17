@@ -85,8 +85,23 @@ test("propagates build failures and does not mark stale output as fresh", async 
 
 test("build and check entrypoints prepare Harness before compiling plugins", async () => {
   const { scripts } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-  for (const name of ["check", "build:desktop"]) {
+  for (const name of ["check", "build:desktop", "codex-connect:check"]) {
     assert.ok(scripts[name].startsWith("pnpm harness:ensure && "));
+  }
+});
+
+test("fresh-checkout bootstrap and CI build linked APIs before loading plugins", async () => {
+  const root = new URL("../", import.meta.url);
+  const { scripts } = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
+  const commands = [
+    scripts.bootstrap,
+    ...await Promise.all(["ci.yml", "release.yml"].map(name =>
+      readFile(new URL(`.github/workflows/${name}`, root), "utf8"))),
+  ];
+  for (const command of commands) {
+    const build = command.indexOf("pnpm harness:build");
+    const plugins = command.indexOf("pnpm codex-connect:install");
+    assert.ok(build >= 0 && plugins > build, "linked Harness APIs must be built before plugin validation");
   }
 });
 

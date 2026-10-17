@@ -62,9 +62,9 @@ Use Node 24 and pnpm 12.0.0, then run:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm codex-connect:install
 pnpm harness:install
 pnpm harness:build
+pnpm codex-connect:install
 pnpm package:local
 ```
 

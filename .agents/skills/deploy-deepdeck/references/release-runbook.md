@@ -43,9 +43,9 @@ Use Node 24 and the pinned pnpm 12.0.0. Run the repository-required validation f
 corepack enable
 corepack prepare pnpm@12.0.0 --activate
 pnpm install --frozen-lockfile
-pnpm codex-connect:install
 pnpm harness:install
 pnpm harness:build
+pnpm codex-connect:install
 pnpm check
 pnpm test
 pnpm build
