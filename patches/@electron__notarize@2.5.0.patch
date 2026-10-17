@@ -1,0 +1,93 @@
+diff --git alib/network-retry.js b/lib/network-retry.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..f5f58f67013a88b5d070ddcda9bdb28e7aa06d78
+--- /dev/null
++++ b/lib/network-retry.js
+@@ -0,0 +1,46 @@
++'use strict';
++
++const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
++const NETWORK_ERROR = /Code=-(?:1001|1005|1009|1200)\b|\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b|network connection was lost|Internet connection appears to be offline|No network route|timed out/i;
++
++function submissionId(output) {
++  try {
++    const parsed = JSON.parse(output.trim());
++    if (typeof parsed.id === 'string' && new RegExp(`^${UUID}$`, 'i').test(parsed.id)) return parsed.id;
++  } catch {}
++  return new RegExp(`/submissions/(${UUID})`, 'i').exec(output)?.[1];
++}
++
++async function runAppleToolWithRetry(operation, originalArgs, {
++  attempts = 4,
++  sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
++  report = message => console.warn(message),
++} = {}) {
++  let args = originalArgs;
++  for (let attempt = 0; attempt < attempts; attempt++) {
++    let result;
++    let failure;
++    try { result = await operation(args); } catch (error) { failure = error; }
++    const output = failure ? String(failure.message) : String(result.output ?? '');
++    if (!failure && result.code === 0) return result;
++    if (!NETWORK_ERROR.test(output) || attempt === attempts - 1) {
++      if (failure) throw failure;
++      return result;
++    }
++    if (args[0] === 'submit') {
++      // Resume Apple's existing submission. An unknown outcome must never
++      // cause another upload or be treated as an accepted notarization.
++      const id = submissionId(output);
++      if (!id) {
++        if (failure) throw failure;
++        return result;
++      }
++      args = ['wait', id, ...args.slice(2).filter(arg => arg !== '--wait'), '--timeout', '10m'];
++    }
++    // Arguments contain credentials: never include them or raw output here.
++    report(`Apple network request interrupted; retrying (${attempt + 2}/${attempts}).`);
++    await sleep([5000, 15000, 30000][Math.min(attempt, 2)]);
++  }
++}
++
++exports.runAppleToolWithRetry = runAppleToolWithRetry;
+diff --git a/lib/notarytool.js b/lib/notarytool.js
+index 6328fae1185159bfc97c75b61a8776d700c489bc..a13ff46ca268d8853d47a4c634fbac0e020465df 100644
+--- a/lib/notarytool.js
++++ b/lib/notarytool.js
+@@ -41,11 +41,13 @@ const path = __importStar(require("path"));
+ const spawn_1 = require("./spawn");
+ const helpers_1 = require("./helpers");
+ const validate_args_1 = require("./validate-args");
++const network_retry_1 = require("./network-retry");
+ const d = (0, debug_1.default)('electron-notarize:notarytool');
+ function runNotaryTool(args, notarytoolPath) {
+     const useXcrun = notarytoolPath === undefined;
+     const cmd = useXcrun ? 'xcrun' : notarytoolPath;
+-    return (0, spawn_1.spawn)(cmd, useXcrun ? ['notarytool', ...args] : args);
++    return (0, network_retry_1.runAppleToolWithRetry)(retryArgs =>
++        (0, spawn_1.spawn)(cmd, useXcrun ? ['notarytool', ...retryArgs] : retryArgs), args);
+ }
+ function authorizationArgs(rawOpts) {
+     const opts = (0, validate_args_1.validateNotaryToolAuthorizationArgs)(rawOpts);
+diff --git a/lib/staple.js b/lib/staple.js
+index 47dbd85b2fc279d999b57f47fb8171e1cc674436..1b12aaa7a482b18bd665ed7adf791b8d6334c047 100644
+--- a/lib/staple.js
++++ b/lib/staple.js
+@@ -39,13 +39,14 @@ exports.stapleApp = void 0;
+ const debug_1 = __importDefault(require("debug"));
+ const path = __importStar(require("path"));
+ const spawn_1 = require("./spawn");
++const network_retry_1 = require("./network-retry");
+ const d = (0, debug_1.default)('electron-notarize:staple');
+ function stapleApp(opts) {
+     return __awaiter(this, void 0, void 0, function* () {
+         d('attempting to staple app:', opts.appPath);
+-        const result = yield (0, spawn_1.spawn)('xcrun', ['stapler', 'staple', '-v', path.basename(opts.appPath)], {
+-            cwd: path.dirname(opts.appPath),
+-        });
++        const result = yield (0, network_retry_1.runAppleToolWithRetry)(args =>
++            (0, spawn_1.spawn)('xcrun', args, { cwd: path.dirname(opts.appPath) }),
++            ['stapler', 'staple', '-v', path.basename(opts.appPath)]);
+         if (result.code !== 0) {
+             throw new Error(`Failed to staple your application with code: ${result.code}\n\n${result.output}`);
+         }

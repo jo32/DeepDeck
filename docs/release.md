@@ -91,6 +91,13 @@ on hosted macOS runners. Keep the patch while using this signer version.
 checks that every binary remains in the result. Revalidate this behavior before
 upgrading the signer or removing the patch.
 
+The pinned `@electron/notarize@2.5.0` patch retries transient Apple network
+failures during notarization queries and ticket stapling with bounded backoff.
+A known submission resumes by ID, preserving the signed app and avoiding
+another upload. Unknown submission outcomes, Apple rejections, and permanent
+signature errors stop the build. The normal signature, notarization-ticket,
+and Gatekeeper checks still run before any release assets are published.
+
 ## Open Computer Use runtime updates
 
 `.github/workflows/update-computer-use.yml` checks npm daily and on manual

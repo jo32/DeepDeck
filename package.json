@@ -40,7 +40,7 @@
     "start:rebuild": "pnpm build:desktop && node scripts/run-desktop.mjs",
     "start:packaged": "pnpm package:local && node scripts/run-packaged-desktop.mjs",
     "test:registry": "node --import ./vendor/deepseek-harness/node_modules/tsx/dist/loader.mjs --test scripts/sync-webmcp-registry.test.mjs",
-    "test:signing": "node --test scripts/signing-scan.test.mjs",
+    "test:signing": "node --test scripts/signing-scan.test.mjs scripts/notarization-retry.test.mjs",
     "test:browser-benchmark": "node --test apps/desktop/scripts/browser-use-benchmark.test.mjs",
     "benchmark:browser": "node apps/desktop/scripts/verify-browser-devtools.mjs --benchmark",
     "test:harness-ui": "node apps/desktop/scripts/verify-harness-ui.mjs",

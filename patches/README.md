@@ -28,3 +28,13 @@ Run `pnpm check`, `pnpm test`, and `pnpm build`. The patch verifier boots the
 installed plugin through Cordis and checks model discovery, visibility,
 reasoning validation, and OAuth SSE request/response conversion with a local
 fetch fixture; it does not contact OpenAI or consume account quota.
+
+## Apple notarization network recovery
+
+`@electron/notarize@2.5.0` retries transient Apple network failures up to four
+times with bounded backoff. A failed submission resumes its known Apple ID
+through `notarytool wait`; an unknown submission outcome stops the build.
+Ticket stapling retries the same signed app. Accepted-status checks, signature
+validation, credentials handling, and permanent-error failures remain enforced.
+`pnpm test:signing` exercises the installed upstream module boundaries with fake
+native commands, including unknown outcomes and rejected submissions.
